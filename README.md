@@ -4,7 +4,7 @@ Node-SSH - SSH2 with Promises
 Sorry, but I have no time to write the documentation, but this example should give you a clue on how it works.
 
 ```js
-var driver, ssh;
+var node_ssh, ssh;
 
 node_ssh = require('node-ssh');
 
