@@ -31,12 +31,14 @@ class SSH
         me.conn.connect me.config
       catch error
         reject error
-  exec:(command)->
+  exec:(command,opts)->
+    if typeof opts is 'undefined' then opts = {}
     me = this
     return new Promise (resolve,reject)->
       if me.status is 0
         reject "Not yet connected to server"
         return
+      if typeof opts.cwd isnt 'undefined' then command = "cd #{opts.cwd}; #{command}"
       me.conn.exec command,(error,stream)->
         if error
           reject error
