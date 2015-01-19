@@ -22,6 +22,6 @@
   },
   "dependencies": {
     "ssh2": "latest",
-    "bluebird": "latest"
+    "a-promise": "latest"
   }
 }
