@@ -30,7 +30,7 @@ ssh.connect().then(function() {
     console.log(error);
   });
   // Command
-  ssh.exec('hh_client --json /var/www').then(function(result) {
+  ssh.exec('hh_client --json',{cwd:'/var/www'}).then(function(result) {
     console.log('STDOUT: ' + result.stdout);
     console.log('STDERR: ' + result.stderr);
   });
