@@ -16,10 +16,17 @@ ssh = new node_ssh({
 
 ssh.connect().then(function() {
   // Source, Target
-  ssh.put('/home/steel/.ssh/id_rsa', '/home/steel/.ssh/id_rsa_bkp').then(function() {
+  ssh.put('/home/steel/Lab/LocalSource', '/home/steel/Lab/RemoteTarget').then(function() {
     console.log("The Directory thing is done");
   }, function(error) {
-    console.log("Error here");
+    console.log("Something's wrong");
+    console.log(error);
+  });
+  // Source, Target
+  ssh.get('/home/steel/Lab/RemoteSource', '/home/steel/Lab/LocalTarget').then(function(Contents) {
+    console.log("The File's source was: "+Contents);
+  }, function(error) {
+    console.log("Something's wrong");
     console.log(error);
   });
   // Command
