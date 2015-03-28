@@ -1,8 +1,8 @@
 {
   "name": "node-ssh",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "SS2 with Promises",
-  "main": "./lib/build/index.js",
+  "main": "Dist/SSH.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,7 +21,10 @@
     "url": "https://github.com/steelbrain/node-ssh/issues"
   },
   "dependencies": {
-    "ssh2": "0.3.6",
+    "ssh2": "latest",
     "a-promise": "latest"
+  },
+  "scripts":{
+    "prepublish": "mkdir -p Dist; uc-compile Source/SSH.coffee > Dist/SSH.js"
   }
 }
