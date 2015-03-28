@@ -66,7 +66,7 @@ class SSH
             @put(LocalFile, RemoteFile, SFTP, false)
   putMulti:(Files, SFTP)->
     throw new Error("Please connect before doing anything else") unless @Connected
-    return new Promsie (Resolve, Reject)=>
+    return new Promise (Resolve, Reject)=>
       if SFTP
         ThePromise = Promise.resolve(SFTP)
       else
@@ -76,7 +76,7 @@ class SSH
         Files.forEach (File)=>
           return unless File.Local or File.Remote
           return unless FS.existsSync File.Local
-          Promises.push @put(FS.Local, FS.Remote, SFTP)
+          Promises.push @put(File.Local, File.Remote, SFTP)
         Promise.all(Promises).then(Resolve,Reject);
   get:(RemoteFile, LocalFile, SFTP)->
     throw new Error("Please connect before doing anything else") unless @Connected
