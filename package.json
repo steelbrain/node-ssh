@@ -2,7 +2,7 @@
   "name": "node-ssh",
   "version": "0.1.2",
   "description": "SS2 with Promises",
-  "main": "./lib/build/index.js",
+  "main": "Dist/SSH.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
