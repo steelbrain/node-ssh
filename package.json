@@ -23,5 +23,8 @@
   "dependencies": {
     "ssh2": "latest",
     "a-promise": "latest"
+  },
+  "scripts":{
+    "prepublish": "mkdir -p Dist; uc-compile Source/SSH.coffee > Dist/SSH.js"
   }
 }
