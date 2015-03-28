@@ -1,6 +1,5 @@
 
 
-# Compiler-Output "../Dist/SSH.js"
 FS = require 'fs'
 Driver = require 'ssh2'
 Promise = require 'a-promise'
@@ -18,5 +17,89 @@ class SSH
     Config.port = Config.port || 2
     @Connected = false
     @Connection = new Driver()
-
+  connect:->
+    return new Promise (Resolve, Reject)=>
+      try
+        @Connection.on 'error', Reject
+        @Connection.on 'ready', =>
+          @Connected = true
+          Resolve()
+        @Connection.connect(@Config)
+      catch error
+        Reject error
+  mkdir:(Path)->
+    return new @exec("mkdir -p #{Path}")
+  exec:(Command, Opts)->
+    throw new Error("Please connect before doing anything else") unless @Connected
+    Opts = Opts || {}
+    return new Promise (Resolve, Reject)=>
+      Command = "cd #{Opts.cwd}; #{Command}" if Opts.cwd
+      @Connection.exec Command, (Error, Stream)=>
+        return Reject(Error) if Error
+        ToReturn = stdout: [], stderr: []
+        Stream.on('close', ->
+          ToReturn.stdout = ToReturn.stdout.join("");
+          ToReturn.stderr = ToReturn.stderr.join("");
+          Resolve ToReturn
+        ).on('data', (Data)->
+          ToReturn.stdout.push Data.toString()
+        ).stderr.on('data', (Data)->
+          ToReturn.stderr.push Data.toString()
+        )
+  put:(LocalFile, RemoteFile, SFTP, Retry = true)->
+    throw new Error("Please connect before doing anything else") unless @Connected
+    return new Promise (Resolve, Reject)=>
+      try
+        FS.access(LocalFile, FS.R_OK)
+      catch
+        return Reject("Local File '#{LocalFile}' doesn't exist")
+      if SFTP
+        ThePromise = Promise.resolve(SFTP)
+      else
+        ThePromise = @requestSFTP()
+      ThePromise.then (SFTP)=>
+        SFTP.fastPut LocalFile, RemoteFile, (Error)=>
+          return Resolve() unless Error
+          return Reject(Error) if Error.message isnt 'No such file' or not Retry
+          @mkdir(RemoteFile.split("/").slice(0,-1).join('/')).then =>
+            @put(LocalFile, RemoteFile, SFTP, false)
+  putMulti:(Files, SFTP)->
+    throw new Error("Please connect before doing anything else") unless @Connected
+    return new Promsie (Resolve, Reject)=>
+      if SFTP
+        ThePromise = Promise.resolve(SFTP)
+      else
+        ThePromise = @requestSFTP()
+      Promises = []
+      ThePromise.then (SFTP)=>
+        Files.forEach (File)=>
+          return unless File.Local or File.Remote
+          return unless FS.existsSync File.Local
+          Promises.push @put(FS.Local, FS.Remote, SFTP)
+        Promise.all(Promises).then(Resolve,Reject);
+  get:(RemoteFile, LocalFile, SFTP)->
+    throw new Error("Please connect before doing anything else") unless @Connected
+    return new Promise (Resolve, Reject)=>
+      if SFTP
+        ThePromise = Promise.resolve(SFTP)
+      else
+        ThePromise = @requestSFTP()
+      ThePromise.then (SFTP)=>
+        Stream = SFTP.createReadStream RemoteFile
+        Contents = []
+        Stream.on('data', (Data)->
+          Contents.push Data.toString()
+        ).on('close', ->
+          Contents = Contents.join('')
+          return Resolve(Contents) unless LocalFile
+          FS.writeFile LocalFile, Contents, (error)->
+            return Reject(error) if error
+            Resolve()
+        )
+  requestSFTP:->
+    throw new Error("Please connect before doing anything else") unless @Connected
+    return new Promise (Resolve, Reject)=>
+      @Connection.sftp (Error, SFTP)=>
+        return Reject(Error) if Error
+        Resolve(SFTP);
 module.exports = SSH
