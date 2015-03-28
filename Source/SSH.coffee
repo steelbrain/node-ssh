@@ -51,7 +51,7 @@ class SSH
     throw new Error("Please connect before doing anything else") unless @Connected
     return new Promise (Resolve, Reject)=>
       try
-        FS.access(LocalFile, FS.R_OK)
+        FS.accessSync(LocalFile, FS.R_OK)
       catch
         return Reject("Local File '#{LocalFile}' doesn't exist")
       if SFTP
