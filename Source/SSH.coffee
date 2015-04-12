@@ -39,9 +39,7 @@ class SSH
         return Reject(Error) if Error
         ToReturn = stdout: [], stderr: []
         Stream.on('close', ->
-          ToReturn.stdout = ToReturn.stdout.join("");
-          ToReturn.stderr = ToReturn.stderr.join("");
-          Resolve ToReturn
+          Resolve stderr: ToReturn.stderr.join(""), stdout: ToReturn.stdout.join("")
         ).on('data', (Data)->
           ToReturn.stdout.push Data.toString()
         ).stderr.on('data', (Data)->
