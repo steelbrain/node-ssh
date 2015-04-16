@@ -1,7 +1,9 @@
 Node-SSH - SSH2 with Promises
 =========
 
-Sorry, but I have no time to write the documentation, but this example should give you a clue on how it works.
+Node-SSH is an extremely lightweight Promise wrapper for [ssh2][ssh2], Period.
+
+#### Example
 
 ```js
 var node_ssh, ssh;
@@ -43,3 +45,24 @@ ssh.connect().then(function() {
   });
 });
 ```
+
+#### API
+
+```js
+type PutInfo = shape(LocalPath => string, RemotePath => string);
+class SSH{
+  constructor(SSH2Configuration);
+  connect():Promise;
+  mkdir(Path:String):Promise;
+  exec(Command:String, {cwd:String});
+  put(LocalPath:String, RemotePath:String, ?SFTP: SSH2SFTP, ?Retry:Boolean = true);
+  putMulti(Files:array<PutInfo>, ?SFTP: SSH2SFTP);
+  get(RemoteFile:String, ?LocalFile:String, ?SFTP: SSH2SFTP);
+  requestSFTP():Promise<SSH2SFTP>
+}
+```
+
+### License
+This project is licensed under the terms of MIT license. See the LICENSE file for more info.
+
+[ssh2]:https://github.com/mscdex/ssh2
