@@ -52,12 +52,12 @@ ssh.connect().then(function() {
 type PutInfo = shape(LocalPath => string, RemotePath => string);
 class SSH{
   constructor(SSH2Configuration);
-  connect():Promise;
-  mkdir(Path:String):Promise;
-  exec(Command:String, {cwd:String});
-  put(LocalPath:String, RemotePath:String, ?SFTP: SSH2SFTP, ?Retry:Boolean = true);
-  putMulti(Files:array<PutInfo>, ?SFTP: SSH2SFTP);
-  get(RemoteFile:String, ?LocalFile:String, ?SFTP: SSH2SFTP);
+  connect():Promise<void>;
+  mkdir(Path:String):Promise<void>;
+  exec(Command:String, {cwd:String}):Promise<Object{stderr:String, stdout: String};>
+  put(LocalPath:String, RemotePath:String, ?SFTP: SSH2SFTP, ?Retry:Boolean = true):Promise<void>;
+  putMulti(Files:array<PutInfo>, ?SFTP: SSH2SFTP):Promise<void>;
+  get(RemoteFile:String, ?LocalFile:String, ?SFTP: SSH2SFTP):Promise<?string>;
   requestSFTP():Promise<SSH2SFTP>
 }
 ```
