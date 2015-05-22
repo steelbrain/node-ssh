@@ -49,16 +49,17 @@ ssh.connect().then(function() {
 #### API
 
 ```js
-type PutInfo = shape(LocalPath => string, RemotePath => string);
+type PutInfo = shape(LocalPath => string, RemotePath => string)
 class SSH{
-  constructor(SSH2Configuration);
-  connect():Promise<void>;
-  mkdir(Path:String):Promise<void>;
-  exec(Command:String, {cwd:String}):Promise<Object{stderr:String, stdout: String};>
-  put(LocalPath:String, RemotePath:String, ?SFTP: SSH2SFTP, ?Retry:Boolean = true):Promise<void>;
-  putMulti(Files:array<PutInfo>, ?SFTP: SSH2SFTP):Promise<void>;
-  get(RemoteFile:String, ?LocalFile:String, ?SFTP: SSH2SFTP):Promise<?string>;
+  constructor(SSH2Configuration)
+  connect():Promise<void>
+  mkdir(Path:String):Promise<void>
+  exec(Command:String, {cwd:String}):Promise<Object{stderr:String, stdout: String}>
+  put(LocalPath:String, RemotePath:String, ?SFTP: SSH2SFTP, ?Retry:Boolean = true):Promise<void>
+  putMulti(Files:array<PutInfo>, ?SFTP: SSH2SFTP):Promise<void>
+  get(RemoteFile:String, ?LocalFile:String, ?SFTP: SSH2SFTP):Promise<?string>
   requestSFTP():Promise<SSH2SFTP>
+  end():void
 }
 ```
 

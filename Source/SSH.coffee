@@ -101,4 +101,6 @@ class SSH
       @Connection.sftp (Error, SFTP)=>
         return Reject(Error) if Error
         Resolve(SFTP);
+  end:->
+    @Connection.end()
 module.exports = SSH
