@@ -1,4 +1,4 @@
-
+# @Compiler-Output "../Dist/SSH.js"
 
 FS = require 'fs'
 Driver = require 'ssh2'
@@ -29,7 +29,7 @@ class SSH
       catch error
         Reject error
   mkdir:(Path)->
-    return new @exec("mkdir -p #{Path}")
+    return @exec("mkdir -p #{Path}")
   exec:(Command, Opts)->
     throw new Error("Please connect before doing anything else") unless @Connected
     Opts = Opts || {}
