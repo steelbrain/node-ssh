@@ -19,14 +19,14 @@ ssh = new node_ssh({
 ssh.connect().then(function() {
   // Source, Target
   ssh.put('/home/steel/Lab/LocalSource', '/home/steel/Lab/RemoteTarget').then(function() {
-    console.log("The Directory thing is done");
+    console.log("The File thing is done");
   }, function(error) {
     console.log("Something's wrong");
     console.log(error);
   });
   // Array<Shape('Local' => string, 'Remote' => string)>
   ssh.putMulti([{'Local': '/home/steel/Lab/LocalSource', 'Remote': '/home/steel/Lab/RemoteTarget'}]).then(function() {
-    console.log("The Directory thing is done");
+    console.log("The File thing is done");
   }, function(error) {
     console.log("Something's wrong");
     console.log(error);
