@@ -1,6 +1,6 @@
 {
   "name": "node-ssh",
-  "version": "0.2.7",
+  "version": "0.2.9",
   "description": "SS2 with Promises",
   "main": "Dist/SSH.js",
   "scripts": {
@@ -23,8 +23,5 @@
   "dependencies": {
     "ssh2": "latest",
     "a-promise": "latest"
-  },
-  "scripts":{
-    "prepublish": "mkdir -p Dist; uc-compile Source/SSH.coffee > Dist/SSH.js"
   }
 }
