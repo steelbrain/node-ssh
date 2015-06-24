@@ -20,8 +20,8 @@ class SSH
       throw new Error "Please specify a valid password or Private Key"
     Config.port = Config.port || 22
     @Connected = false
-    @Connection = new Driver()
   connect:->
+    @Connection = new Driver()
     return new Promise (Resolve, Reject)=>
       try
         @Connection.on 'error', Reject
@@ -106,4 +106,5 @@ class SSH
         Resolve(SFTP);
   end:->
     @Connection.end()
+    @Connected = false
 module.exports = SSH
