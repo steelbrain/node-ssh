@@ -59,6 +59,7 @@ class SSH{
   putMulti(Files:array<PutInfo>, ?SFTP: SSH2SFTP):Promise<void>
   get(RemoteFile:String, ?LocalFile:String, ?SFTP: SSH2SFTP):Promise<?string>
   requestSFTP():Promise<SSH2SFTP>
+  requestShell():Promise<SSH2Shell>
   end():void
 }
 ```

@@ -104,6 +104,12 @@ class SSH
       @Connection.sftp (Error, SFTP)=>
         return Reject(Error) if Error
         Resolve(SFTP)
+  requestShell:->
+    throw new Error("Please connect before doing anything else") unless @Connected
+    return new Promise (Resolve, Reject)=>
+      @Connection.shell (Error, Shell)=>
+        return Reject(Error) if Error
+        Resolve(Shell)
   end:->
     @Connection.end()
     @Connected = false
