@@ -10,18 +10,18 @@ class ExpectedWrite extends EventEmitter
     @status = true
     @expected = null
     @callback = null
-    @data = stdout: new Buffer("", "utf8"), stderr: new Buffer("", "utf8")
+    @data = stdout: '', stderr: ''
 
     @stream.on 'close', =>
       @emit('end')
     if @stream.stdout
       @stream.stdout.on 'data', (data) =>
-        @data.stdout = Buffer.concat([@data.stdout, data])
+        @data.stdout += data
     else
       @stream.on 'data', (data) =>
-        @data.stdout = Buffer.concat([@data.stdout, data])
+        @data.stdout += data
     @stream.stderr.on 'data', (data) =>
-      @data.stderr = Buffer.concat([@data.stderr, data])
+      @data.stderr += data
 
   onEnd: ->
     return new Promise (Resolve)=>
