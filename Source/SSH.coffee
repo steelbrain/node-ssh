@@ -78,7 +78,7 @@ class SSH
           return unless File.Local or File.Remote
           return unless FS.existsSync File.Local
           Promises.push @put(File.Local, File.Remote, SFTP)
-        Promise.all(Promises).then(Resolve,Reject);
+        Promise.all(Promises).then(Resolve,Reject)
   get:(RemoteFile, LocalFile, SFTP)->
     throw new Error("Please connect before doing anything else") unless @Connected
     return new Promise (Resolve, Reject)=>
@@ -103,7 +103,7 @@ class SSH
     return new Promise (Resolve, Reject)=>
       @Connection.sftp (Error, SFTP)=>
         return Reject(Error) if Error
-        Resolve(SFTP);
+        Resolve(SFTP)
   end:->
     @Connection.end()
     @Connected = false
