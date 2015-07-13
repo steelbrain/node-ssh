@@ -62,7 +62,7 @@ class SSH
       Deferred = Promise.defer()
       SFTP.fastPut LocalFile, RemoteFile, (Error)=>
         if Error
-          if Error.message is 'No such file' or not Retry
+          if Error.message is 'No such file' and not Retry
             Deferred.reject(Error)
           else
             Deferred.resolve(@mkdir(RemoteFile.split("/").slice(0,-1).join('/')).then =>
