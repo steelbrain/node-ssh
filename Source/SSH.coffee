@@ -50,54 +50,60 @@ class SSH
         )
   put:(LocalFile, RemoteFile, SFTP, Retry = true)->
     throw new Error("Please connect before doing anything else") unless @Connected
-    return new Promise (Resolve, Reject)=>
-      try
-        FS.accessSync(LocalFile, FS.R_OK)
-      catch
-        return Reject("Local File '#{LocalFile}' doesn't exist")
-      if SFTP
-        ThePromise = Promise.resolve(SFTP)
-      else
-        ThePromise = @requestSFTP()
-      ThePromise.then (SFTP)=>
-        SFTP.fastPut LocalFile, RemoteFile, (Error)=>
-          return Resolve() unless Error
-          return Reject(Error) if Error.message isnt 'No such file' or not Retry
-          @mkdir(RemoteFile.split("/").slice(0,-1).join('/')).then =>
-            @put(LocalFile, RemoteFile, SFTP, false)
+    try
+      FS.accessSync(LocalFile, FS.R_OK)
+    catch
+      throw new Error("Local File '#{LocalFile}' doesn't exist")
+    if SFTP
+      ThePromise = Promise.resolve(SFTP)
+    else
+      ThePromise = @requestSFTP()
+    return ThePromise.then (SFTP)=>
+      Deferred = Promise.defer()
+      SFTP.fastPut LocalFile, RemoteFile, (Error)=>
+        if Error
+          if Error.message is 'No such file' or not Retry
+            Deferred.reject(Error)
+          else
+            Deferred.resolve(@mkdir(RemoteFile.split("/").slice(0,-1).join('/')).then =>
+              @put(LocalFile, RemoteFile, SFTP, false)
+            )
+        else
+          Deferred.resolve()
+      return Deferred.promise
   putMulti:(Files, SFTP)->
     throw new Error("Please connect before doing anything else") unless @Connected
-    return new Promise (Resolve, Reject)=>
-      if SFTP
-        ThePromise = Promise.resolve(SFTP)
-      else
-        ThePromise = @requestSFTP()
-      Promises = []
-      ThePromise.then (SFTP)=>
-        Files.forEach (File)=>
-          return unless File.Local or File.Remote
-          return unless FS.existsSync File.Local
-          Promises.push @put(File.Local, File.Remote, SFTP)
-        Promise.all(Promises).then(Resolve,Reject)
+    if SFTP
+      ThePromise = Promise.resolve(SFTP)
+    else
+      ThePromise = @requestSFTP()
+    Promises = []
+    return ThePromise.then (SFTP)=>
+      Files.forEach (File)=>
+        return unless File.Local or File.Remote
+        return unless FS.existsSync File.Local
+        Promises.push @put(File.Local, File.Remote, SFTP)
+      return Promise.all(Promises)
   get:(RemoteFile, LocalFile, SFTP)->
     throw new Error("Please connect before doing anything else") unless @Connected
-    return new Promise (Resolve, Reject)=>
-      if SFTP
-        ThePromise = Promise.resolve(SFTP)
-      else
-        ThePromise = @requestSFTP()
-      ThePromise.then (SFTP)=>
-        Stream = SFTP.createReadStream RemoteFile
-        Contents = []
-        Stream.on('data', (Data)->
-          Contents.push Data.toString()
-        ).on('close', ->
-          Contents = Contents.join('')
-          return Resolve(Contents) unless LocalFile
-          FS.writeFile LocalFile, Contents, (error)->
-            return Reject(error) if error
-            Resolve()
-        )
+    if SFTP
+      ThePromise = Promise.resolve(SFTP)
+    else
+      ThePromise = @requestSFTP()
+    return ThePromise.then (SFTP)=>
+      Deferred = Promise.defer()
+      Stream = SFTP.createReadStream(RemoteFile)
+      Contents = []
+      Stream.on('data', (Data)->
+        Contents.push Data.toString()
+      ).on('close', ->
+        Contents = Contents.join('')
+        return Deferred.resolve(Contents) unless LocalFile
+        FS.writeFile LocalFile, Contents, (error)->
+          return Reject(error) if error
+          Deferred.resolve()
+      )
+      return Deferred.promise
   requestSFTP:->
     throw new Error("Please connect before doing anything else") unless @Connected
     return new Promise (Resolve, Reject)=>
