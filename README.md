@@ -39,7 +39,7 @@ ssh.connect({
     console.log(error);
   });
   // Command
-  ssh.exec('hh_client --json', {cwd:'/var/www', stream: 'both'}).then(function(result) {
+  ssh.execCommand('hh_client --json', {cwd:'/var/www', stream: 'both'}).then(function(result) {
     console.log('STDOUT: ' + result.stdout);
     console.log('STDERR: ' + result.stderr);
   });
