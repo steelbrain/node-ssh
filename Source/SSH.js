@@ -135,6 +135,19 @@ export default class SSH {
       })
     })
   }
+  putMulti(files, SFTP) {
+    if (!this.connected) {
+      throw new Error('SSH Not yet connected')
+    }
+    SFTP = SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
+    return SFTP.then(SFTP => {
+      const Promises = []
+      files.forEach((file) => {
+        Promises.push(this.put(file.Local, file.Remote, SFTP))
+      })
+      return Promise.all(Promises)
+    })
+  }
   requestSFTP() {
     if (!this.connected) {
       throw new Error('SSH Not yet connected')
