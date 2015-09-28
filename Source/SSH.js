@@ -1,4 +1,5 @@
 // @Compiler-Transpile "true"
+// @Compiler-Output "../Dist/SSH.js"
 
 import {promisify} from 'js-toolkit'
 
