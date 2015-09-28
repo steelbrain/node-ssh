@@ -6,6 +6,9 @@ const Driver = require('ssh2')
 const FS = require('fs')
 const Path = require('path')
 
+const access = promisify(FS.access)
+const readFile = promisify(FS.readFile)
+
 const validStreams = new Set(['stdout', 'stderr', 'both'])
 
 // TODO: Escape cwd
@@ -104,6 +107,31 @@ export default class SSH {
         if (error) {
           reject(error)
         } else resolve(stream)
+      })
+    })
+  }
+  put(localFile, remoteFile, SFTP, retry = true) {
+    if (!this.connected) {
+      throw new Error('SSH Not yet connected')
+    }
+    return access(localFile, FS.R_OK).catch(() => {
+      throw new Error(`Local file ${localFile} doesn't exist`)
+    }).then(() => {
+      if (SFTP) {
+        return SFTP
+      } else this.requestSFTP()
+    }).then(SFTP => {
+      return new Promise(function(resolve, reject) {
+        SFTP.fastPut(localFile, remoteFile, (err) => {
+          if (!err) {
+            return resolve()
+          }
+          if (err.message === 'No such file' && retry) {
+            resolve(this.mkdir(Path.dirname(remoteFile)).then(() =>
+              this.put(localFile, remoteFile, SFTP, false)
+            ))
+          } else reject(err)
+        })
       })
     })
   }
