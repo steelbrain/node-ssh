@@ -22,6 +22,20 @@ export default class SSH {
   connect(config) {
     this.connection = new Driver()
     return new Promise((resolve, reject) => {
+      if (typeof config.username !== 'string') {
+        throw new Error('No username provided')
+      } else if (typeof config.host !== 'string') {
+        throw new Error('No host provided')
+      }
+      if (config.privateKey) {
+        if (Path.isAbsolute(config.privateKey)) {
+          try {
+            config.privateKey = FS.readFileSync(config.privateKey)
+          } catch (err) {
+            throw new Error('Unable to read private key')
+          }
+        }
+      }
       this.connection.on('error', reject)
       this.connection.on('ready', () => {
         this.connected = true
