@@ -67,9 +67,9 @@ export default class SSH {
       throw new Error('Options.stdin must be a string')
     }
     options.stream = validStreams.has(options.stream) ? options.stream : 'stdout'
-    return this.execCommand([filePath].concat(args).join(' '), options).then(({stdout, stderr}) => {
+    return this.execCommand([filePath].concat(args).join(' '), options).then(({stdout, stderr, code, signal}) => {
       if (options.stream === 'both') {
-        return {stderr, stdout}
+        return {stderr, stdout, code, signal}
       } else if (options.stream === 'stderr') {
         return stderr
       } else if (options.stream === 'stdout') {
@@ -95,11 +95,14 @@ export default class SSH {
     if (options.cwd) {
       command = 'cd ' + options.cwd + ' ; ' + command
     }
-    return this.execStream(command).then(function(stream) {
-      return new Promise(function(resolve) {
+    return new Promise((resolve, reject) => {
+      this.connection.exec(command, function(err, stream) {
+        if (err) {
+          return reject(err)
+        }
         const contents = {stdout: [], stderr: []}
-        stream.on('close', function() {
-          resolve({stdout: contents.stdout.join(''), stderr: contents.stderr.join('')})
+        stream.on('close', function(code, signal) {
+          resolve({stdout: contents.stdout.join(''), stderr: contents.stderr.join(''), code, signal})
         }).on('data', function(data) {
           contents.stdout.push(data)
         }).stderr.on('data', function(data) {
@@ -109,19 +112,6 @@ export default class SSH {
           stream.push(options.stdin)
           stream.close()
         }
-      })
-    })
-  }
-  // Private method. Not for public use
-  execStream(command) {
-    if (!this.connected) {
-      throw new Error('SSH Not yet connected')
-    }
-    return new Promise((resolve, reject) => {
-      this.connection.exec(command, function(error, stream) {
-        if (error) {
-          reject(error)
-        } else resolve(stream)
       })
     })
   }
