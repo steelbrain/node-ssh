@@ -16,12 +16,10 @@ const validStreams = new Set(['stdout', 'stderr', 'both'])
 
 export default class SSH {
   constructor() {
-    this.config = null
     this.connection = null
     this.connected = false
   }
   connect(config) {
-    this.config = config
     this.connection = new Driver()
     return new Promise((resolve, reject) => {
       this.connection.on('error', reject)
@@ -30,6 +28,7 @@ export default class SSH {
         this.connection.removeListener('error', reject)
         resolve(this)
       })
+      this.connection.connect(config)
     })
   }
   mkdir(path) {
