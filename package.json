@@ -1,6 +1,6 @@
 {
   "name": "node-ssh",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "description": "SS2 with Promises",
   "main": "Dist/SSH.js",
   "scripts": {
@@ -21,7 +21,7 @@
     "url": "https://github.com/steelbrain/node-ssh/issues"
   },
   "dependencies": {
-    "ssh2": "latest",
-    "a-promise": "latest"
+    "js-toolkit": "0.0.5",
+    "ssh2": "^0.4.11"
   }
 }
