@@ -10,13 +10,13 @@ var node_ssh, ssh;
 
 node_ssh = require('node-ssh');
 
-ssh = new node_ssh({
+ssh = new node_ssh();
+
+ssh.connect({
   host: 'localhost',
   username: 'steel',
   privateKey: '/home/steel/.ssh/id_rsa'
-});
-
-ssh.connect().then(function() {
+}).then(function() {
   // Source, Target
   ssh.put('/home/steel/Lab/LocalSource', '/home/steel/Lab/RemoteTarget').then(function() {
     console.log("The File thing is done");
@@ -33,13 +33,13 @@ ssh.connect().then(function() {
   });
   // Source, Target
   ssh.get('/home/steel/Lab/RemoteSource', '/home/steel/Lab/LocalTarget').then(function(Contents) {
-    console.log("The File's source was: "+Contents);
+    console.log("The File's contents were successfully downloaded");
   }, function(error) {
     console.log("Something's wrong");
     console.log(error);
   });
   // Command
-  ssh.exec('hh_client --json',{cwd:'/var/www'}).then(function(result) {
+  ssh.exec('hh_client --json', {cwd:'/var/www', stream: 'both'}).then(function(result) {
     console.log('STDOUT: ' + result.stdout);
     console.log('STDERR: ' + result.stderr);
   });
@@ -49,17 +49,17 @@ ssh.connect().then(function() {
 #### API
 
 ```js
-type PutInfo = shape(LocalPath => string, RemotePath => string)
 class SSH{
-  constructor(SSH2Configuration)
-  connect():Promise<void>
-  mkdir(Path:String):Promise<void>
-  exec(Command:String, {cwd:String}):Promise<Object{stderr:String, stdout: String}>
-  put(LocalPath:String, RemotePath:String, ?SFTP: SSH2SFTP, ?Retry:Boolean = true):Promise<void>
-  putMulti(Files:array<PutInfo>, ?SFTP: SSH2SFTP):Promise<void>
-  get(RemoteFile:String, ?LocalFile:String, ?SFTP: SSH2SFTP):Promise<?string>
-  requestSFTP():Promise<SSH2SFTP>
-  requestShell():Promise<SSH2Shell>
+  constructor()
+  connect(SSH2Configuration): Promise<void>
+  mkdir(Path:String): Promise<string>
+  exec(command: String, args: Array<string>, options: Object{cwd: String, stdin: String, stream: enum{'stdout', 'stderr', 'both'}}): Promise
+  execCommand(command: String, options: Object{cwd: String, stdin: String, stream: enum{'stdout', 'stderr', 'both'}}): Promise
+  put(localPath: String, remotePath: String, ?SFTP: SSH2SFTP, ?Retry:Boolean = true): Promise<void>
+  putMulti(Files:array<Object{Local: String, Remote: String}>, ?SFTP: SSH2SFTP): Promise<void>
+  get(remoteFile: String, localFile: String, ?SFTP: SSH2SFTP): Promise<?string>
+  requestSFTP(): Promise<SSH2SFTP>
+  requestShell(): Promise<SSH2Shell>
   end():void
 }
 ```
