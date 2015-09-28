@@ -113,6 +113,10 @@ export default class SSH {
   put(localFile, remoteFile, SFTP, retry = true) {
     if (!this.connected) {
       throw new Error('SSH Not yet connected')
+    } else if (typeof localFile !== 'string') {
+      throw new Error('localFile must be a string')
+    } else if (typeof remoteFile !== 'string') {
+      throw new Error('remoteFile must be a string')
     }
     return access(localFile, FS.R_OK).catch(() => {
       throw new Error(`Local file ${localFile} doesn't exist`)
@@ -138,6 +142,8 @@ export default class SSH {
   putMulti(files, SFTP) {
     if (!this.connected) {
       throw new Error('SSH Not yet connected')
+    } else if (!(files instanceof Array)) {
+      throw new Error('Files must be an array')
     }
     SFTP = SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
     return SFTP.then(SFTP => {
@@ -146,6 +152,23 @@ export default class SSH {
         Promises.push(this.put(file.Local, file.Remote, SFTP))
       })
       return Promise.all(Promises)
+    })
+  }
+  get(remoteFile, localFile, SFTP) {
+    if (!this.connected) {
+      throw new Error('SSH Not yet connected')
+    } else if (typeof remoteFile !== 'string') {
+      throw new Error('remoteFile must be a string')
+    } else if (typeof localFile !== 'string') {
+      throw new Error('localFile must be a string')
+    }
+    SFTP = SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
+    return SFTP.then(SFTP => {
+      return new Promise(function(resolve, reject) {
+        SFTP.fastGet(localFile, remoteFile, (err) => {
+          reject(err)
+        })
+      })
     })
   }
   requestSFTP() {
