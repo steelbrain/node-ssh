@@ -21,7 +21,7 @@
     "url": "https://github.com/steelbrain/node-ssh/issues"
   },
   "dependencies": {
-    "ssh2": "latest",
-    "a-promise": "latest"
+    "js-toolkit": "0.0.5",
+    "ssh2": "^0.4.11"
   }
 }
