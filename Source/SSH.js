@@ -92,7 +92,8 @@ export default class SSH {
           contents.stderr.push(data)
         })
         if (options.stdin) {
-          stream.write(options.stdin)
+          stream.push(options.stdin)
+          stream.close()
         }
       })
     })
