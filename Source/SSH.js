@@ -126,9 +126,7 @@ export default class SSH {
     return access(localFile, FS.R_OK).catch(() => {
       throw new Error(`Local file ${localFile} doesn't exist`)
     }).then(() => {
-      if (SFTP) {
-        return SFTP
-      } else this.requestSFTP()
+      return SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
     }).then(SFTP => {
       return new Promise(function(resolve, reject) {
         SFTP.fastPut(localFile, remoteFile, (err) => {
@@ -181,10 +179,10 @@ export default class SSH {
       throw new Error('SSH Not yet connected')
     }
     return new Promise((resolve, reject) => {
-      this.connection.sftp(function(err, shell) {
+      this.connection.sftp(function(err, sftp) {
         if (err) {
           reject(err)
-        } else resolve(shell)
+        } else resolve(sftp)
       })
     })
   }
