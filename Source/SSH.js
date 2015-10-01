@@ -12,7 +12,7 @@ const readFile = promisify(FS.readFile)
 
 const validStreams = new Set(['stdout', 'stderr', 'both'])
 
-// TODO: Escape cwd
+// TODO: Escape all the parameters
 
 export default class SSH {
   constructor() {
@@ -151,7 +151,7 @@ export default class SSH {
     SFTP = SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
     return SFTP.then(SFTP => {
       const Promises = []
-      files.forEach((file) => {
+      files.forEach(file => {
         Promises.push(this.put(file.Local, file.Remote, SFTP))
       })
       return Promise.all(Promises)
