@@ -128,7 +128,7 @@ export default class SSH {
     }).then(() => {
       return SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
     }).then(SFTP => {
-      return new Promise(function(resolve, reject) {
+      return new Promise((resolve, reject) => {
         SFTP.fastPut(localFile, remoteFile, (err) => {
           if (!err) {
             return resolve()
@@ -168,8 +168,10 @@ export default class SSH {
     SFTP = SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
     return SFTP.then(SFTP => {
       return new Promise(function(resolve, reject) {
-        SFTP.fastGet(localFile, remoteFile, (err) => {
-          reject(err)
+        SFTP.fastGet(localFile, remoteFile, function(err){
+          if (err) {
+            reject(err)
+          } else resolve()
         })
       })
     })
