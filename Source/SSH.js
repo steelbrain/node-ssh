@@ -6,13 +6,12 @@ import {promisify} from 'js-toolkit'
 const Driver = require('ssh2')
 const FS = require('fs')
 const Path = require('path')
+const Escape = require('shell-escape')
 
 const access = promisify(FS.access)
 const readFile = promisify(FS.readFile)
 
 const validStreams = new Set(['stdout', 'stderr', 'both'])
-
-// TODO: Escape all the parameters
 
 export default class SSH {
   constructor() {
@@ -67,7 +66,7 @@ export default class SSH {
       throw new Error('Options.stdin must be a string')
     }
     options.stream = validStreams.has(options.stream) ? options.stream : 'stdout'
-    return this.execCommand([filePath].concat(args).join(' '), options).then(({stdout, stderr, code, signal}) => {
+    return this.execCommand([filePath].concat(Escape(args)).join(' '), options).then(({stdout, stderr, code, signal}) => {
       if (options.stream === 'both') {
         return {stderr, stdout, code, signal}
       } else if (options.stream === 'stderr') {
@@ -93,7 +92,7 @@ export default class SSH {
       throw new Error('Options.stdin must be a string')
     }
     if (options.cwd) {
-      command = 'cd ' + options.cwd + ' ; ' + command
+      command = 'cd ' + Escape([options.cwd]) + ' ; ' + command
     }
     return new Promise((resolve, reject) => {
       this.connection.exec(command, function(err, stream) {
