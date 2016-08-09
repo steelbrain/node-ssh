@@ -101,6 +101,7 @@ export default class SSH {
         }
         const contents = {stdout: [], stderr: []}
         stream.on('close', function(code, signal) {
+          stream.end();
           resolve({stdout: contents.stdout.join(''), stderr: contents.stderr.join(''), code, signal})
         }).on('data', function(data) {
           contents.stdout.push(data)
@@ -138,6 +139,8 @@ export default class SSH {
             ))
           } else reject(err)
         })
+      }).then(function(){
+        SFTP.end();
       })
     })
   }
@@ -172,6 +175,8 @@ export default class SSH {
             reject(err)
           } else resolve()
         })
+      }).then(function(){
+        SFTP.end();
       })
     })
   }
