@@ -1,6 +1,6 @@
 var fs = require('fs');
 var mock = require('mock-fs');
-var test_server = require('./fixtures/test_server');
+var test_server = require('./server/test_server');
 var node_ssh = require('../Dist/SSH.js');
 var chai = require("chai");
 var chaiAsPromised = require("chai-as-promised");
