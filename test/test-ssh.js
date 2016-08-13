@@ -54,7 +54,6 @@ describe('node-ssh', function() {
     })
 
     .then(function() {
-      console.log("connected..");
       command = 'test_command';
       return ssh.execCommand(command, {stream: 'both'});
     })
@@ -197,11 +196,15 @@ describe('node-ssh', function() {
       return ssh.end();
     })
 
-    .catch(function(err) {
-      console.error("error!", err.stack)
-    })
 
     .should.notify(done);
+    
+    //
+    // .catch(function(err) {
+    //   console.error("error!", err.stack)
+    // })
+    //
+    // .should.notify(done);
 
   });
 
@@ -259,10 +262,6 @@ describe('node-ssh', function() {
 
     .then(function() {
       return ssh.end();
-    })
-
-    .catch(function(err) {
-      console.error("error!", err.stack)
     })
 
     .should.notify(done);

@@ -131,7 +131,7 @@ export default class SSH {
       return new Promise((resolve, reject) => {
         SFTP.fastPut(localFile, remoteFile, (err) => {
           if (!err) {
-            return resolve()
+            return resolve(SFTP)
           }
           if (err.message === 'No such file' && retry) {
             resolve(this.mkdir(Path.dirname(remoteFile)).then(() =>
@@ -139,9 +139,11 @@ export default class SSH {
             ))
           } else reject(err)
         })
-      }).then(function(){
-        SFTP.end();
       })
+    }).then(function(mySFTP){
+      if (!SFTP) { // refers to the put() argument named SFTP
+        mySFTP.end();
+      }
     })
   }
   putMulti(files, SFTP) {

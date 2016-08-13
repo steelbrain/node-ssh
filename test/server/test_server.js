@@ -40,7 +40,12 @@ exports.startServer = function () {
 
         session.on('exec', function(accept, reject, info) {
           // console.log('Client wants to execute: ' + util.inspect(info.command));
-          var stream = accept();
+          var stream = null;
+          if (openconnections <= MAX_CONNECTIONS) {
+            openconnections += 1;
+            // console.log("accepting connection", openconnections);
+            stream = accept();
+          }
           stream.stderr.write(info.command);
           stream.write(info.command)
           stream.exit(0);
@@ -54,12 +59,13 @@ exports.startServer = function () {
           var handleCount = 0;
           // `sftpStream` is an `SFTPStream` instance in server mode
           // see: https://github.com/mscdex/ssh2-streams/blob/master/SFTPStream.md
-          var sftpStream = accept();
-          sftpStream.on('OPEN', function(reqid, filename, flags, attrs) {
+          var sftpStream = null;
+          if (openconnections <= MAX_CONNECTIONS) {
             openconnections += 1;
-            if (openconnections > MAX_CONNECTIONS)
-              throw "To many connections open! Try closing some connections first."
-
+            // console.log("accepting connection", openconnections);
+            sftpStream = accept();
+          }
+          sftpStream.on('OPEN', function(reqid, filename, flags, attrs) {
             // console.log("reading sftp...", filename);
             contents = filename;
             var handle = new Buffer(4);
@@ -93,7 +99,9 @@ exports.startServer = function () {
             var inspected = require('util').inspect(data);
             // console.log('Write to file at offset %d: %s', offset, inspected);
           }).on('CLOSE', function(reqid, handle) {
+            // console.log("closing connection",openconnections);
             openconnections -= 1;
+            if (openconnections < 0) openconnections = 0;
             var fnum;
             if (handle.length !== 4 || !openFiles[(fnum = handle.readUInt32BE(0, true))])
               return sftpStream.status(reqid, STATUS_CODE.FAILURE);
