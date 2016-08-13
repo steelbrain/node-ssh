@@ -9,13 +9,6 @@ var should = chai.should();
 chai.use(chaiAsPromised);
 
 
-
-describe('Calculator', function() {
-  it('should add numbers correctly', function() {
-    expect(3+4).to.equal(7);
-  });
-});
-
 describe('node-ssh', function() {
 
   before(function() {
@@ -198,7 +191,7 @@ describe('node-ssh', function() {
 
 
     .should.notify(done);
-    
+
     //
     // .catch(function(err) {
     //   console.error("error!", err.stack)

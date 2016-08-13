@@ -141,9 +141,8 @@ export default class SSH {
         })
       })
     }).then(function(mySFTP){
-      if (!SFTP) { // refers to the put() argument named SFTP
+      if (!SFTP) // refers to the put() argument named SFTP
         mySFTP.end();
-      }
     })
   }
   putMulti(files, SFTP) {
