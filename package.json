@@ -18,7 +18,7 @@
     "ssh2",
     "sftp"
   ],
-  "author": "steelbrain <aneesiqbalbhatti@gmail.com>",
+  "author": "steelbrain <i@steelbrain.me>",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/steelbrain/node-ssh/issues"
