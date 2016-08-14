@@ -2,7 +2,7 @@
   "name": "node-ssh",
   "version": "2.0.7",
   "description": "SS2 with Promises",
-  "main": "lib/SSH.js",
+  "main": "lib/index.js",
   "scripts": {
     "test": "eslint .; apm test",
     "clean": "rm -rf lib",
