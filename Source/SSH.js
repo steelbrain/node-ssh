@@ -13,7 +13,7 @@ const readFile = promisify(FS.readFile)
 
 const validStreams = new Set(['stdout', 'stderr', 'both'])
 
-export default class SSH {
+module.exports = class SSH {
   constructor() {
     this.connection = null
     this.connected = false
@@ -101,6 +101,7 @@ export default class SSH {
         }
         const contents = {stdout: [], stderr: []}
         stream.on('close', function(code, signal) {
+          stream.end();
           resolve({stdout: contents.stdout.join(''), stderr: contents.stderr.join(''), code, signal})
         }).on('data', function(data) {
           contents.stdout.push(data)
@@ -130,7 +131,7 @@ export default class SSH {
       return new Promise((resolve, reject) => {
         SFTP.fastPut(localFile, remoteFile, (err) => {
           if (!err) {
-            return resolve()
+            return resolve(SFTP)
           }
           if (err.message === 'No such file' && retry) {
             resolve(this.mkdir(Path.dirname(remoteFile)).then(() =>
@@ -139,6 +140,9 @@ export default class SSH {
           } else reject(err)
         })
       })
+    }).then(function(mySFTP){
+      if (!SFTP) // refers to the put() argument named SFTP
+        mySFTP.end();
     })
   }
   putMulti(files, SFTP) {
@@ -172,6 +176,8 @@ export default class SSH {
             reject(err)
           } else resolve()
         })
+      }).then(function(){
+        SFTP.end();
       })
     })
   }
