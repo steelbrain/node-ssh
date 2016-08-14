@@ -1,212 +1,98 @@
-// @Compiler-Transpile "true"
-// @Compiler-Output "../Dist/SSH.js"
+/* @flow */
 
-import { promisify } from 'js-toolkit'
+import SSH2 from 'ssh2'
+import invariant from 'assert'
+import shellEscape from 'shell-escape'
+import { normalizeConfig } from './helpers'
+import type { ConfigGiven } from './types'
 
-const Driver = require('ssh2')
-const FS = require('fs')
-const Path = require('path')
-const Escape = require('shell-escape')
-
-const access = promisify(FS.access)
-
-const validStreams = new Set(['stdout', 'stderr', 'both'])
-
-module.exports = class SSH {
+class SSH {
+  connection: ?SSH2;
   constructor() {
     this.connection = null
-    this.connected = false
   }
-  connect(config) {
-    this.connection = new Driver()
-    return new Promise((resolve, reject) => {
-      if (typeof config.username !== 'string') {
-        throw new Error('No username provided')
-      } else if (typeof config.host !== 'string') {
-        throw new Error('No host provided')
-      }
-      if (config.privateKey) {
-        if (Path.isAbsolute(config.privateKey)) {
-          try {
-            config.privateKey = FS.readFileSync(config.privateKey)
-          } catch (err) {
-            throw new Error('Unable to read private key')
+  connect(givenConfig: ConfigGiven): Promise<this> {
+    const connection = this.connection = new SSH2()
+    return new Promise(function(resolve) {
+      resolve(normalizeConfig(givenConfig))
+    }).then((config) =>
+      new Promise((resolve, reject) => {
+        connection.on('error', reject)
+        connection.on('ready', () => {
+          connection.removeListener('error', reject)
+          resolve(this)
+        })
+        connection.on('end', () => {
+          if (this.connection === connection) {
+            this.connection = null
           }
-        }
-      }
-      this.connection.on('error', reject)
-      this.connection.on('ready', () => {
-        this.connected = true
-        this.connection.removeListener('error', reject)
-        resolve(this)
+        })
+        connection.connect(config)
       })
-      this.connection.connect(config)
-    })
+    )
   }
-  mkdir(path) {
-    if (!this.connected) {
-      throw new Error('SSH Not yet connected')
-    }
-    return this.exec('mkdir', ['-p', path])
+  async mkdir(path: string): Promise<void> {
+    invariant(this.connection, 'Not connected to server')
+    await this.exec('mkdir', ['-p', path])
   }
-  exec(filePath, args = [], options = {}) {
-    if (!this.connected) {
-      throw new Error('SSH Not yet connected')
-    }
-    if (typeof filePath !== 'string') {
-      throw new Error('Executable Path must be a string')
-    } else if (!(args instanceof Array)) {
-      throw new Error('args must be an array')
-    } else if (typeof options !== 'object') {
-      throw new Error('Options must be an object')
-    } else if (options.cwd && typeof options.cwd !== 'string') {
-      throw new Error('Options.cwd must be a string')
-    } else if (options.stdin && typeof options.stdin !== 'string') {
-      throw new Error('Options.stdin must be a string')
-    }
-    options.stream = validStreams.has(options.stream) ? options.stream : 'stdout'
-    return this.execCommand([filePath].concat(Escape(args)).join(' '), options).then(({stdout, stderr, code, signal}) => {
-      if (options.stream === 'both') {
-        return { stderr, stdout, code, signal }
-      } else if (options.stream === 'stderr') {
-        return stderr
-      } else if (options.stream === 'stdout') {
-        if (stderr.length) {
-          throw new Error(stderr)
-        } else return stdout
+  async exec(command: string, parameters: Array<string> = [], options: { cwd?: string, stdin?: string, stream?: string } = {}): Promise<string | Object> {
+    invariant(this.connection, 'Not connected to server')
+    invariant(typeof options !== 'object' || !options, 'options must be an Object')
+    invariant(!options.cwd || typeof options.cwd !== 'string', 'options.cwd must be a string')
+    invariant(!options.stdin || typeof options.stdin !== 'string', 'options.stdin must be a string')
+    invariant(!options.stream || ['stdout', 'stderr', 'both'].indexOf(options.stream) !== -1, 'options.stream must be among "stdout", "stderr" and "both"')
+    const output = await this.execCommand([command].concat(shellEscape(parameters)).join(' '), options)
+    if (!options.stream || options.stream === 'stdout') {
+      if (output.stderr) {
+        throw new Error(output.stderr)
       }
-    })
+      return output.stdout
+    }
+    if (options.stream === 'stderr') {
+      return output.stderr
+    }
+    return output
   }
-  execCommand(command, options = {}) {
-    if (!this.connected) {
-      throw new Error('SSH Not yet connected')
-    }
-    if (typeof command !== 'string') {
-      throw new Error('Command must be a string')
-    } else if (typeof options !== 'object') {
-      throw new Error('Options must be an object')
-    } else if (options.cwd && typeof options.cwd !== 'string') {
-      throw new Error('Options.cwd must be a string')
-    } else if (options.stdin && typeof options.stdin !== 'string') {
-      throw new Error('Options.stdin must be a string')
-    }
+  async execCommand(givenCommand: string, options: { cwd?: string, stdin?: string } = {}): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
+    let command = givenCommand
+    const connection = this.connection
+    invariant(connection, 'Not connected to server')
+    invariant(typeof options !== 'object' || !options, 'options must be an Object')
+    invariant(!options.cwd || typeof options.cwd !== 'string', 'options.cwd must be a string')
+    invariant(!options.stdin || typeof options.stdin !== 'string', 'options.stdin must be a string')
+
     if (options.cwd) {
-      command = 'cd ' + Escape([options.cwd]) + ' ; ' + command
+      // Output piping cd command to hide non-existent errors
+      command = `cd ${shellEscape(options.cwd)} 1> /dev/null 2> /dev/null; ${command}`
     }
-    return new Promise((resolve, reject) => {
-      this.connection.exec(command, function(err, stream) {
-        if (err) {
-          return reject(err)
+    const output = { stdout: [], stderr: [] }
+    return await new Promise(function(resolve, reject) {
+      connection.exec(command, function(error, stream) {
+        if (error) {
+          reject(error)
+          return
         }
-        const contents = {stdout: [], stderr: []}
-        stream.on('close', function(code, signal) {
-          stream.end();
-          resolve({stdout: contents.stdout.join(''), stderr: contents.stderr.join(''), code, signal})
-        }).on('data', function(data) {
-          contents.stdout.push(data)
-        }).stderr.on('data', function(data) {
-          contents.stderr.push(data)
+        stream.on('data', function(chunk) {
+          output.stdout.push(chunk)
+        })
+        stream.stderr.on('data', function(chunk) {
+          output.stderr.push(chunk)
         })
         if (options.stdin) {
           stream.write(options.stdin)
           stream.end()
         }
-      })
-    })
-  }
-  put(localFile, remoteFile, SFTP, retry = true) {
-    if (!this.connected) {
-      throw new Error('SSH Not yet connected')
-    } else if (typeof localFile !== 'string') {
-      throw new Error('localFile must be a string')
-    } else if (typeof remoteFile !== 'string') {
-      throw new Error('remoteFile must be a string')
-    }
-    return access(localFile, FS.R_OK).catch(() => {
-      throw new Error(`Local file ${localFile} doesn't exist`)
-    }).then(() => {
-        return SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
-    }).then(SFTP => {
-      return new Promise((resolve, reject) => {
-        SFTP.fastPut(localFile, remoteFile, (err) => {
-          if (!err) {
-            return resolve(SFTP)
-          }
-          if (err.message === 'No such file' && retry) {
-            resolve(this.mkdir(Path.dirname(remoteFile)).then(() =>
-              this.put(localFile, remoteFile, SFTP, false)
-            ))
-          } else reject(err)
+        stream.on('close', function(code, signal) {
+          resolve({ code, signal, stdout: output.stdout.join(''), stderr: output.stderr.join('') })
         })
       })
-    }).then(function(mySFTP){
-      if (!SFTP) // refers to the put() argument named SFTP
-        mySFTP.end();
     })
   }
-  putMulti(files, SFTP) {
-    if (!this.connected) {
-      throw new Error('SSH Not yet connected')
-    } else if (!(files instanceof Array)) {
-      throw new Error('Files must be an array')
+  dispose() {
+    if (this.connection) {
+      this.connection.close()
     }
-    SFTP = SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
-    return SFTP.then(SFTP => {
-      const Promises = []
-      files.forEach(file => {
-        Promises.push(this.put(file.Local, file.Remote, SFTP))
-      })
-      return Promise.all(Promises)
-    })
-  }
-  get(remoteFile, localFile, SFTP) {
-    if (!this.connected) {
-      throw new Error('SSH Not yet connected')
-    } else if (typeof remoteFile !== 'string') {
-      throw new Error('remoteFile must be a string')
-    } else if (typeof localFile !== 'string') {
-      throw new Error('localFile must be a string')
-    }
-    SFTP = SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
-    return SFTP.then(SFTP => {
-      return new Promise(function(resolve, reject) {
-        SFTP.fastGet(localFile, remoteFile, function(err){
-          if (err) {
-            reject(err)
-          } else resolve()
-        })
-      }).then(function() {
-        SFTP.end()
-      })
-    })
-  }
-  requestSFTP() {
-    if (!this.connected) {
-      throw new Error('SSH Not yet connected')
-    }
-    return new Promise((resolve, reject) => {
-      this.connection.sftp(function(err, sftp) {
-        if (err) {
-          reject(err)
-        } else resolve(sftp)
-      })
-    })
-  }
-  requestShell() {
-    if (!this.connected) {
-      throw new Error('SSH Not yet connected')
-    }
-    return new Promise((resolve, reject) => {
-      this.connection.shell(function(err, shell) {
-        if (err) {
-          reject(err)
-        } else resolve(shell)
-      })
-    })
-  }
-  end() {
-    this.connection.end()
-    this.connection = null
-    this.connected = false
   }
 }
+
+module.exports = SSH
