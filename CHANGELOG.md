@@ -1,3 +1,17 @@
+#### 3.0.0
+
+- Rename `.end` to `.dispose`
+- Rename `.get` to `.getFile`
+- Rename `.put` to `.putFile`
+- Rename `.putMulti` to `.putFiles`
+- Change order of `.getFile` parameters
+- Extended parameter validation in `.putFiles`
+- Close SFTP connections after they are used
+- Hide errors from `cd` when `cwd` is supplied but it doesn't exist
+- Do not throw sync errors in async functions, return a rejected promise instead
+- Propagate the private key read error if it's not ENOENT (ie. permissions issue)
+- Changed the signature of input in `.putFiles` (ie. lowercase the props, from Local to local and from Remote to remote)
+
 #### 2.0.7
 
 - Escape `cwd` parameter
