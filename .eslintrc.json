@@ -1,6 +1,3 @@
 {
-  "extends": "steelbrain",
-  "rules": {
-    "import/prefer-default-export": 0
-  }
+  "extends": "steelbrain"
 }

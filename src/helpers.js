@@ -38,3 +38,11 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
   }
   return config
 }
+
+export function fileExists(filePath: string): Promise<boolean> {
+  return new Promise(function(resolve) {
+    FS.access(filePath, FS.R_OK, function(error) {
+      resolve(!error)
+    })
+  })
+}

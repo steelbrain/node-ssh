@@ -1,9 +1,10 @@
 /* @flow */
 
+import Path from 'path'
 import SSH2 from 'ssh2'
 import invariant from 'assert'
 import shellEscape from 'shell-escape'
-import { normalizeConfig } from './helpers'
+import * as Helpers from './helpers'
 import type { ConfigGiven } from './types'
 
 class SSH {
@@ -14,7 +15,7 @@ class SSH {
   connect(givenConfig: ConfigGiven): Promise<this> {
     const connection = this.connection = new SSH2()
     return new Promise(function(resolve) {
-      resolve(normalizeConfig(givenConfig))
+      resolve(Helpers.normalizeConfig(givenConfig))
     }).then((config) =>
       new Promise((resolve, reject) => {
         connection.on('error', reject)
@@ -87,6 +88,117 @@ class SSH {
         })
       })
     })
+  }
+  async requestShell(): Promise<Object> {
+    const connection = this.connection
+    invariant(connection, 'Not connected to server')
+    return await new Promise(function(resolve, reject) {
+      connection.shell(function(error, shell) {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(shell)
+        }
+      })
+    })
+  }
+  async requestSFTP(): Promise<Object> {
+    const connection = this.connection
+    invariant(connection, 'Not connected to server')
+    return await new Promise(function(resolve, reject) {
+      connection.sftp(function(error, sftp) {
+        if (error) {
+          reject(error)
+        } else {
+          resolve(sftp)
+        }
+      })
+    })
+  }
+  async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null) {
+    invariant(this.connection, 'Not connected to server')
+    invariant(typeof localFile === 'string' && localFile, 'localFile must be a string')
+    invariant(typeof remoteFile === 'string' && remoteFile, 'remoteFile must be a string')
+    invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
+
+    const sftp = givenSftp || await this.requestSFTP()
+    try {
+      await new Promise(function(resolve, reject) {
+        sftp.fastGet(localFile, remoteFile, function(error) {
+          if (error) {
+            reject(error)
+          } else {
+            resolve()
+          }
+        })
+      })
+    } finally {
+      if (!givenSftp) {
+        sftp.end()
+      }
+    }
+  }
+  async putFile(localFile: string, remoteFile: string, givenSftp: ?Object = null) {
+    invariant(this.connection, 'Not connected to server')
+    invariant(typeof localFile === 'string' && localFile, 'localFile must be a string')
+    invariant(typeof remoteFile === 'string' && remoteFile, 'remoteFile must be a string')
+    invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
+    invariant(await Helpers.fileExists(localFile), `localFile does not exist at ${localFile}`)
+
+    const that = this
+    const sftp = givenSftp || await this.requestSFTP()
+
+    function putFile(retry: boolean) {
+      return new Promise(function(resolve, reject) {
+        sftp.fastPut(localFile, remoteFile, function(error) {
+          if (!error) {
+            resolve()
+            return
+          }
+          if (error.message === 'No such file' && retry) {
+            resolve(that.mkdir(Path.dirname(remoteFile)).then(function() {
+              return putFile(false)
+            }))
+          } else {
+            reject(error)
+          }
+        })
+      })
+    }
+
+    try {
+      await putFile(true)
+    } finally {
+      if (!givenSftp) {
+        sftp.end()
+      }
+    }
+  }
+  async putFiles(files: Array<{ local: string, remote: string }>, givenSftp: ?Object) {
+    invariant(this.connection, 'Not connected to server')
+    invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
+    invariant(Array.isArray(files), 'files must be an array')
+
+    for (let i = 0, length = files.length; i < length; ++i) {
+      const file = files[i]
+      invariant(file, 'files items must be valid objects')
+      invariant(file.local && typeof file.local === 'string', `files[${i}].local must be a string`)
+      invariant(file.remote && typeof file.remote === 'string', `files[${i}].remote must be a string`)
+    }
+
+    const sftp = givenSftp || await this.requestSFTP()
+    const promises = []
+    for (let i = 0, length = files.length; i < length; ++i) {
+      const file = files[i]
+      promises.push(this.putFile(file.local, file.remote, sftp))
+    }
+    try {
+      await Promise.all(promises)
+    } finally {
+      if (!sftp) {
+        sftp.end()
+      }
+    }
   }
   dispose() {
     if (this.connection) {
