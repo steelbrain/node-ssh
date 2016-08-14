@@ -2,10 +2,10 @@
   "name": "node-ssh",
   "version": "2.0.7",
   "description": "SS2 with Promises",
-  "main": "Dist/SSH.js",
+  "main": "lib/SSH.js",
   "scripts": {
     "test": "mocha",
-    "build": "babel --presets es2015 Source/SSH.js --out-file Dist/SSH.js"
+    "build": "babel --presets es2015 src/SSH.js --out-file lib/SSH.js"
   },
   "repository": {
     "type": "git",
