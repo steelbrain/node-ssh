@@ -1,0 +1,11 @@
+[ignore]
+
+[include]
+
+[libs]
+decls
+
+[options]
+module.system=node
+suppress_comment= \\(.\\|\n\\)*\\$FlowIgnore
+esproposal.class_instance_fields=enable
