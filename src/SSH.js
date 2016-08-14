@@ -1,7 +1,7 @@
 // @Compiler-Transpile "true"
 // @Compiler-Output "../Dist/SSH.js"
 
-import {promisify} from 'js-toolkit'
+import { promisify } from 'js-toolkit'
 
 const Driver = require('ssh2')
 const FS = require('fs')
@@ -9,7 +9,6 @@ const Path = require('path')
 const Escape = require('shell-escape')
 
 const access = promisify(FS.access)
-const readFile = promisify(FS.readFile)
 
 const validStreams = new Set(['stdout', 'stderr', 'both'])
 
@@ -68,7 +67,7 @@ module.exports = class SSH {
     options.stream = validStreams.has(options.stream) ? options.stream : 'stdout'
     return this.execCommand([filePath].concat(Escape(args)).join(' '), options).then(({stdout, stderr, code, signal}) => {
       if (options.stream === 'both') {
-        return {stderr, stdout, code, signal}
+        return { stderr, stdout, code, signal }
       } else if (options.stream === 'stderr') {
         return stderr
       } else if (options.stream === 'stdout') {
@@ -126,7 +125,7 @@ module.exports = class SSH {
     return access(localFile, FS.R_OK).catch(() => {
       throw new Error(`Local file ${localFile} doesn't exist`)
     }).then(() => {
-      return SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
+        return SFTP ? Promise.resolve(SFTP) : this.requestSFTP()
     }).then(SFTP => {
       return new Promise((resolve, reject) => {
         SFTP.fastPut(localFile, remoteFile, (err) => {
@@ -176,8 +175,8 @@ module.exports = class SSH {
             reject(err)
           } else resolve()
         })
-      }).then(function(){
-        SFTP.end();
+      }).then(function() {
+        SFTP.end()
       })
     })
   }
