@@ -37,7 +37,7 @@ describe('node-ssh', function() {
 
 
   it('should send and receive commands', function(done) {
-    var ssh = new node_ssh.default();
+    var ssh = new node_ssh();
 
     ssh.connect({
       host: 'localhost',
@@ -70,7 +70,7 @@ describe('node-ssh', function() {
 
 
   it('should send a file', function(done) {
-    var ssh = new node_ssh.default();
+    var ssh = new node_ssh();
 
     ssh.connect({
       host: 'localhost',
@@ -113,7 +113,7 @@ describe('node-ssh', function() {
 
 
   it('should get a file', function(done) {
-    var ssh = new node_ssh.default();
+    var ssh = new node_ssh();
 
     ssh.connect({
       host: 'localhost',
@@ -157,7 +157,7 @@ describe('node-ssh', function() {
 
 
   it('should send many files asyncronously', function(done) {
-    var ssh = new node_ssh.default();
+    var ssh = new node_ssh();
 
     ssh.connect({
       host: 'localhost',
@@ -192,13 +192,6 @@ describe('node-ssh', function() {
 
     .should.notify(done);
 
-    //
-    // .catch(function(err) {
-    //   console.error("error!", err.stack)
-    // })
-    //
-    // .should.notify(done);
-
   });
 
 
@@ -208,7 +201,7 @@ describe('node-ssh', function() {
 
   it("should send LOTS of files, one at a time to stay under the server's connection limit", function(done) {
     this.timeout(5000);
-    var ssh = new node_ssh.default();
+    var ssh = new node_ssh();
 
     ssh.connect({
       host: 'localhost',

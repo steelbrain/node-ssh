@@ -13,7 +13,7 @@ const readFile = promisify(FS.readFile)
 
 const validStreams = new Set(['stdout', 'stderr', 'both'])
 
-export default class SSH {
+module.exports = class SSH {
   constructor() {
     this.connection = null
     this.connected = false
