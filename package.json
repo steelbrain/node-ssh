@@ -6,8 +6,8 @@
   "scripts": {
     "test": "eslint .; apm test",
     "clean": "rm -rf lib",
-    "build": "npm run clean; babel --presets steelbrain src --out-dir lib",
-    "watch": "npm run clean; babel --presets steelbrain src --out-dir lib --watch"
+    "build": "npm run clean; babel src --out-dir lib",
+    "watch": "npm run clean; babel src --out-dir lib --watch"
   },
   "repository": {
     "type": "git",
