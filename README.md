@@ -6,10 +6,10 @@ Node-SSH is an extremely lightweight Promise wrapper for [ssh2][ssh2], Period.
 #### Example
 
 ```js
-var node_ssh, ssh
+var path, node_ssh, ssh
 
+path = require('path')
 node_ssh = require('node-ssh')
-
 ssh = new node_ssh()
 
 ssh.connect({
@@ -37,6 +37,28 @@ ssh.connect({
   }, function(error) {
     console.log("Something's wrong")
     console.log(error)
+  })
+  // Putting entire directories
+  const failed = []
+  const successful = []
+  ssh.putDirectory('/home/steel/Lab', '/home/steel/Lab', {
+    recursive: true,
+    validate: function(itemPath) {
+      const baseName = path.basename(itemPath)
+      return baseName.substr(0, 1) !== '.' && // do not allow dot files
+             baseName !== 'node_modules' // do not allow node_modules
+    },
+    tick: function(localPath, remotePath, error) {
+      if (error) {
+        failed.push(localPath)
+      } else {
+        successful.push(localPath)
+      }
+    }
+  }).then(function(successful) {
+    console.log('the directory transfer was', successful ? 'successful' : 'unsuccessful')
+    console.log('failed transfers', failed.join(', '))
+    console.log('successful transfers', successful.join(', '))
   })
   // Command
   ssh.execCommand('hh_client --json', { cwd:'/var/www', stream: 'both' }).then(function(result) {
