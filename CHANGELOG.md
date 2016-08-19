@@ -4,6 +4,7 @@
 - Rename `.get` to `.getFile`
 - Rename `.put` to `.putFile`
 - Rename `.putMulti` to `.putFiles`
+- Add `.putDirectory` function to copy entire directories
 - Change order of `.getFile` parameters
 - Extended parameter validation in `.putFiles`
 - Close SFTP connections after they are used
