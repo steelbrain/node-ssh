@@ -148,4 +148,72 @@ describe('Helpers', function() {
       })
     })
   })
+  describe('normalizePutDirectoryConfig', function() {
+    function normalizePutDirectoryConfig(config: any) {
+      return Helpers.normalizePutDirectoryConfig(config)
+    }
+
+    it('does not throw if tick is not present', async function() {
+      normalizePutDirectoryConfig({})
+    })
+    it('throws if tick is invalid', async function() {
+      await expectToThrow(async function() {
+        normalizePutDirectoryConfig({
+          tick: 1,
+        })
+      }, 'config.tick must be a function')
+      await expectToThrow(async function() {
+        normalizePutDirectoryConfig({
+          tick: '5',
+        })
+      }, 'config.tick must be a function')
+      await expectToThrow(async function() {
+        normalizePutDirectoryConfig({
+          tick: {},
+        })
+      }, 'config.tick must be a function')
+    })
+    it('does not throw if tick is valid', async function() {
+      await normalizePutDirectoryConfig({
+        tick() { },
+      })
+    })
+    it('does not throw if validate is not present', async function() {
+      normalizePutDirectoryConfig({})
+    })
+    it('throws if validate is invalid', async function() {
+      await expectToThrow(async function() {
+        normalizePutDirectoryConfig({
+          validate: 1,
+        })
+      }, 'config.validate must be a function')
+      await expectToThrow(async function() {
+        normalizePutDirectoryConfig({
+          validate: '5',
+        })
+      }, 'config.validate must be a function')
+      await expectToThrow(async function() {
+        normalizePutDirectoryConfig({
+          validate: {},
+        })
+      }, 'config.validate must be a function')
+    })
+    it('does not throw if validate is valid', async function() {
+      await normalizePutDirectoryConfig({
+        validate() { },
+      })
+    })
+    it('defaults recursive to true', function() {
+      expect(normalizePutDirectoryConfig({}).recursive).toBe(true)
+    })
+    it('converts recursive to boolean if given', function() {
+      expect(normalizePutDirectoryConfig({ recursive: 'yes' }).recursive).toBe(true)
+      expect(normalizePutDirectoryConfig({ recursive: 'no' }).recursive).toBe(true)
+      expect(normalizePutDirectoryConfig({ recursive: 5 }).recursive).toBe(true)
+      expect(normalizePutDirectoryConfig({ recursive: {} }).recursive).toBe(true)
+      expect(normalizePutDirectoryConfig({ recursive: NaN }).recursive).toBe(false)
+      expect(normalizePutDirectoryConfig({ recursive: false }).recursive).toBe(false)
+      expect(normalizePutDirectoryConfig({ recursive: null }).recursive).toBe(false)
+    })
+  })
 })
