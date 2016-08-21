@@ -8,7 +8,7 @@
 - Change order of `.getFile` parameters
 - Extended parameter validation in `.putFiles`
 - Close SFTP connections after they are used
-- Hide errors from `cd` when `cwd` is supplied but it doesn't exist
+- Hide errors from `cd` when `cwd` is supplied but it does not exist
 - Do not throw sync errors in async functions, return a rejected promise instead
 - Propagate the private key read error if it's not ENOENT (ie. permissions issue)
 - Changed the signature of input in `.putFiles` (ie. lowercase the props, from Local to local and from Remote to remote)
