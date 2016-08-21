@@ -36,26 +36,14 @@ class SSH {
     const connection = this.connection
     invariant(connection, 'Not connected to server')
     return await new Promise(function(resolve, reject) {
-      connection.shell(function(error, shell) {
-        if (error) {
-          reject(error)
-        } else {
-          resolve(shell)
-        }
-      })
+      connection.shell(Helpers.generateCallback(resolve, reject))
     })
   }
   async requestSFTP(): Promise<Object> {
     const connection = this.connection
     invariant(connection, 'Not connected to server')
     return await new Promise(function(resolve, reject) {
-      connection.sftp(function(error, sftp) {
-        if (error) {
-          reject(error)
-        } else {
-          resolve(sftp)
-        }
-      })
+      connection.sftp(Helpers.generateCallback(resolve, reject))
     })
   }
   async mkdir(path: string): Promise<void> {
@@ -94,11 +82,7 @@ class SSH {
     }
     const output = { stdout: [], stderr: [] }
     return await new Promise(function(resolve, reject) {
-      connection.exec(command, function(error, stream) {
-        if (error) {
-          reject(error)
-          return
-        }
+      connection.exec(command, Helpers.generateCallback(function(stream) {
         stream.on('data', function(chunk) {
           output.stdout.push(chunk)
         })
@@ -112,7 +96,7 @@ class SSH {
         stream.on('close', function(code, signal) {
           resolve({ code, signal, stdout: output.stdout.join(''), stderr: output.stderr.join('') })
         })
-      })
+      }, reject))
     })
   }
   async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null): Promise<void> {
@@ -124,13 +108,7 @@ class SSH {
     const sftp = givenSftp || await this.requestSFTP()
     try {
       await new Promise(function(resolve, reject) {
-        sftp.fastGet(localFile, remoteFile, function(error) {
-          if (error) {
-            reject(error)
-          } else {
-            resolve()
-          }
-        })
+        sftp.fastGet(localFile, remoteFile, Helpers.generateCallback(resolve, reject))
       })
     } finally {
       if (!givenSftp) {
@@ -150,11 +128,7 @@ class SSH {
 
     function putFile(retry: boolean) {
       return new Promise(function(resolve, reject) {
-        sftp.fastPut(localFile, remoteFile, function(error) {
-          if (!error) {
-            resolve()
-            return
-          }
+        sftp.fastPut(localFile, remoteFile, Helpers.generateCallback(resolve, function(error) {
           if (error.message === 'No such file' && retry) {
             resolve(that.mkdir(Path.dirname(remoteFile)).then(function() {
               return putFile(false)
@@ -162,7 +136,7 @@ class SSH {
           } else {
             reject(error)
           }
-        })
+        }))
       })
     }
 

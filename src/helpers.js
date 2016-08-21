@@ -92,3 +92,13 @@ export function exists(filePath: string): Promise<boolean> {
     })
   })
 }
+
+export function generateCallback(resolve: Function, reject: Function): Function {
+  return function(error, result) {
+    if (error) {
+      reject(error)
+    } else {
+      resolve(result)
+    }
+  }
+}
