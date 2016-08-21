@@ -4,7 +4,7 @@
   "description": "SS2 with Promises",
   "main": "lib/index.js",
   "scripts": {
-    "test": "eslint .; apm test",
+    "test": "(apm test) && (flow check | grep -q '0 errors') && (eslint . )",
     "clean": "rm -rf lib",
     "build": "npm run clean; babel src --out-dir lib",
     "watch": "npm run clean; babel src --out-dir lib --watch"
@@ -31,6 +31,7 @@
   "devDependencies": {
     "babel-cli": "^6.11.4",
     "babel-preset-steelbrain": "^4.0.2",
-    "eslint-config-steelbrain": "^1.0.4"
+    "eslint-config-steelbrain": "^1.0.4",
+    "flow-bin": "^0.30.0"
   }
 }
