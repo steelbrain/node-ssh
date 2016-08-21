@@ -24,10 +24,10 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
     }
     if (!(privateKey.includes('BEGIN') && privateKey.includes('KEY'))) {
       try {
-        config.privateKey = await readFile(privateKey)
+        config.privateKey = await readFile(privateKey, 'utf8')
       } catch (error) {
         if (error.code === 'ENOENT') {
-          throw new Error(`config.privateKey doesn't exist at ${privateKey}`)
+          throw new Error(`config.privateKey does not exist at ${privateKey}`)
         }
         throw error
       }
