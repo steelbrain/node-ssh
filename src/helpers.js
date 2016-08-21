@@ -11,7 +11,7 @@ export const readdir = promisify(FS.readdir)
 
 export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config> {
   const config: Object = Object.assign({}, givenConfig)
-  if (typeof config.username !== 'string' || !config.username) {
+  if (config.username && typeof config.username !== 'string') {
     throw new Error('config.username must be a valid string')
   }
   if (typeof config.host !== 'string' || !config.host) {
