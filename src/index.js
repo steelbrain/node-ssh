@@ -3,6 +3,7 @@
 import Path from 'path'
 import SSH2 from 'ssh2'
 import invariant from 'assert'
+import scanDirectory from 'sb-scandir'
 import shellEscape from 'shell-escape'
 import * as Helpers from './helpers'
 import type { ConfigGiven } from './types'
@@ -182,7 +183,7 @@ class SSH {
 
     const sftp = givenSftp || await this.requestSFTP()
     const config = Helpers.normalizePutDirectoryConfig(givenConfig)
-    const files = (await Helpers.scanDirectory(localDirectory, config.recursive ? 2 : 1, config.validate))
+    const files = (await scanDirectory(localDirectory, config.recursive, config.validate))
       .map(function(item) {
         return Path.relative(localDirectory, item)
       })

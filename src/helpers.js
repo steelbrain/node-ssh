@@ -64,27 +64,6 @@ export function normalizePutDirectoryConfig(givenConfig: ConfigDirectoryTransfer
   return config
 }
 
-export async function scanDirectory(localPath: string, recursive: 0 | 1 | 2, validate: ((localPath: string) => boolean)): Promise<Array<string>> {
-  const itemStat = await stat(localPath)
-  if (itemStat.isFile()) {
-    return [localPath]
-  }
-  if (!itemStat.isDirectory() || recursive === 0) {
-    return []
-  }
-  const contents = await readdir(localPath)
-  const results = await Promise.all(contents.map(function(item) {
-    const itemPath = Path.join(localPath, item)
-    if (validate(itemPath)) {
-      return scanDirectory(itemPath, recursive === 1 ? 0 : 2, validate)
-    }
-    return []
-  }))
-  return results.reduce(function(toReturn, current) {
-    return toReturn.concat(current)
-  }, [])
-}
-
 export function exists(filePath: string): Promise<boolean> {
   return new Promise(function(resolve) {
     FS.access(filePath, FS.R_OK, function(error) {
