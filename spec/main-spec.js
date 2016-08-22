@@ -11,7 +11,7 @@ import { exists } from '../src/helpers'
 import createServer from './ssh-server'
 import { PRIVATE_KEY_PATH } from './helpers'
 
-fdescribe('SSH2', function() {
+describe('SSH2', function() {
   let ports = 8876
 
   function getFixturePath(path: string): string {
