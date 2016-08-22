@@ -9,7 +9,7 @@ dependencies:
     - atom --version
     - npm prune
     - npm install
-    - apm install
+    - apm rebuild
     - npm run build
 
 test:
