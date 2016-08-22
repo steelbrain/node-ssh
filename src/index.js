@@ -201,7 +201,7 @@ class SSH {
         directoriesCreated.add(remoteFileDirectory)
       }
       try {
-        this.putFile(localFile, remoteFile, sftp)
+        await this.putFile(localFile, remoteFile, sftp)
         config.tick(localFile, remoteFile, null)
         return true
       } catch (_) {

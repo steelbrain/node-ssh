@@ -1,7 +1,7 @@
 /* @flow */
 
 import FS from 'fs'
-import { flagsToString } from 'ssh2-streams'
+import { SFTPStream } from 'ssh2-streams'
 import ChildProcess from 'child_process'
 
 import pty from 'pty.js'
@@ -17,8 +17,9 @@ function handleSFTP(accept) {
   sftpStream.on('OPEN', function(reqid, filename, flags) {
     let handleId
     try {
-      handleId = FS.openSync(filename, flagsToString(flags))
+      handleId = FS.openSync(filename, SFTPStream.flagsToString(flags))
     } catch (error) {
+      console.error(error)
       sftpStream.status(reqid, STATUS_CODE.FAILURE)
       return
     }
@@ -26,7 +27,7 @@ function handleSFTP(accept) {
     filesMap.set(handleId, filename)
 
     const handle = new Buffer(4)
-    handle.writeUInt32BE(handleId, 0, true)
+    handle.write(handleId.toString())
     sftpStream.handle(reqid, handle)
   })
   sftpStream.on('READ', function(reqid, givenHandle, offset, length) {
@@ -56,6 +57,7 @@ function handleSFTP(accept) {
       FS.writeSync(handle, data, 0, data.length, offset)
       sftpStream.status(reqid, STATUS_CODE.OK)
     } catch (error) {
+      console.error(error)
       sftpStream.status(reqid, STATUS_CODE.FAILURE)
     }
   })
@@ -70,6 +72,7 @@ function handleSFTP(accept) {
     try {
       stats = FS.statSync(filesMap.get(handle) || '')
     } catch (error) {
+      console.error(error)
       sftpStream.status(reqid, STATUS_CODE.FAILURE)
       return
     }

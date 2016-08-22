@@ -1,5 +1,6 @@
 /* @flow */
 
+import FS from 'fs'
 import Path from 'path'
 import invariant from 'assert'
 import ChildProcess from 'child_process'
@@ -135,5 +136,65 @@ fdescribe('SSH2', function() {
     await connectWithPassword(port, client)
     const result = await client.exec('node', ['-e', 'process.stdin.pipe(process.stdout)'], { stdin: 'Twinkle!\nStars!' })
     expect(result).toBe('Twinkle!\nStars!')
+  })
+  sshit('gets files properly', async function(port, client) {
+    await connectWithPassword(port, client)
+    const sourceFile = __filename
+    const targetFile = getFixturePath('ignored/test-get')
+    expect(await exists(targetFile)).toBe(false)
+    await client.getFile(sourceFile, targetFile)
+    expect(await exists(targetFile)).toBe(true)
+    expect(FS.readFileSync(targetFile, 'utf8').trim()).toBe(FS.readFileSync(sourceFile, 'utf8').trim())
+  })
+  sshit('puts files properly', async function(port, client) {
+    await connectWithPassword(port, client)
+    const sourceFile = __filename
+    const targetFile = getFixturePath('ignored/test-get')
+    expect(await exists(targetFile)).toBe(false)
+    await client.putFile(sourceFile, targetFile)
+    expect(await exists(targetFile)).toBe(true)
+    expect(FS.readFileSync(targetFile, 'utf8').trim()).toBe(FS.readFileSync(sourceFile, 'utf8').trim())
+  })
+  sshit('puts multiple files properly', async function(port, client) {
+    await connectWithPassword(port, client)
+
+    const files = [
+      { local: getFixturePath('multiple/aa'), remote: getFixturePath('ignored/aa') },
+      { local: getFixturePath('multiple/bb'), remote: getFixturePath('ignored/bb') },
+      { local: getFixturePath('multiple/cc'), remote: getFixturePath('ignored/cc') },
+      { local: getFixturePath('multiple/dd'), remote: getFixturePath('ignored/dd') },
+    ]
+    for (const file of files) {
+      expect(await exists(file.remote)).toBe(false)
+    }
+    await client.putFiles(files)
+    for (const file of files) {
+      expect(await exists(file.remote)).toBe(true)
+    }
+  })
+  sshit('puts entire directories at once', async function(port, client) {
+    await connectWithPassword(port, client)
+    const remoteFiles = [
+      getFixturePath('ignored/aa'),
+      getFixturePath('ignored/bb'),
+      getFixturePath('ignored/cc'),
+      getFixturePath('ignored/dd'),
+      getFixturePath('ignored/ee/ff'),
+    ]
+    for (const file of remoteFiles) {
+      expect(await exists(file)).toBe(false)
+    }
+    let ticks = 0
+    await client.putDirectory(getFixturePath('multiple'), getFixturePath('ignored'), {
+      tick(local, remote, error) {
+        expect(error).toBe(null)
+        expect(remoteFiles.indexOf(remote) !== -1).toBe(true)
+        ticks++
+      },
+    })
+    expect(ticks).toBe(remoteFiles.length)
+    for (const file of remoteFiles) {
+      expect(await exists(file)).toBe(true)
+    }
   })
 })
