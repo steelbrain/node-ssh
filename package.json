@@ -1,6 +1,6 @@
 {
   "name": "node-ssh",
-  "version": "2.0.7",
+  "version": "3.0.0",
   "description": "SS2 with Promises",
   "main": "lib/index.js",
   "scripts": {
