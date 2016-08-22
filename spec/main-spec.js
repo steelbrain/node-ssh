@@ -79,7 +79,7 @@ describe('SSH2', function() {
       data.push(chunk)
     })
     shell.write('ls /\n')
-    await wait(100)
+    await wait(500)
     shell.end()
     const joinedData = data.join('')
     expect(joinedData).toContain('dev')
