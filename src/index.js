@@ -53,9 +53,9 @@ class SSH {
   }
   async exec(command: string, parameters: Array<string> = [], options: { cwd?: string, stdin?: string, stream?: string } = {}): Promise<string | Object> {
     invariant(this.connection, 'Not connected to server')
-    invariant(typeof options !== 'object' || !options, 'options must be an Object')
-    invariant(!options.cwd || typeof options.cwd !== 'string', 'options.cwd must be a string')
-    invariant(!options.stdin || typeof options.stdin !== 'string', 'options.stdin must be a string')
+    invariant(typeof options === 'object' && options, 'options must be an Object')
+    invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
+    invariant(!options.stdin || typeof options.stdin === 'string', 'options.stdin must be a string')
     invariant(!options.stream || ['stdout', 'stderr', 'both'].indexOf(options.stream) !== -1, 'options.stream must be among "stdout", "stderr" and "both"')
     const output = await this.execCommand([command].concat(shellEscape(parameters)).join(' '), options)
     if (!options.stream || options.stream === 'stdout') {
@@ -73,9 +73,9 @@ class SSH {
     let command = givenCommand
     const connection = this.connection
     invariant(connection, 'Not connected to server')
-    invariant(typeof options !== 'object' || !options, 'options must be an Object')
-    invariant(!options.cwd || typeof options.cwd !== 'string', 'options.cwd must be a string')
-    invariant(!options.stdin || typeof options.stdin !== 'string', 'options.stdin must be a string')
+    invariant(typeof options === 'object' && options, 'options must be an Object')
+    invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
+    invariant(!options.stdin || typeof options.stdin === 'string', 'options.stdin must be a string')
 
     if (options.cwd) {
       // NOTE: Output piping cd command to hide directory non-existent errors
