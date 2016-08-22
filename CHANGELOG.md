@@ -1,5 +1,7 @@
 #### 3.0.0
 
+Confidently, this is the most stable version of this module to date :tada:
+
 - Rename `.end` to `.dispose`
 - Rename `.get` to `.getFile`
 - Rename `.put` to `.putFile`
