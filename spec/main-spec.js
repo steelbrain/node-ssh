@@ -90,4 +90,13 @@ fdescribe('SSH2', function() {
     await client.mkdir(getFixturePath('ignored/a/b'))
     expect(await exists(getFixturePath('ignored/a/b'))).toBe(true)
   })
+  sshit('throws error when it cant create directories', async function(port, client) {
+    await connectWithPassword(port, client)
+    try {
+      await client.mkdir('/dev/asdasd/asdasdasd')
+      expect(false).toBe(true)
+    } catch (_) {
+      expect(_.message).toContain('Permission denied')
+    }
+  })
 })

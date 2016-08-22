@@ -49,7 +49,10 @@ class SSH {
   }
   async mkdir(path: string): Promise<void> {
     invariant(this.connection, 'Not connected to server')
-    await this.exec('mkdir', ['-p', path])
+    const output = await this.exec('mkdir', ['-p', path])
+    if (output.stdout) {
+      throw new Error(output.stdout)
+    }
   }
   async exec(command: string, parameters: Array<string> = [], options: { cwd?: string, stdin?: string, stream?: string } = {}): Promise<string | Object> {
     invariant(this.connection, 'Not connected to server')
