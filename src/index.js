@@ -3,6 +3,7 @@
 import Path from 'path'
 import SSH2 from 'ssh2'
 import invariant from 'assert'
+import scanDirectory from 'sb-scandir'
 import shellEscape from 'shell-escape'
 import * as Helpers from './helpers'
 import type { ConfigGiven } from './types'
@@ -36,37 +37,28 @@ class SSH {
     const connection = this.connection
     invariant(connection, 'Not connected to server')
     return await new Promise(function(resolve, reject) {
-      connection.shell(function(error, shell) {
-        if (error) {
-          reject(error)
-        } else {
-          resolve(shell)
-        }
-      })
+      connection.shell(Helpers.generateCallback(resolve, reject))
     })
   }
   async requestSFTP(): Promise<Object> {
     const connection = this.connection
     invariant(connection, 'Not connected to server')
     return await new Promise(function(resolve, reject) {
-      connection.sftp(function(error, sftp) {
-        if (error) {
-          reject(error)
-        } else {
-          resolve(sftp)
-        }
-      })
+      connection.sftp(Helpers.generateCallback(resolve, reject))
     })
   }
   async mkdir(path: string): Promise<void> {
     invariant(this.connection, 'Not connected to server')
-    await this.exec('mkdir', ['-p', path])
+    const output = await this.exec('mkdir', ['-p', path])
+    if (output.stdout) {
+      throw new Error(output.stdout)
+    }
   }
   async exec(command: string, parameters: Array<string> = [], options: { cwd?: string, stdin?: string, stream?: string } = {}): Promise<string | Object> {
     invariant(this.connection, 'Not connected to server')
-    invariant(typeof options !== 'object' || !options, 'options must be an Object')
-    invariant(!options.cwd || typeof options.cwd !== 'string', 'options.cwd must be a string')
-    invariant(!options.stdin || typeof options.stdin !== 'string', 'options.stdin must be a string')
+    invariant(typeof options === 'object' && options, 'options must be an Object')
+    invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
+    invariant(!options.stdin || typeof options.stdin === 'string', 'options.stdin must be a string')
     invariant(!options.stream || ['stdout', 'stderr', 'both'].indexOf(options.stream) !== -1, 'options.stream must be among "stdout", "stderr" and "both"')
     const output = await this.execCommand([command].concat(shellEscape(parameters)).join(' '), options)
     if (!options.stream || options.stream === 'stdout') {
@@ -84,21 +76,17 @@ class SSH {
     let command = givenCommand
     const connection = this.connection
     invariant(connection, 'Not connected to server')
-    invariant(typeof options !== 'object' || !options, 'options must be an Object')
-    invariant(!options.cwd || typeof options.cwd !== 'string', 'options.cwd must be a string')
-    invariant(!options.stdin || typeof options.stdin !== 'string', 'options.stdin must be a string')
+    invariant(typeof options === 'object' && options, 'options must be an Object')
+    invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
+    invariant(!options.stdin || typeof options.stdin === 'string', 'options.stdin must be a string')
 
     if (options.cwd) {
-      // Output piping cd command to hide non-existent errors
-      command = `cd ${shellEscape(options.cwd)} 1> /dev/null 2> /dev/null; ${command}`
+      // NOTE: Output piping cd command to hide directory non-existent errors
+      command = `cd ${shellEscape([options.cwd])} 1> /dev/null 2> /dev/null; ${command}`
     }
     const output = { stdout: [], stderr: [] }
     return await new Promise(function(resolve, reject) {
-      connection.exec(command, function(error, stream) {
-        if (error) {
-          reject(error)
-          return
-        }
+      connection.exec(command, Helpers.generateCallback(function(stream) {
         stream.on('data', function(chunk) {
           output.stdout.push(chunk)
         })
@@ -110,9 +98,9 @@ class SSH {
           stream.end()
         }
         stream.on('close', function(code, signal) {
-          resolve({ code, signal, stdout: output.stdout.join(''), stderr: output.stderr.join('') })
+          resolve({ code, signal, stdout: output.stdout.join('').trim(), stderr: output.stderr.join('').trim() })
         })
-      })
+      }, reject))
     })
   }
   async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null): Promise<void> {
@@ -124,13 +112,7 @@ class SSH {
     const sftp = givenSftp || await this.requestSFTP()
     try {
       await new Promise(function(resolve, reject) {
-        sftp.fastGet(localFile, remoteFile, function(error) {
-          if (error) {
-            reject(error)
-          } else {
-            resolve()
-          }
-        })
+        sftp.fastGet(localFile, remoteFile, Helpers.generateCallback(resolve, reject))
       })
     } finally {
       if (!givenSftp) {
@@ -150,11 +132,7 @@ class SSH {
 
     function putFile(retry: boolean) {
       return new Promise(function(resolve, reject) {
-        sftp.fastPut(localFile, remoteFile, function(error) {
-          if (!error) {
-            resolve()
-            return
-          }
+        sftp.fastPut(localFile, remoteFile, Helpers.generateCallback(resolve, function(error) {
           if (error.message === 'No such file' && retry) {
             resolve(that.mkdir(Path.dirname(remoteFile)).then(function() {
               return putFile(false)
@@ -162,7 +140,7 @@ class SSH {
           } else {
             reject(error)
           }
-        })
+        }))
       })
     }
 
@@ -208,7 +186,7 @@ class SSH {
 
     const sftp = givenSftp || await this.requestSFTP()
     const config = Helpers.normalizePutDirectoryConfig(givenConfig)
-    const files = (await Helpers.scanDirectory(localDirectory, config.recursive ? 2 : 1, config.validate))
+    const files = (await scanDirectory(localDirectory, config.recursive, config.validate))
       .map(function(item) {
         return Path.relative(localDirectory, item)
       })
@@ -223,7 +201,7 @@ class SSH {
         directoriesCreated.add(remoteFileDirectory)
       }
       try {
-        this.putFile(localFile, remoteFile, sftp)
+        await this.putFile(localFile, remoteFile, sftp)
         config.tick(localFile, remoteFile, null)
         return true
       } catch (_) {
@@ -245,7 +223,7 @@ class SSH {
   }
   dispose() {
     if (this.connection) {
-      this.connection.close()
+      this.connection.end()
     }
   }
 }
