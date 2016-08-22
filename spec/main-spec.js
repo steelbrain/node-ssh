@@ -1,6 +1,7 @@
 /* @flow */
 
 import Path from 'path'
+import invariant from 'assert'
 import ChildProcess from 'child_process'
 
 import { it, wait } from 'jasmine-fix'
@@ -98,5 +99,41 @@ fdescribe('SSH2', function() {
     } catch (_) {
       expect(_.message).toContain('Permission denied')
     }
+  })
+  sshit('exec with correct escaped parameters', async function(port, client) {
+    await connectWithPassword(port, client)
+    const result = await client.exec('echo', ['$some', 'S\\Thing', '"Yo"'])
+    expect(result).toBe('$some S\\Thing "Yo"')
+  })
+  sshit('exec with correct cwd', async function(port, client) {
+    await connectWithPassword(port, client)
+    const result = await client.exec('pwd', [], { cwd: '/etc' })
+    expect(result).toBe('/etc')
+  })
+  sshit('throws if stream is stdout and stuff is written to stderr', async function(port, client) {
+    await connectWithPassword(port, client)
+    try {
+      await client.exec('node', ['-e', 'console.error("Test")'])
+      expect(false).toBe(true)
+    } catch (_) {
+      expect(_.message).toBe('Test')
+    }
+  })
+  sshit('does not throw if stream is stderr and is written to', async function(port, client) {
+    await connectWithPassword(port, client)
+    const result = await client.exec('node', ['-e', 'console.error("Test")'], { stream: 'stderr' })
+    expect(result).toBe('Test')
+  })
+  sshit('returns both streams if asked to', async function(port, client) {
+    await connectWithPassword(port, client)
+    const result = await client.exec('node', ['-e', 'console.log("STDOUT"); console.error("STDERR")'], { stream: 'both' })
+    invariant(typeof result === 'object' && result)
+    expect(result.stdout).toBe('STDOUT')
+    expect(result.stderr).toBe('STDERR')
+  })
+  sshit('writes to stdin properly', async function(port, client) {
+    await connectWithPassword(port, client)
+    const result = await client.exec('node', ['-e', 'process.stdin.pipe(process.stdout)'], { stdin: 'Twinkle!\nStars!' })
+    expect(result).toBe('Twinkle!\nStars!')
   })
 })

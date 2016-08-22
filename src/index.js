@@ -82,7 +82,7 @@ class SSH {
 
     if (options.cwd) {
       // NOTE: Output piping cd command to hide directory non-existent errors
-      command = `cd ${shellEscape(options.cwd)} 1> /dev/null 2> /dev/null; ${command}`
+      command = `cd ${shellEscape([options.cwd])} 1> /dev/null 2> /dev/null; ${command}`
     }
     const output = { stdout: [], stderr: [] }
     return await new Promise(function(resolve, reject) {
@@ -98,7 +98,7 @@ class SSH {
           stream.end()
         }
         stream.on('close', function(code, signal) {
-          resolve({ code, signal, stdout: output.stdout.join(''), stderr: output.stderr.join('') })
+          resolve({ code, signal, stdout: output.stdout.join('').trim(), stderr: output.stderr.join('').trim() })
         })
       }, reject))
     })
