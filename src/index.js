@@ -78,7 +78,7 @@ class SSH {
     invariant(!options.stdin || typeof options.stdin !== 'string', 'options.stdin must be a string')
 
     if (options.cwd) {
-      // Output piping cd command to hide non-existent errors
+      // NOTE: Output piping cd command to hide directory non-existent errors
       command = `cd ${shellEscape(options.cwd)} 1> /dev/null 2> /dev/null; ${command}`
     }
     const output = { stdout: [], stderr: [] }
@@ -220,7 +220,7 @@ class SSH {
   }
   dispose() {
     if (this.connection) {
-      this.connection.close()
+      this.connection.end()
     }
   }
 }

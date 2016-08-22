@@ -34,6 +34,7 @@
     "babel-preset-steelbrain": "^4.0.2",
     "eslint-config-steelbrain": "^1.0.4",
     "flow-bin": "^0.30.0",
-    "jasmine-fix": "^1.0.1"
+    "jasmine-fix": "^1.0.1",
+    "pty.js": "^0.3.1"
   }
 }
