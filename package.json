@@ -4,7 +4,7 @@
   "description": "SS2 with Promises",
   "main": "lib/index.js",
   "scripts": {
-    "test": "(apm test) && (flow check | grep -q '0 errors') && (eslint . )",
+    "test": "(apm test) && (flow check) && (eslint . )",
     "clean": "rm -rf lib",
     "build": "npm run clean; babel src --out-dir lib",
     "watch": "npm run clean; babel src --out-dir lib --watch"
