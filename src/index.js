@@ -194,7 +194,7 @@ class SSH {
 
     const promises = files.map(async file => {
       const localFile = Path.join(localDirectory, file)
-      const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/');
+      const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/')
       const remoteFileDirectory = Path.dirname(remoteFile)
       if (!directoriesCreated.has(remoteFileDirectory)) {
         await this.mkdir(remoteFileDirectory)

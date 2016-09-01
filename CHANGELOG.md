@@ -1,3 +1,7 @@
+#### 3.0.1
+
+- Fix a bug for windows users where `.putDirectory()` wouldn't convert paths properly ( Thanks @lanxenet )
+
 #### 3.0.0
 
 Confidently, this is the most stable version of this module to date :tada:
