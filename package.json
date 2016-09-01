@@ -24,7 +24,7 @@
     "url": "https://github.com/steelbrain/node-ssh/issues"
   },
   "dependencies": {
-    "sb-promisify": "^1.3.0",
+    "sb-promisify": "^2.0.1",
     "sb-scandir": "^1.0.0",
     "shell-escape": "^0.2.0",
     "ssh2": "^0.5.0"
@@ -33,7 +33,7 @@
     "babel-cli": "^6.11.4",
     "babel-preset-steelbrain": "^4.0.2",
     "eslint-config-steelbrain": "^1.0.4",
-    "flow-bin": "^0.30.0",
+    "flow-bin": "^0.31.1",
     "jasmine-fix": "^1.0.1",
     "pty.js": "^0.3.1",
     "ssh2-streams": "^0.1.6"
