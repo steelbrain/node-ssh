@@ -18,21 +18,21 @@ ssh.connect({
   privateKey: '/home/steel/.ssh/id_rsa'
 }).then(function() {
   // Local, Remote
-  ssh.putFile('/home/steel/Lab/LocalSource', '/home/steel/Lab/RemoteTarget').then(function() {
+  ssh.putFile('/home/steel/Lab/localPath', '/home/steel/Lab/remotePath').then(function() {
     console.log("The File thing is done")
   }, function(error) {
     console.log("Something's wrong")
     console.log(error)
   })
   // Array<Shape('local' => string, 'remote' => string)>
-  ssh.putFiles([{ local: '/home/steel/Lab/LocalSource', remote: '/home/steel/Lab/RemoteTarget' }]).then(function() {
+  ssh.putFiles([{ local: '/home/steel/Lab/localPath', remote: '/home/steel/Lab/remotePath' }]).then(function() {
     console.log("The File thing is done")
   }, function(error) {
     console.log("Something's wrong")
     console.log(error)
   })
   // Local, Remote
-  ssh.getFile('/home/steel/Lab/RemoteSource', '/home/steel/Lab/LocalTarget').then(function(Contents) {
+  ssh.getFile('/home/steel/Lab/localPath', '/home/steel/Lab/remotePath').then(function(Contents) {
     console.log("The File's contents were successfully downloaded")
   }, function(error) {
     console.log("Something's wrong")
@@ -61,12 +61,12 @@ ssh.connect({
     console.log('successful transfers', successful.join(', '))
   })
   // Command
-  ssh.execCommand('hh_client --json', { cwd:'/var/www', stream: 'both' }).then(function(result) {
+  ssh.execCommand('hh_client --json', { cwd:'/var/www' }).then(function(result) {
     console.log('STDOUT: ' + result.stdout)
     console.log('STDERR: ' + result.stderr)
   })
   // Command with escaped params
-  ssh.exec('hh_client', ['--json'], { cwd: '/var/www' }).then(function(result) {
+  ssh.exec('hh_client', ['--json'], { cwd: '/var/www', stream: 'stdout' }).then(function(result) {
     console.log('STDOUT: ' + result)
   })
 })
