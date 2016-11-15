@@ -7,6 +7,9 @@ import type { ConfigGiven, Config, ConfigDirectoryTransferGiven, ConfigDirectory
 
 export const stat = promisify(FS.stat)
 const readFile = promisify(FS.readFile)
+const readString = promisify(function(someString){
+  return someString;
+})
 export const readdir = promisify(FS.readdir)
 
 export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config> {
@@ -22,15 +25,10 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
     if (typeof privateKey !== 'string') {
       throw new Error('config.privateKey must be a string')
     }
-    if (!(privateKey.includes('BEGIN') && privateKey.includes('KEY'))) {
-      try {
+    if (FS.existsSync(privateKey)) {
         config.privateKey = await readFile(privateKey, 'utf8')
-      } catch (error) {
-        if (error.code === 'ENOENT') {
-          throw new Error(`config.privateKey does not exist at ${privateKey}`)
-        }
-        throw error
-      }
+    } else {
+      config.privateKey = await readString(privateKey)
     }
   } else if (config.password) {
     const password = config.password

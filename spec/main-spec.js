@@ -52,6 +52,14 @@ describe('SSH2', function() {
       privateKey: PRIVATE_KEY_PATH,
     })
   }
+  async function connectWithInlinePrivateKey(port, client) {
+    await client.connect({
+      host: '127.0.0.1',
+      port,
+      username: 'steel',
+      privateKey: FS.readFileSync(PRIVATE_KEY_PATH),
+    })
+  }
 
   afterEach(function() {
     ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
@@ -67,6 +75,13 @@ describe('SSH2', function() {
   sshit('connects to a server with a private key', async function(port, client) {
     try {
       await connectWithPrivateKey(port, client)
+    } catch (error) {
+      expect('Should not have hit').toBe(error)
+    }
+  })
+  sshit('connects to a server with a inline private key', async function(port, client) {
+    try {
+      await connectWithInlinePrivateKey(port, client)
     } catch (error) {
       expect('Should not have hit').toBe(error)
     }
