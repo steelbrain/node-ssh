@@ -25,15 +25,8 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
     if (typeof privateKey !== 'string') {
       throw new Error('config.privateKey must be a string')
     }
-    if (FS.statSync(privateKey).isFile()) {
-      try {
+    if (FS.existsSync(privateKey)) {
         config.privateKey = await readFile(privateKey, 'utf8')
-      } catch (error) {
-        if (error.code === 'ENOENT') {
-          throw new Error(`config.privateKey does not exist at ${privateKey}`)
-        }
-        throw error
-      }
     } else {
       config.privateKey = await readString(privateKey)
     }
