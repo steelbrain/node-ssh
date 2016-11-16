@@ -6,17 +6,28 @@ Node-SSH is an extremely lightweight Promise wrapper for [ssh2][ssh2], Period.
 #### Example
 
 ```js
-var path, node_ssh, ssh
+var path, node_ssh, ssh, FS
 
 path = require('path')
 node_ssh = require('node-ssh')
+fs = require('fs')
 ssh = new node_ssh()
 
 ssh.connect({
   host: 'localhost',
   username: 'steel',
   privateKey: '/home/steel/.ssh/id_rsa'
-}).then(function() {
+})
+/*
+ Or
+ ssh.connect({
+   host: 'localhost',
+   username: 'steel',
+   privateKey: FS.readFileSync('/home/steel/.ssh/id_rsa')
+ })
+ if you want to use the raw string as private key
+ */
+.then(function() {
   // Local, Remote
   ssh.putFile('/home/steel/Lab/localPath', '/home/steel/Lab/remotePath').then(function() {
     console.log("The File thing is done")
