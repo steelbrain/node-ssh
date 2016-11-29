@@ -13,7 +13,6 @@ const STATUS_CODE = ssh2.SFTP_STATUS_CODE
 function handleSFTP(accept) {
   const sftpStream = accept()
   const handles: Set<number> = new Set()
-  const filesMap: Map<number, string> = new Map()
   sftpStream.on('OPEN', function(reqid, filename, flags) {
     let handleId
     try {
@@ -24,7 +23,6 @@ function handleSFTP(accept) {
       return
     }
     handles.add(handleId)
-    filesMap.set(handleId, filename)
 
     const handle = new Buffer(4)
     handle.write(handleId.toString())
@@ -70,7 +68,7 @@ function handleSFTP(accept) {
 
     let stats
     try {
-      stats = FS.statSync(filesMap.get(handle) || '')
+      stats = FS.fstatSync(handle)
     } catch (error) {
       console.error(error)
       sftpStream.status(reqid, STATUS_CODE.FAILURE)
@@ -82,11 +80,26 @@ function handleSFTP(accept) {
     const handle = parseInt(givenHandle, 10)
     if (handles.has(handle)) {
       handles.delete(handle)
-      filesMap.delete(handle)
       FS.close(handle)
       sftpStream.status(reqid, STATUS_CODE.OK)
     } else {
-      sftpStream.status(reqid, STATUS_CODE.FALIURE)
+      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+    }
+  })
+  sftpStream.on('MKDIR', function(reqid, path, attrs) {
+    try {
+      FS.mkdirSync(path, attrs.mode)
+      sftpStream.status(reqid, STATUS_CODE.OK)
+    } catch (error) {
+      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+    }
+  })
+  sftpStream.on('STAT', function(reqid, path) {
+    try {
+      const stats = FS.statSync(path)
+      sftpStream.attrs(reqid, stats)
+    } catch (error) {
+      sftpStream.status(reqid, STATUS_CODE.FAILURE)
     }
   })
 }
