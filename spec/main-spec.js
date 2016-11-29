@@ -99,11 +99,18 @@ describe('SSH2', function() {
     const joinedData = data.join('')
     expect(joinedData).toContain('ls /')
   })
-  sshit('creates directories properly', async function(port, client) {
+
+  sshit('creates directories with sftp properly', async function(port, client) {
     await connectWithPassword(port, client)
-    expect(await exists(getFixturePath('ignored/a/b'))).toBe(false)
-    await client.mkdir(getFixturePath('ignored/a/b'))
-    expect(await exists(getFixturePath('ignored/a/b'))).toBe(true)
+    expect(await exists(getFixturePath('ignored/a/b', 'sftp'))).toBe(false)
+    await client.mkdir(getFixturePath('ignored/a/b', 'sftp'))
+    expect(await exists(getFixturePath('ignored/a/b', 'sftp'))).toBe(true)
+  })
+  sshit('creates directories with exec properly', async function(port, client) {
+    await connectWithPassword(port, client)
+    expect(await exists(getFixturePath('ignored/a/b', 'exec'))).toBe(false)
+    await client.mkdir(getFixturePath('ignored/a/b', 'exec'))
+    expect(await exists(getFixturePath('ignored/a/b', 'exec'))).toBe(true)
   })
   sshit('throws error when it cant create directories', async function(port, client) {
     await connectWithPassword(port, client)
@@ -111,7 +118,7 @@ describe('SSH2', function() {
       await client.mkdir('/dev/asdasd/asdasdasd')
       expect(false).toBe(true)
     } catch (_) {
-      expect(_.message).toContain('Permission denied')
+      expect(_.message.indexOf('Permission denied') !== -1 || _.message.indexOf('not permitted') !== -1).toBe(true)
     }
   })
   sshit('exec with correct escaped parameters', async function(port, client) {

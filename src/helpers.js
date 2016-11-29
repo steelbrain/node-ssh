@@ -2,12 +2,47 @@
 
 import FS from 'fs'
 import Path from 'path'
+import mkdirp from 'mkdirp'
 import promisify from 'sb-promisify'
 import type { ConfigGiven, Config, ConfigDirectoryTransferGiven, ConfigDirectoryTransfer } from './types'
 
-export const stat = promisify(FS.stat)
+const CODE_REGEXP = /Error: (E[\S]+): /
 const readFile = promisify(FS.readFile)
+const promisedMkdirp = promisify(mkdirp)
+export const stat = promisify(FS.stat)
 export const readdir = promisify(FS.readdir)
+
+function transformError(givenError) {
+  const code = CODE_REGEXP.exec(givenError)
+  if (code) {
+    // eslint-disable-next-line no-param-reassign
+    givenError.code = code[1]
+  }
+  return givenError
+}
+
+export function exists(filePath: string): Promise<boolean> {
+  return new Promise(function(resolve) {
+    FS.access(filePath, FS.R_OK, function(error) {
+      resolve(!error)
+    })
+  })
+}
+
+export function mkdirSftp(path: string, sftp: Object): Promise<void> {
+  return promisedMkdirp(path, {
+    fs: {
+      mkdir(dirPath, _, cb) {
+        sftp.mkdir(dirPath, function(givenError) {
+          cb(givenError ? transformError(givenError) : null)
+        })
+      },
+      stat(dirPath, cb) {
+        sftp.stat(dirPath, cb)
+      },
+    },
+  })
+}
 
 export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config> {
   const config: Object = Object.assign({}, givenConfig)
@@ -62,14 +97,6 @@ export function normalizePutDirectoryConfig(givenConfig: ConfigDirectoryTransfer
   }
   config.recursive = {}.hasOwnProperty.call(config, 'recursive') ? !!config.recursive : true
   return config
-}
-
-export function exists(filePath: string): Promise<boolean> {
-  return new Promise(function(resolve) {
-    FS.access(filePath, FS.R_OK, function(error) {
-      resolve(!error)
-    })
-  })
 }
 
 export function generateCallback(resolve: Function, reject: Function): Function {

@@ -47,11 +47,24 @@ class SSH {
       connection.sftp(Helpers.generateCallback(resolve, reject))
     })
   }
-  async mkdir(path: string): Promise<void> {
+  async mkdir(path: string, type: 'exec' | 'sftp' = 'sftp', givenSftp: ?Object = null): Promise<void> {
     invariant(this.connection, 'Not connected to server')
-    const output = await this.exec('mkdir', ['-p', path])
-    if (output.stdout) {
-      throw new Error(output.stdout)
+    invariant(type === 'exec' || type === 'sftp', 'Type should either be sftp or exec')
+    if (type === 'exec') {
+      const output = await this.exec('mkdir', ['-p', path])
+      if (output.stdout) {
+        throw new Error(output.stdout)
+      }
+    } else {
+      invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
+      const sftp = givenSftp || await this.requestSFTP()
+      try {
+        await Helpers.mkdirSftp(path, sftp)
+      } finally {
+        if (!givenSftp) {
+          sftp.end()
+        }
+      }
     }
   }
   async exec(command: string, parameters: Array<string> = [], options: { cwd?: string, stdin?: string, stream?: string } = {}): Promise<string | Object> {
@@ -197,7 +210,7 @@ class SSH {
       const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/')
       const remoteFileDirectory = Path.dirname(remoteFile)
       if (!directoriesCreated.has(remoteFileDirectory)) {
-        await this.mkdir(remoteFileDirectory)
+        await this.mkdir(remoteFileDirectory, 'sftp', sftp)
         directoriesCreated.add(remoteFileDirectory)
       }
       try {
