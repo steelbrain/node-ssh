@@ -24,6 +24,7 @@
     "url": "https://github.com/steelbrain/node-ssh/issues"
   },
   "dependencies": {
+    "mkdirp": "^0.5.1",
     "sb-promisify": "^2.0.1",
     "sb-scandir": "^1.0.0",
     "shell-escape": "^0.2.0",

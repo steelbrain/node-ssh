@@ -2,12 +2,35 @@
 
 import FS from 'fs'
 import Path from 'path'
+import mkdirp from 'mkdirp'
 import promisify from 'sb-promisify'
 import type { ConfigGiven, Config, ConfigDirectoryTransferGiven, ConfigDirectoryTransfer } from './types'
 
-export const stat = promisify(FS.stat)
 const readFile = promisify(FS.readFile)
+const promisedMkdirp = promisify(mkdirp)
+export const stat = promisify(FS.stat)
 export const readdir = promisify(FS.readdir)
+
+export function exists(filePath: string): Promise<boolean> {
+  return new Promise(function(resolve) {
+    FS.access(filePath, FS.R_OK, function(error) {
+      resolve(!error)
+    })
+  })
+}
+
+export function mkdirSftp(path: string, sftp: Object): Promise<void> {
+  return promisedMkdirp(path, {
+    fs: {
+      mkdir(dirPath, _, cb) {
+        sftp.mkdir(dirPath, cb)
+      },
+      stat(dirPath, cb) {
+        sftp.stat(dirPath, cb)
+      },
+    },
+  })
+}
 
 export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config> {
   const config: Object = Object.assign({}, givenConfig)
@@ -62,14 +85,6 @@ export function normalizePutDirectoryConfig(givenConfig: ConfigDirectoryTransfer
   }
   config.recursive = {}.hasOwnProperty.call(config, 'recursive') ? !!config.recursive : true
   return config
-}
-
-export function exists(filePath: string): Promise<boolean> {
-  return new Promise(function(resolve) {
-    FS.access(filePath, FS.R_OK, function(error) {
-      resolve(!error)
-    })
-  })
 }
 
 export function generateCallback(resolve: Function, reject: Function): Function {
