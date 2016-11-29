@@ -49,7 +49,7 @@ class SSH {
   }
   async mkdir(path: string, type: 'exec' | 'sftp' = 'sftp', givenSftp: ?Object = null): Promise<void> {
     invariant(this.connection, 'Not connected to server')
-    invariant(type !== 'exec' && type !== 'sftp', 'Type should either be sftp or exec')
+    invariant(type === 'exec' || type === 'sftp', 'Type should either be sftp or exec')
     if (type === 'exec') {
       const output = await this.exec('mkdir', ['-p', path])
       if (output.stdout) {
@@ -59,7 +59,7 @@ class SSH {
       invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
       const sftp = givenSftp || await this.requestSFTP()
       try {
-        Helpers.mkdirSftp(path, sftp)
+        await Helpers.mkdirSftp(path, sftp)
       } finally {
         if (!givenSftp) {
           sftp.end()
