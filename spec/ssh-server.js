@@ -91,7 +91,7 @@ function handleSFTP(accept) {
       FS.mkdirSync(path, attrs.mode)
       sftpStream.status(reqid, STATUS_CODE.OK)
     } catch (error) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqid, STATUS_CODE.FAILURE, error.message)
     }
   })
   sftpStream.on('STAT', function(reqid, path) {
@@ -99,7 +99,7 @@ function handleSFTP(accept) {
       const stats = FS.statSync(path)
       sftpStream.attrs(reqid, stats)
     } catch (error) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqid, STATUS_CODE.FAILURE, error.message)
     }
   })
 }
