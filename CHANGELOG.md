@@ -1,3 +1,7 @@
+#### 3.1.0
+
+- Implement sftp-backed `mkdir`
+
 #### 3.0.1
 
 - Fix a bug for windows users where `.putDirectory()` wouldn't convert paths properly ( Thanks @lanxenet )
