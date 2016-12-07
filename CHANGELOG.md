@@ -1,3 +1,7 @@
+#### 3.2.0
+
+- Implement `maxAtOnce` in `putFiles()`
+
 #### 3.1.0
 
 - Implement sftp-backed `mkdir`
