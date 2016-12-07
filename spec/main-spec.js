@@ -183,6 +183,11 @@ describe('SSH2', function() {
       { local: getFixturePath('multiple/bb'), remote: getFixturePath('ignored/bb') },
       { local: getFixturePath('multiple/cc'), remote: getFixturePath('ignored/cc') },
       { local: getFixturePath('multiple/dd'), remote: getFixturePath('ignored/dd') },
+      { local: getFixturePath('multiple/ff'), remote: getFixturePath('ignored/ff') },
+      { local: getFixturePath('multiple/gg'), remote: getFixturePath('ignored/gg') },
+      { local: getFixturePath('multiple/hh'), remote: getFixturePath('ignored/hh') },
+      { local: getFixturePath('multiple/ii'), remote: getFixturePath('ignored/ii') },
+      { local: getFixturePath('multiple/jj'), remote: getFixturePath('ignored/jj') },
     ]
     for (const file of files) {
       expect(await exists(file.remote)).toBe(false)
@@ -200,6 +205,11 @@ describe('SSH2', function() {
       getFixturePath('ignored/cc'),
       getFixturePath('ignored/dd'),
       getFixturePath('ignored/ee/ff'),
+      getFixturePath('ignored/ff'),
+      getFixturePath('ignored/gg'),
+      getFixturePath('ignored/hh'),
+      getFixturePath('ignored/ii'),
+      getFixturePath('ignored/jj'),
     ]
     for (const file of remoteFiles) {
       expect(await exists(file)).toBe(false)
