@@ -162,7 +162,7 @@ describe('SSH2', function() {
     const sourceFile = __filename
     const targetFile = getFixturePath('ignored/test-get')
     expect(await exists(targetFile)).toBe(false)
-    await client.getFile(sourceFile, targetFile)
+    await client.getFile(targetFile, sourceFile)
     expect(await exists(targetFile)).toBe(true)
     expect(FS.readFileSync(targetFile, 'utf8').trim()).toBe(FS.readFileSync(sourceFile, 'utf8').trim())
   })
