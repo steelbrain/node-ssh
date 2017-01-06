@@ -125,7 +125,7 @@ class SSH {
     const sftp = givenSftp || await this.requestSFTP()
     try {
       await new Promise(function(resolve, reject) {
-        sftp.fastGet(localFile, remoteFile, Helpers.generateCallback(resolve, reject))
+        sftp.fastGet(remoteFile, localFile, Helpers.generateCallback(resolve, reject))
       })
     } finally {
       if (!givenSftp) {
