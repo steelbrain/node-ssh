@@ -29,7 +29,7 @@ ssh.connect({
  */
 .then(function() {
   // Local, Remote
-  ssh.putFile('/home/steel/Lab/localPath', '/home/steel/Lab/remotePath').then(function() {
+  ssh.putFile('/home/steel/Lab/remotePath', '/home/steel/Lab/localPath').then(function() {
     console.log("The File thing is done")
   }, function(error) {
     console.log("Something's wrong")
