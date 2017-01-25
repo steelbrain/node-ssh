@@ -58,8 +58,16 @@ class SSH {
     } else {
       invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
       const sftp = givenSftp || await this.requestSFTP()
+
+      const makeSftpDirectory = (retry: boolean) =>
+        Helpers.mkdirSftp(path, sftp).catch(error => {
+          if (retry && error && error.message === 'No such file') {
+            return this.mkdir(Path.dirname(path), 'sftp', sftp).then(() => makeSftpDirectory(false))
+          }
+          throw error
+        })
       try {
-        await Helpers.mkdirSftp(path, sftp)
+        await makeSftpDirectory(true)
       } finally {
         if (!givenSftp) {
           sftp.end()
@@ -147,9 +155,7 @@ class SSH {
       return new Promise(function(resolve, reject) {
         sftp.fastPut(localFile, remoteFile, Helpers.generateCallback(resolve, function(error) {
           if (error.message === 'No such file' && retry) {
-            resolve(that.mkdir(Path.dirname(remoteFile)).then(function() {
-              return putFile(false)
-            }))
+            resolve(that.mkdir(Path.dirname(remoteFile), 'sftp', sftp).then(() => putFile(false)))
           } else {
             reject(error)
           }
