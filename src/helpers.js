@@ -72,7 +72,6 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
     if (typeof password !== 'string') {
       throw new Error('config.password must be a string')
     }
-    config.password = password
   }
   return config
 }
