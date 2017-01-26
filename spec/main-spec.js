@@ -115,10 +115,10 @@ describe('SSH2', function() {
   sshit('throws error when it cant create directories', async function(port, client) {
     await connectWithPassword(port, client)
     try {
-      await client.mkdir('/dev/asdasd/asdasdasd')
+      await client.mkdir('/etc/passwd/asdasdasd')
       expect(false).toBe(true)
     } catch (_) {
-      expect(_.message.indexOf('Permission denied') !== -1 || _.message.indexOf('not permitted') !== -1).toBe(true)
+      expect(_.message.indexOf('ENOTDIR: not a directory') !== -1).toBe(true)
     }
   })
   sshit('exec with correct escaped parameters', async function(port, client) {
