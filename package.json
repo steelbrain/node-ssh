@@ -34,7 +34,7 @@
     "babel-cli": "^6.11.4",
     "babel-preset-steelbrain": "^5.0.0",
     "eslint-config-steelbrain": "^1.0.4",
-    "flow-bin": "^0.32.0",
+    "flow-bin": "^0.34.0",
     "jasmine-fix": "^1.0.1",
     "pty.js": "^0.3.1",
     "ssh2-streams": "^0.1.6"
