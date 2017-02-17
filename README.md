@@ -66,8 +66,8 @@ ssh.connect({
         successful.push(localPath)
       }
     }
-  }).then(function(successful) {
-    console.log('the directory transfer was', successful ? 'successful' : 'unsuccessful')
+  }).then(function(success) {
+    console.log('the directory transfer was', success ? 'successful' : 'unsuccessful')
     console.log('failed transfers', failed.join(', '))
     console.log('successful transfers', successful.join(', '))
   })
