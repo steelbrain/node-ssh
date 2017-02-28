@@ -49,11 +49,11 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
   if (config.username && typeof config.username !== 'string') {
     throw new Error('config.username must be a valid string')
   }
-  if (config.host) {
-    if (typeof config.host !== 'string') {
+  if (typeof config.host !== 'undefined') {
+    if (typeof config.host !== 'string' || !config.host) {
       throw new Error('config.host must be a valid string')
     }
-  } else if (config.sock) {
+  } else if (typeof config.sock !== 'undefined') {
     if (!config.sock || typeof config.sock !== 'object') {
       throw new Error('config.sock must be a valid object')
     }

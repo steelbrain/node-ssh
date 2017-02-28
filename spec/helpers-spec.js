@@ -2,6 +2,7 @@
 
 import FS from 'fs'
 import Path from 'path'
+import { Socket } from 'net'
 import { it } from 'jasmine-fix'
 import * as Helpers from '../src/helpers'
 import { PRIVATE_KEY_PATH, expectToThrow } from './helpers'
@@ -12,10 +13,39 @@ describe('Helpers', function() {
       return await Helpers.normalizeConfig(config)
     }
 
-    it('throws if host is not valid', async function() {
+    it('throws if neither host or sock is provided', async function() {
       await expectToThrow(async function() {
         await normalizeConfig({})
-      }, 'config.host must be a valid string')
+      }, 'config.host or config.sock must be provided')
+    })
+    it('throws if sock is not valid', async function() {
+      await expectToThrow(async function() {
+        await normalizeConfig({
+          sock: 1,
+        })
+      }, 'config.sock must be a valid object')
+      await expectToThrow(async function() {
+        await normalizeConfig({
+          sock: 'hey',
+        })
+      }, 'config.sock must be a valid object')
+      await expectToThrow(async function() {
+        await normalizeConfig({
+          sock: '',
+        })
+      }, 'config.sock must be a valid object')
+      await expectToThrow(async function() {
+        await normalizeConfig({
+          sock: null,
+        })
+      }, 'config.sock must be a valid object')
+    })
+    it('does not throw if sock is valid', async function() {
+      await normalizeConfig({
+        sock: new Socket(),
+      })
+    })
+    it('throws if host is not valid', async function() {
       await expectToThrow(async function() {
         await normalizeConfig({
           host: 2,
