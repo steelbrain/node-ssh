@@ -49,14 +49,16 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
   if (config.username && typeof config.username !== 'string') {
     throw new Error('config.username must be a valid string')
   }
-  if ((!config.host) && (!config.sock)) {
-    throw new Error('config.host or config.sock must be used')
-  }
-  if (config.host && typeof config.host !== 'string') {
-    throw new Error('config.host must be a valid string')
-  }
-  if (config.sock && Array.isArray(config.sock)) {
-    throw new Error('config.sock must be a valid array')
+  if (typeof config.host !== 'undefined') {
+    if (typeof config.host !== 'string' || !config.host) {
+      throw new Error('config.host must be a valid string')
+    }
+  } else if (typeof config.sock !== 'undefined') {
+    if (!config.sock || typeof config.sock !== 'object') {
+      throw new Error('config.sock must be a valid object')
+    }
+  } else {
+    throw new Error('config.host or config.sock must be provided')
   }
   if (config.privateKey) {
     const privateKey = config.privateKey

@@ -1,3 +1,7 @@
+#### 4.0.1
+
+- Fix support for `config.sock`
+
 #### 4.0.0
 
 - Fix a bug where `.getFile` parameters were reversed. Published as a major change because it is API breaking
