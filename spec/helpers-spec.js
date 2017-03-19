@@ -183,21 +183,21 @@ describe('Helpers', function() {
       return Helpers.normalizePutDirectoryConfig(config)
     }
 
-    it('does not throw if tick is not present', async function() {
+    it('does not throw if tick is not present', function() {
       normalizePutDirectoryConfig({})
     })
     it('throws if tick is invalid', async function() {
-      await expectToThrow(async function() {
+      await expectToThrow(function() {
         normalizePutDirectoryConfig({
           tick: 1,
         })
       }, 'config.tick must be a function')
-      await expectToThrow(async function() {
+      await expectToThrow(function() {
         normalizePutDirectoryConfig({
           tick: '5',
         })
       }, 'config.tick must be a function')
-      await expectToThrow(async function() {
+      await expectToThrow(function() {
         normalizePutDirectoryConfig({
           tick: {},
         })
@@ -208,21 +208,21 @@ describe('Helpers', function() {
         tick() { },
       })
     })
-    it('does not throw if validate is not present', async function() {
+    it('does not throw if validate is not present', function() {
       normalizePutDirectoryConfig({})
     })
     it('throws if validate is invalid', async function() {
-      await expectToThrow(async function() {
+      await expectToThrow(function() {
         normalizePutDirectoryConfig({
           validate: 1,
         })
       }, 'config.validate must be a function')
-      await expectToThrow(async function() {
+      await expectToThrow(function() {
         normalizePutDirectoryConfig({
           validate: '5',
         })
       }, 'config.validate must be a function')
-      await expectToThrow(async function() {
+      await expectToThrow(function() {
         normalizePutDirectoryConfig({
           validate: {},
         })
