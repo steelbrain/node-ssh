@@ -221,6 +221,7 @@ class SSH {
       })
     const directoriesCreated = new Set()
 
+    // eslint-disable-next-line arrow-parens
     const promises = files.map(async (file) => {
       const localFile = Path.join(localDirectory, file)
       const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/')
