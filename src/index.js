@@ -17,7 +17,7 @@ class SSH {
     const connection = this.connection = new SSH2()
     return new Promise(function(resolve) {
       resolve(Helpers.normalizeConfig(givenConfig))
-    }).then((config) =>
+    }).then(config =>
       new Promise((resolve, reject) => {
         connection.on('error', reject)
         connection.on('ready', () => {
@@ -59,8 +59,8 @@ class SSH {
       invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
       const sftp = givenSftp || await this.requestSFTP()
 
-      const makeSftpDirectory = (retry: boolean) =>
-        Helpers.mkdirSftp(path, sftp).catch(error => {
+      const makeSftpDirectory = retry =>
+        Helpers.mkdirSftp(path, sftp).catch((error) => {
           if (retry && error && error.message === 'No such file') {
             return this.mkdir(Path.dirname(path), 'sftp', sftp).then(() => makeSftpDirectory(false))
           }
@@ -221,7 +221,7 @@ class SSH {
       })
     const directoriesCreated = new Set()
 
-    const promises = files.map(async file => {
+    const promises = files.map(async (file) => {
       const localFile = Path.join(localDirectory, file)
       const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/')
       const remoteFileDirectory = Path.dirname(remoteFile)
