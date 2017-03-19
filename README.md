@@ -1,6 +1,8 @@
 Node-SSH - SSH2 with Promises
 =========
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/steelbrain/node-ssh.svg)](https://greenkeeper.io/)
+
 Node-SSH is an extremely lightweight Promise wrapper for [ssh2][ssh2], Period.
 
 #### Example
