@@ -176,9 +176,10 @@ class SSH {
       }
     }
   }
-  async putFiles(files: Array<{ local: string, remote: string }>, givenSftp: ?Object = null, maxAtOnce: number = 5): Promise<void> {
+  async putFiles(files: Array<{ local: string, remote: string }>, givenSftp: ?Object = null, maxAtOnce: number = 5, givenOpts: ?Object = null): Promise<void> {
     invariant(this.connection, 'Not connected to server')
     invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
+    invariant(!givenOpts || typeof givenOpts === 'object', 'opts must be an object')
     invariant(Array.isArray(files), 'files must be an array')
     invariant(typeof maxAtOnce === 'number' && Number.isFinite(maxAtOnce), 'maxAtOnce must be a valid number')
 
@@ -189,6 +190,7 @@ class SSH {
       invariant(file.remote && typeof file.remote === 'string', `files[${i}].remote must be a string`)
     }
 
+    const opts = givenOpts || {}
     const sftp = givenSftp || await this.requestSFTP()
     let transferred = []
 
@@ -197,7 +199,7 @@ class SSH {
         const index = i * maxAtOnce
         const chunk = files.slice(index, index + maxAtOnce)
         await Promise.all(chunk.map(file =>
-          this.putFile(file.local, file.remote, sftp)
+          this.putFile(file.local, file.remote, sftp, opts)
         ))
         transferred = transferred.concat(chunk)
       }

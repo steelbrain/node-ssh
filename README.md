@@ -97,7 +97,7 @@ class SSH{
   execCommand(command: string, options: { cwd: string, stdin: string } = {}): Promise<{ stdout: string, stderr: string, signal: ?string, code: number }>
   putFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
   getFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
-  putFiles(files: Array<{ local: string, remote: string }>, sftp: ?Object = null, maxAtOnce: number = 5): Promise<void>
+  putFiles(files: Array<{ local: string, remote: string }>, sftp: ?Object = null, maxAtOnce: number = 5, opts: ?Object = null): Promise<void>
   putDirectory(localDirectory: string, remoteDirectory: string, options: ?{ recursive: boolean, tick(localPath, remotePath, error): any, validate(localPath): boolean } = null, sftp: ?Object = null): Promise<boolean>
   dispose(): void
 }
