@@ -124,14 +124,16 @@ class SSH {
       }, reject))
     })
   }
-  async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null, opts: ?Object = null): Promise<void> {
+  async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null, givenOpts: ?Object = null): Promise<void> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof localFile === 'string' && localFile, 'localFile must be a string')
     invariant(typeof remoteFile === 'string' && remoteFile, 'remoteFile must be a string')
     invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
-    invariant(!opts || typeof opts === 'object', 'opts must be an object')
+    invariant(!givenOpts || typeof givenOpts === 'object', 'opts must be an object')
 
+    const opts = givenOpts || {}
     const sftp = givenSftp || await this.requestSFTP()
+
     try {
       await new Promise(function(resolve, reject) {
         sftp.fastGet(remoteFile, localFile, opts, Helpers.generateCallback(resolve, reject))
@@ -142,14 +144,16 @@ class SSH {
       }
     }
   }
-  async putFile(localFile: string, remoteFile: string, givenSftp: ?Object = null, opts: ?Object = null): Promise<void> {
+  async putFile(localFile: string, remoteFile: string, givenSftp: ?Object = null, givenOpts: ?Object = null): Promise<void> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof localFile === 'string' && localFile, 'localFile must be a string')
     invariant(typeof remoteFile === 'string' && remoteFile, 'remoteFile must be a string')
     invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
+    invariant(!givenOpts || typeof givenOpts === 'object', 'opts must be an object')
     invariant(await Helpers.exists(localFile), `localFile does not exist at ${localFile}`)
 
     const that = this
+    const opts = givenOpts || {}
     const sftp = givenSftp || await this.requestSFTP()
 
     function putFile(retry: boolean) {
