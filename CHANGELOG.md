@@ -1,3 +1,7 @@
+#### 4.1.0
+
+- Add sftp `opts` support in `getFile`, `putFile`, `putFiles` and `putDirectory`
+
 #### 4.0.1
 
 - Fix support for `config.sock`
