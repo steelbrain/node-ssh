@@ -212,14 +212,17 @@ class SSH {
       }
     }
   }
-  async putDirectory(localDirectory: string, remoteDirectory: string, givenConfig: Object = {}, givenSftp: ?Object = null): Promise<boolean> {
+  async putDirectory(localDirectory: string, remoteDirectory: string, givenConfig: Object = {}, givenSftp: ?Object = null, givenOpts: ?Object = null): Promise<boolean> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
     invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'localDirectory must be a string')
     invariant(await Helpers.exists(localDirectory), `localDirectory does not exist at ${localDirectory}`)
     invariant((await Helpers.stat(localDirectory)).isDirectory(), `localDirectory is not a directory at ${localDirectory}`)
     invariant(typeof givenConfig === 'object' && givenConfig, 'config must be an object')
+    invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
+    invariant(!givenOpts || typeof givenOpts === 'object', 'opts must be an object')
 
+    const opts = givenOpts || {}
     const sftp = givenSftp || await this.requestSFTP()
     const config = Helpers.normalizePutDirectoryConfig(givenConfig)
     const files = (await scanDirectory(localDirectory, config.recursive, config.validate))
@@ -238,7 +241,7 @@ class SSH {
         directoriesCreated.add(remoteFileDirectory)
       }
       try {
-        await this.putFile(localFile, remoteFile, sftp)
+        await this.putFile(localFile, remoteFile, sftp, opts)
         config.tick(localFile, remoteFile, null)
         return true
       } catch (_) {
