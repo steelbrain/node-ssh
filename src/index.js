@@ -124,16 +124,17 @@ class SSH {
       }, reject))
     })
   }
-  async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null): Promise<void> {
+  async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null, opts: ?Object = null): Promise<void> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof localFile === 'string' && localFile, 'localFile must be a string')
     invariant(typeof remoteFile === 'string' && remoteFile, 'remoteFile must be a string')
     invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
+    invariant(!opts || typeof opts === 'object', 'opts must be an object')
 
     const sftp = givenSftp || await this.requestSFTP()
     try {
       await new Promise(function(resolve, reject) {
-        sftp.fastGet(remoteFile, localFile, Helpers.generateCallback(resolve, reject))
+        sftp.fastGet(remoteFile, localFile, opts, Helpers.generateCallback(resolve, reject))
       })
     } finally {
       if (!givenSftp) {
@@ -141,7 +142,7 @@ class SSH {
       }
     }
   }
-  async putFile(localFile: string, remoteFile: string, givenSftp: ?Object = null): Promise<void> {
+  async putFile(localFile: string, remoteFile: string, givenSftp: ?Object = null, opts: ?Object = null): Promise<void> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof localFile === 'string' && localFile, 'localFile must be a string')
     invariant(typeof remoteFile === 'string' && remoteFile, 'remoteFile must be a string')
@@ -153,7 +154,7 @@ class SSH {
 
     function putFile(retry: boolean) {
       return new Promise(function(resolve, reject) {
-        sftp.fastPut(localFile, remoteFile, Helpers.generateCallback(resolve, function(error) {
+        sftp.fastPut(localFile, remoteFile, opts, Helpers.generateCallback(resolve, function(error) {
           if (error.message === 'No such file' && retry) {
             resolve(that.mkdir(Path.dirname(remoteFile), 'sftp', sftp).then(() => putFile(false)))
           } else {
