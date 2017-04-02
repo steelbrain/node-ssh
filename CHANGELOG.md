@@ -1,3 +1,12 @@
+#### 4.2.0
+
+- Fix a typo in README
+- Add support for passing direct options to `ssh2.exec`
+
+#### 4.1.0
+
+- Add sftp `opts` support in `getFile`, `putFile`, `putFiles` and `putDirectory`
+
 #### 4.0.1
 
 - Fix support for `config.sock`

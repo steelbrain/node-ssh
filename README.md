@@ -68,8 +68,8 @@ ssh.connect({
         successful.push(localPath)
       }
     }
-  }).then(function(successful) {
-    console.log('the directory transfer was', successful ? 'successful' : 'unsuccessful')
+  }).then(function(status) {
+    console.log('the directory transfer was', status ? 'successful' : 'unsuccessful')
     console.log('failed transfers', failed.join(', '))
     console.log('successful transfers', successful.join(', '))
   })
@@ -79,7 +79,7 @@ ssh.connect({
     console.log('STDERR: ' + result.stderr)
   })
   // Command with escaped params
-  ssh.exec('hh_client', ['--json'], { cwd: '/var/www', stream: 'stdout' }).then(function(result) {
+  ssh.exec('hh_client', ['--json'], { cwd: '/var/www', stream: 'stdout', options: { pty: true } }).then(function(result) {
     console.log('STDOUT: ' + result)
   })
 })
@@ -93,12 +93,12 @@ class SSH{
   requestSFTP(): Promise<SSH2SFTP>
   requestShell(): Promise<SSH2Shell>
   mkdir(path: string): Promise<string>
-  exec(command: string, parameters: Array<string>, options: { cwd?: string, stdin?: string, stream?: 'stdout' | 'stderr', 'both' } = {}): Promise<Object | string>
-  execCommand(command: string, options: { cwd: string, stdin: string } = {}): Promise<{ stdout: string, stderr: string, signal: ?string, code: number }>
-  putFile(localFile: string, remoteFile: string, sftp: ?Object = null): Promise<void>
-  getFile(localFile: string, remoteFile: string, sftp: ?Object = null): Promise<void>
-  putFiles(files: Array<{ local: string, remote: string }>, sftp: ?Object = null, maxAtOnce: number = 5): Promise<void>
-  putDirectory(localDirectory: string, remoteDirectory: string, options: ?{ recursive: boolean, tick(localPath, remotePath, error): any, validate(localPath): boolean } = null, sftp: ?Object = null): Promise<boolean>
+  exec(command: string, parameters: Array<string>, options: { cwd?: string, options?: Object, stdin?: string, stream?: 'stdout' | 'stderr', 'both' } = {}): Promise<Object | string>
+  execCommand(command: string, options: { cwd: string, stdin: string } = {}): Promise<{ stdout: string, options?: Object, stderr: string, signal: ?string, code: number }>
+  putFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
+  getFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
+  putFiles(files: Array<{ local: string, remote: string }>, sftp: ?Object = null, maxAtOnce: number = 5, opts: ?Object = null): Promise<void>
+  putDirectory(localDirectory: string, remoteDirectory: string, options: ?{ recursive: boolean, tick(localPath, remotePath, error): any, validate(localPath): boolean } = null, sftp: ?Object = null, opts: ?Object = null): Promise<boolean>
   dispose(): void
 }
 ```
