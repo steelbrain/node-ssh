@@ -75,12 +75,14 @@ class SSH {
       }
     }
   }
-  async exec(command: string, parameters: Array<string> = [], options: { cwd?: string, stdin?: string, stream?: string } = {}): Promise<string | Object> {
+  async exec(command: string, parameters: Array<string> = [], options: { cwd?: string, stdin?: string, stream?: string, options?: Object } = {}): Promise<string | Object> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof options === 'object' && options, 'options must be an Object')
     invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
     invariant(!options.stdin || typeof options.stdin === 'string', 'options.stdin must be a string')
     invariant(!options.stream || ['stdout', 'stderr', 'both'].indexOf(options.stream) !== -1, 'options.stream must be among "stdout", "stderr" and "both"')
+    invariant(!options.options || typeof options.options === 'object', 'options.options must be an object')
+
     const output = await this.execCommand([command].concat(shellEscape(parameters)).join(' '), options)
     if (!options.stream || options.stream === 'stdout') {
       if (output.stderr) {
@@ -93,13 +95,14 @@ class SSH {
     }
     return output
   }
-  async execCommand(givenCommand: string, options: { cwd?: string, stdin?: string } = {}): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
+  async execCommand(givenCommand: string, options: { cwd?: string, stdin?: string, options?: Object } = {}): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
     let command = givenCommand
     const connection = this.connection
     invariant(connection, 'Not connected to server')
     invariant(typeof options === 'object' && options, 'options must be an Object')
     invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
     invariant(!options.stdin || typeof options.stdin === 'string', 'options.stdin must be a string')
+    invariant(!options.options || typeof options.options === 'object', 'options.options must be an object')
 
     if (options.cwd) {
       // NOTE: Output piping cd command to hide directory non-existent errors
@@ -121,7 +124,7 @@ class SSH {
         stream.on('close', function(code, signal) {
           resolve({ code, signal, stdout: output.stdout.join('').trim(), stderr: output.stderr.join('').trim() })
         })
-      }, reject))
+      }, reject), options.options || {})
     })
   }
   async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null, givenOpts: ?Object = null): Promise<void> {
