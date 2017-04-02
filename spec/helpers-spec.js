@@ -10,7 +10,7 @@ import { PRIVATE_KEY_PATH, expectToThrow } from './helpers'
 describe('Helpers', function() {
   describe('normalizeConfig', function() {
     async function normalizeConfig(config: any) {
-      return await Helpers.normalizeConfig(config)
+      return Helpers.normalizeConfig(config)
     }
 
     it('throws if neither host or sock is provided', async function() {

@@ -14,7 +14,8 @@ class SSH {
     this.connection = null
   }
   connect(givenConfig: ConfigGiven): Promise<this> {
-    const connection = this.connection = new SSH2()
+    const connection = new SSH2()
+    this.connection = connection
     return new Promise(function(resolve) {
       resolve(Helpers.normalizeConfig(givenConfig))
     }).then(config =>
@@ -30,20 +31,20 @@ class SSH {
           }
         })
         connection.connect(config)
-      })
+      }),
     )
   }
   async requestShell(): Promise<Object> {
     const connection = this.connection
     invariant(connection, 'Not connected to server')
-    return await new Promise(function(resolve, reject) {
+    return new Promise(function(resolve, reject) {
       connection.shell(Helpers.generateCallback(resolve, reject))
     })
   }
   async requestSFTP(): Promise<Object> {
     const connection = this.connection
     invariant(connection, 'Not connected to server')
-    return await new Promise(function(resolve, reject) {
+    return new Promise(function(resolve, reject) {
       connection.sftp(Helpers.generateCallback(resolve, reject))
     })
   }
@@ -109,7 +110,7 @@ class SSH {
       command = `cd ${shellEscape([options.cwd])} 1> /dev/null 2> /dev/null; ${command}`
     }
     const output = { stdout: [], stderr: [] }
-    return await new Promise(function(resolve, reject) {
+    return new Promise(function(resolve, reject) {
       connection.exec(command, Helpers.generateCallback(function(stream) {
         stream.on('data', function(chunk) {
           output.stdout.push(chunk)
@@ -202,7 +203,7 @@ class SSH {
         const index = i * maxAtOnce
         const chunk = files.slice(index, index + maxAtOnce)
         await Promise.all(chunk.map(file =>
-          this.putFile(file.local, file.remote, sftp, opts)
+          this.putFile(file.local, file.remote, sftp, opts),
         ))
         transferred = transferred.concat(chunk)
       }
