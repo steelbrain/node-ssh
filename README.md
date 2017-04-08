@@ -92,7 +92,7 @@ class SSH{
   connect(config: SSH2Config): Promise<this>
   requestSFTP(): Promise<SSH2SFTP>
   requestShell(): Promise<SSH2Shell>
-  mkdir(path: string): Promise<string>
+  mkdir(path: string, method: 'sftp' | 'exec' = 'sftp', givenSftp?: Object): Promise<string>
   exec(command: string, parameters: Array<string>, options: { cwd?: string, options?: Object, stdin?: string, stream?: 'stdout' | 'stderr', 'both' } = {}): Promise<Object | string>
   execCommand(command: string, options: { cwd: string, stdin: string } = {}): Promise<{ stdout: string, options?: Object, stderr: string, signal: ?string, code: number }>
   putFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
