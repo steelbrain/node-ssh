@@ -2,13 +2,11 @@
 
 import FS from 'fs'
 import Path from 'path'
-import mkdirp from 'mkdirp'
 import promisify from 'sb-promisify'
 import type { ConfigGiven, Config, ConfigDirectoryTransferGiven, ConfigDirectoryTransfer } from './types'
 
 const CODE_REGEXP = /Error: (E[\S]+): /
 const readFile = promisify(FS.readFile)
-const promisedMkdirp = promisify(mkdirp)
 export const stat = promisify(FS.stat)
 export const readdir = promisify(FS.readdir)
 
@@ -30,17 +28,17 @@ export function exists(filePath: string): Promise<boolean> {
 }
 
 export function mkdirSftp(path: string, sftp: Object): Promise<void> {
-  return promisedMkdirp(path, {
-    fs: {
-      mkdir(dirPath, _, cb) {
-        sftp.mkdir(dirPath, function(givenError) {
-          cb(givenError ? transformError(givenError) : null)
-        })
-      },
-      stat(dirPath, cb) {
-        sftp.stat(dirPath, cb)
-      },
-    },
+  return new Promise((resolve, reject) => {
+    sftp.stat(Path.dirname(path), (givenError) => {
+      givenError ? reject(givenError) : resolve()
+    })
+  })
+  .then(() => {
+    return new Promise((resolve, reject) => {
+      sftp.mkdir(path, function (givenError) {
+        givenError ? reject(transformError(givenError)) : resolve()
+      })
+    })
   })
 }
 
