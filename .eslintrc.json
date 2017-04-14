@@ -1,6 +1,3 @@
 {
-  "extends": "steelbrain",
-  "rules": {
-    "no-await-in-loop": "off"
-  }
+  "extends": "steelbrain"
 }
