@@ -30,12 +30,7 @@ export function exists(filePath: string): Promise<boolean> {
 export async function mkdirSftp(path: string, sftp: Object): Promise<void> {
   let stats
   try {
-    stats = await new Promise(function(resolve, reject) {
-      sftp.stat(path, function(error, res) {
-        if (error) reject(error)
-        else resolve(res)
-      })
-    })
+    stats = await promisify(sftp.stat).call(sftp, path)
   } catch (_) { /* No Op */ }
   if (stats) {
     if (stats.isDirectory()) {
@@ -45,7 +40,7 @@ export async function mkdirSftp(path: string, sftp: Object): Promise<void> {
     throw new Error('mkdir() failed, target already exists and is not a directory')
   }
   try {
-    await sftp.mkdir(path)
+    await promisify(sftp.mkdir).call(sftp, path)
   } catch (error) {
     throw transformError(error)
   }
