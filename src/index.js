@@ -62,7 +62,7 @@ class SSH {
 
       const makeSftpDirectory = retry =>
         Helpers.mkdirSftp(path, sftp).catch((error) => {
-          if (retry && error && error.message === 'No such file') {
+          if (retry && error && (error.message === 'No such file' || error.code === 'ENOENT')) {
             return this.mkdir(Path.dirname(path), 'sftp', sftp).then(() => makeSftpDirectory(false))
           }
           throw error
