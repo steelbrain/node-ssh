@@ -1,3 +1,8 @@
+#### 4.2.2
+
+- Fix put directory for long paths
+- Add tests for long paths in test suite
+
 #### 4.2.1
 
 - Remove `mkdirp` in favor of homegrown solution to fix compatibility with SSH servers running on Windows
