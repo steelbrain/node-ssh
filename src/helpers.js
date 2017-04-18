@@ -2,13 +2,11 @@
 
 import FS from 'fs'
 import Path from 'path'
-import mkdirp from 'mkdirp'
 import promisify from 'sb-promisify'
 import type { ConfigGiven, Config, ConfigDirectoryTransferGiven, ConfigDirectoryTransfer } from './types'
 
 const CODE_REGEXP = /Error: (E[\S]+): /
 const readFile = promisify(FS.readFile)
-const promisedMkdirp = promisify(mkdirp)
 export const stat = promisify(FS.stat)
 export const readdir = promisify(FS.readdir)
 
@@ -29,19 +27,23 @@ export function exists(filePath: string): Promise<boolean> {
   })
 }
 
-export function mkdirSftp(path: string, sftp: Object): Promise<void> {
-  return promisedMkdirp(path, {
-    fs: {
-      mkdir(dirPath, _, cb) {
-        sftp.mkdir(dirPath, function(givenError) {
-          cb(givenError ? transformError(givenError) : null)
-        })
-      },
-      stat(dirPath, cb) {
-        sftp.stat(dirPath, cb)
-      },
-    },
-  })
+export async function mkdirSftp(path: string, sftp: Object): Promise<void> {
+  let stats
+  try {
+    stats = await promisify(sftp.stat).call(sftp, path)
+  } catch (_) { /* No Op */ }
+  if (stats) {
+    if (stats.isDirectory()) {
+      // Already exists, nothing to worry about
+      return
+    }
+    throw new Error('mkdir() failed, target already exists and is not a directory')
+  }
+  try {
+    await promisify(sftp.mkdir).call(sftp, path)
+  } catch (error) {
+    throw transformError(error)
+  }
 }
 
 export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config> {
