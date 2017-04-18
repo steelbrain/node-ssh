@@ -210,6 +210,9 @@ describe('SSH2', function() {
       getFixturePath('ignored/hh'),
       getFixturePath('ignored/ii'),
       getFixturePath('ignored/jj'),
+      getFixturePath('ignored/really/really/really/really/really/more deep files'),
+      getFixturePath('ignored/really/really/really/really/yes/deep files'),
+      getFixturePath('ignored/really/really/really/really/deep'),
     ]
     for (const file of remoteFiles) {
       expect(await exists(file)).toBe(false)

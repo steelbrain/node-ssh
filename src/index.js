@@ -229,11 +229,9 @@ class SSH {
     const opts = givenOpts || {}
     const sftp = givenSftp || await this.requestSFTP()
     const config = Helpers.normalizePutDirectoryConfig(givenConfig)
-    const files = (await scanDirectory(localDirectory, config.recursive, config.validate))
-      .map(function(item) {
-        return Path.relative(localDirectory, item)
-      })
+    const files = (await scanDirectory(localDirectory, config.recursive, config.validate)).map(i => Path.relative(localDirectory, i))
     const directoriesCreated = new Set()
+    let directoriesQueue = Promise.resolve()
 
     // eslint-disable-next-line arrow-parens
     const promises = files.map(async (file) => {
@@ -241,8 +239,9 @@ class SSH {
       const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/')
       const remoteFileDirectory = Path.dirname(remoteFile)
       if (!directoriesCreated.has(remoteFileDirectory)) {
-        await this.mkdir(remoteFileDirectory, 'sftp', sftp)
         directoriesCreated.add(remoteFileDirectory)
+        directoriesQueue = directoriesQueue.then(() => this.mkdir(remoteFileDirectory, 'sftp', sftp))
+        await directoriesQueue
       }
       try {
         await this.putFile(localFile, remoteFile, sftp, opts)
