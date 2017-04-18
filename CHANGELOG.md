@@ -1,6 +1,6 @@
-#### Upcoming
+#### 4.2.1
 
-- Remove `mkdirp` in favor of homegrown solution to ensure compatibility with SSH servers running on Windows
+- Remove `mkdirp` in favor of homegrown solution to fix compatibility with SSH servers running on Windows
 
 #### 4.2.0
 
