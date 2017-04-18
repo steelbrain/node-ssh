@@ -27,19 +27,28 @@ export function exists(filePath: string): Promise<boolean> {
   })
 }
 
-export function mkdirSftp(path: string, sftp: Object): Promise<void> {
-  return new Promise((resolve, reject) => {
-    sftp.stat(Path.dirname(path), (givenError) => {
-      givenError ? reject(givenError) : resolve()
-    })
-  })
-  .then(() => {
-    return new Promise((resolve, reject) => {
-      sftp.mkdir(path, function (givenError) {
-        givenError ? reject(transformError(givenError)) : resolve()
+export async function mkdirSftp(path: string, sftp: Object): Promise<void> {
+  let stats
+  try {
+    stats = await new Promise(function(resolve, reject) {
+      sftp.stat(path, function(error, res) {
+        if (error) reject(error)
+        else resolve(res)
       })
     })
-  })
+  } catch (_) { /* No Op */ }
+  if (stats) {
+    if (stats.isDirectory()) {
+      // Already exists, nothing to worry about
+      return
+    }
+    throw new Error('mkdir() failed, target already exists and is not a directory')
+  }
+  try {
+    await sftp.mkdir(path)
+  } catch (error) {
+    throw transformError(error)
+  }
 }
 
 export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config> {
