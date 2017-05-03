@@ -36,6 +36,6 @@
     "flow-bin": "^0.45.0",
     "jasmine-fix": "^1.0.1",
     "pty.js": "^0.3.1",
-    "ssh2-streams": "^0.1.6"
+    "ssh2-streams": "^0.1.13"
   }
 }
