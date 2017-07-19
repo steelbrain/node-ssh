@@ -111,7 +111,7 @@ class SSH {
     }
     const output = { stdout: [], stderr: [] }
     return new Promise(function(resolve, reject) {
-      connection.exec(command, Helpers.generateCallback(function(stream) {
+      connection.exec(command, options.options || {}, Helpers.generateCallback(function(stream) {
         stream.on('data', function(chunk) {
           output.stdout.push(chunk)
         })
@@ -125,7 +125,7 @@ class SSH {
         stream.on('close', function(code, signal) {
           resolve({ code, signal, stdout: output.stdout.join('').trim(), stderr: output.stderr.join('').trim() })
         })
-      }, reject), options.options || {})
+      }, reject))
     })
   }
   async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null, givenOpts: ?Object = null): Promise<void> {
