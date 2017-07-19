@@ -1,3 +1,7 @@
+#### 4.3.3
+
+- Fix passing options in `execCommand`
+
 #### 4.2.2
 
 - Fix put directory for long paths
