@@ -3,9 +3,10 @@
 import FS from 'fs'
 import Path from 'path'
 import promisify from 'sb-promisify'
-import type { ConfigGiven, Config, ConfigDirectoryTransferGiven, ConfigDirectoryTransfer } from './types'
+import type { ConfigGiven, Config, PutFilesOptions, PutDirectoryOptions } from './types'
 
 const CODE_REGEXP = /Error: (E[\S]+): /
+const DEFAULT_CONCURRENCY = 5
 const readFile = promisify(FS.readFile)
 export const stat = promisify(FS.stat)
 export const readdir = promisify(FS.readdir)
@@ -86,8 +87,25 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
   return config
 }
 
-export function normalizePutDirectoryConfig(givenConfig: ConfigDirectoryTransferGiven): ConfigDirectoryTransfer {
-  const config: Object = Object.assign({}, givenConfig)
+export function normalizePutFilesOptions(givenConfig: Object): PutFilesOptions {
+  const config = {}
+
+  if (givenConfig.sftpOptions && typeof givenConfig.sftpOptions === 'object') {
+    config.sftpOptions = givenConfig.sftpOptions
+  } else config.sftpOptions = {}
+  if (typeof givenConfig.concurrency === 'number') {
+    config.concurrency = givenConfig.concurrency
+  } else config.concurrency = DEFAULT_CONCURRENCY
+  if (typeof givenConfig.sftp === 'object') {
+    config.sftp = givenConfig.sftp
+  } else config.sftp = null
+
+  return config
+}
+
+export function normalizePutDirectoryOptions(givenConfig: Object): PutDirectoryOptions {
+  const config: Object = normalizePutFilesOptions(givenConfig)
+
   if (config.tick) {
     if (typeof config.tick !== 'function') {
       throw new Error('config.tick must be a function')
