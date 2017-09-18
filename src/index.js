@@ -77,7 +77,18 @@ class SSH {
       }
     }
   }
-  async exec(command: string, parameters: Array<string> = [], options: { cwd?: string, stdin?: string, stream?: string, options?: Object } = {}): Promise<string | Object> {
+  async exec(
+    command: string,
+    parameters: Array<string> = [],
+    options: {
+      cwd?: string,
+      stdin?: string,
+      stream?: string,
+      options?: Object,
+      onStdout?: ((chunk: Buffer) => void),
+      onStderr?: ((chunk: Buffer) => void),
+    } = {},
+  ): Promise<string | Object> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof options === 'object' && options, 'options must be an Object')
     invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
@@ -97,7 +108,16 @@ class SSH {
     }
     return output
   }
-  async execCommand(givenCommand: string, options: { cwd?: string, stdin?: string, options?: Object } = {}): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
+  async execCommand(
+    givenCommand: string,
+    options: {
+      cwd?: string,
+      stdin?: string,
+      options?: Object,
+      onStdout?: ((chunk: Buffer) => void),
+      onStderr?: ((chunk: Buffer) => void),
+    } = {},
+  ): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
     let command = givenCommand
     const connection = this.connection
     invariant(connection, 'Not connected to server')
@@ -114,9 +134,11 @@ class SSH {
     return new Promise(function(resolve, reject) {
       connection.exec(command, options.options || {}, Helpers.generateCallback(function(stream) {
         stream.on('data', function(chunk) {
+          if (options.onStdout) options.onStdout(chunk)
           output.stdout.push(chunk)
         })
         stream.stderr.on('data', function(chunk) {
+          if (options.onStderr) options.onStderr(chunk)
           output.stderr.push(chunk)
         })
         if (options.stdin) {
