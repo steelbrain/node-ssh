@@ -2,6 +2,7 @@
 
 import Path from 'path'
 import SSH2 from 'ssh2'
+import pMap from 'p-map'
 import invariant from 'assert'
 import scanDirectory from 'sb-scandir'
 import shellEscape from 'shell-escape'
@@ -180,12 +181,9 @@ class SSH {
       }
     }
   }
-  async putFiles(files: Array<{ local: string, remote: string }>, givenSftp: ?Object = null, maxAtOnce: number = 5, givenOpts: ?Object = null): Promise<void> {
+  async putFiles(files: Array<{ local: string, remote: string }>, givenConfig: Object = {}): Promise<void> {
     invariant(this.connection, 'Not connected to server')
-    invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
-    invariant(!givenOpts || typeof givenOpts === 'object', 'opts must be an object')
     invariant(Array.isArray(files), 'files must be an array')
-    invariant(typeof maxAtOnce === 'number' && Number.isFinite(maxAtOnce), 'maxAtOnce must be a valid number')
 
     for (let i = 0, length = files.length; i < length; ++i) {
       const file = files[i]
@@ -194,19 +192,15 @@ class SSH {
       invariant(file.remote && typeof file.remote === 'string', `files[${i}].remote must be a string`)
     }
 
-    const opts = givenOpts || {}
-    const sftp = givenSftp || await this.requestSFTP()
-    let transferred = []
+    const transferred = []
+    const config = Helpers.normalizePutFilesOptions(givenConfig)
+    const sftp = config.sftp || await this.requestSFTP()
 
     try {
-      for (let i = 0, length = Math.ceil(files.length / maxAtOnce); i < length; i++) {
-        const index = i * maxAtOnce
-        const chunk = files.slice(index, index + maxAtOnce)
-        await Promise.all(chunk.map(file =>
-          this.putFile(file.local, file.remote, sftp, opts),
-        ))
-        transferred = transferred.concat(chunk)
-      }
+      await pMap(files, async (file) => {
+        await this.putFile(file.local, file.remote, sftp, config.sftpOptions)
+        transferred.push(file)
+      })
     } catch (error) {
       error.transferred = transferred
       throw error
@@ -216,53 +210,58 @@ class SSH {
       }
     }
   }
-  async putDirectory(localDirectory: string, remoteDirectory: string, givenConfig: Object = {}, givenSftp: ?Object = null, givenOpts: ?Object = null): Promise<boolean> {
+  async putDirectory(localDirectory: string, remoteDirectory: string, givenConfig: Object = {}): Promise<boolean> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
     invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'localDirectory must be a string')
     invariant(await Helpers.exists(localDirectory), `localDirectory does not exist at ${localDirectory}`)
     invariant((await Helpers.stat(localDirectory)).isDirectory(), `localDirectory is not a directory at ${localDirectory}`)
     invariant(typeof givenConfig === 'object' && givenConfig, 'config must be an object')
-    invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
-    invariant(!givenOpts || typeof givenOpts === 'object', 'opts must be an object')
 
-    const opts = givenOpts || {}
-    const sftp = givenSftp || await this.requestSFTP()
-    const config = Helpers.normalizePutDirectoryConfig(givenConfig)
-    const files = (await scanDirectory(localDirectory, config.recursive, config.validate)).map(i => Path.relative(localDirectory, i))
-    const directoriesCreated = new Set()
+    const config = Helpers.normalizePutDirectoryOptions(givenConfig)
+    const sftp = config.sftp || await this.requestSFTP()
+
+    const scanned = await scanDirectory(localDirectory, config.recursive, config.validate)
+    const files = scanned.files.map(i => Path.relative(localDirectory, i))
+    const directories = scanned.directories.map(i => Path.relative(localDirectory, i))
+
+    let failed = false
     let directoriesQueue = Promise.resolve()
+    const directoriesCreated = new Set()
 
-    // eslint-disable-next-line arrow-parens
-    const promises = files.map(async (file) => {
-      const localFile = Path.join(localDirectory, file)
-      const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/')
-      const remoteFileDirectory = Path.dirname(remoteFile)
-      if (!directoriesCreated.has(remoteFileDirectory)) {
-        directoriesCreated.add(remoteFileDirectory)
-        directoriesQueue = directoriesQueue.then(() => this.mkdir(remoteFileDirectory, 'sftp', sftp))
+    const createDirectory = async (path) => {
+      if (!directoriesCreated.has(path)) {
+        directoriesCreated.add(path)
+        directoriesQueue = directoriesQueue.then(() => this.mkdir(path, 'sftp', sftp))
         await directoriesQueue
       }
-      try {
-        await this.putFile(localFile, remoteFile, sftp, opts)
-        config.tick(localFile, remoteFile, null)
-        return true
-      } catch (_) {
-        config.tick(localFile, remoteFile, _)
-        return false
-      }
-    })
+    }
 
-    let results
     try {
-      results = await Promise.all(promises)
+      await pMap(files, async (file) => {
+        const localFile = Path.join(localDirectory, file)
+        const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/')
+        const remoteFileDirectory = Path.dirname(remoteFile)
+        await createDirectory(remoteFileDirectory)
+        try {
+          await this.putFile(localFile, remoteFile, sftp, config.sftpOptions)
+          config.tick(localFile, remoteFile, null)
+        } catch (_) {
+          failed = true
+          config.tick(localFile, remoteFile, _)
+        }
+      }, { concurrency: config.concurrency })
+      await pMap(directories, async function(entry) {
+        const remoteEntry = Path.join(remoteDirectory, entry).split(Path.sep).join('/')
+        await createDirectory(remoteEntry)
+      }, { concurrency: config.concurrency })
     } finally {
-      if (!givenSftp) {
+      if (!config.sftp) {
         sftp.end()
       }
     }
 
-    return results.every(i => i)
+    return !failed
   }
   dispose() {
     if (this.connection) {

@@ -56,6 +56,7 @@ ssh.connect({
   const successful = []
   ssh.putDirectory('/home/steel/Lab', '/home/steel/Lab', {
     recursive: true,
+    concurrency: 10,
     validate: function(itemPath) {
       const baseName = path.basename(itemPath)
       return baseName.substr(0, 1) !== '.' && // do not allow dot files
@@ -88,6 +89,20 @@ ssh.connect({
 #### API
 
 ```js
+type PutFilesOptions = {
+  sftp: ?Object,
+  sftpOptions?: Object,
+  concurrency?: number = 5,
+}
+type PutDirectoryOptions = {
+  sftp: ?Object,
+  sftpOptions?: Object,
+  concurrency?: number = 5,
+  recursive?: boolean,
+  tick?: ((localPath: string, remotePath: string, error: ?Error) => void),
+  validate?: ((localPath: string) => boolean),
+}
+
 class SSH{
   connect(config: SSH2Config): Promise<this>
   requestSFTP(): Promise<SSH2SFTP>
@@ -97,8 +112,8 @@ class SSH{
   execCommand(command: string, options: { cwd: string, stdin: string } = {}): Promise<{ stdout: string, options?: Object, stderr: string, signal: ?string, code: number }>
   putFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
   getFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
-  putFiles(files: Array<{ local: string, remote: string }>, sftp: ?Object = null, maxAtOnce: number = 5, opts: ?Object = null): Promise<void>
-  putDirectory(localDirectory: string, remoteDirectory: string, options: ?{ recursive: boolean, tick(localPath, remotePath, error): any, validate(localPath): boolean } = null, sftp: ?Object = null, opts: ?Object = null): Promise<boolean>
+  putFiles(files: Array<{ local: string, remote: string }>, options: PutFilesOptions = {}): Promise<void>
+  putDirectory(localDirectory: string, remoteDirectory: string, options: PutDirectoryOptions: {}): Promise<boolean>
   dispose(): void
 }
 ```

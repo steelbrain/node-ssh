@@ -3,9 +3,10 @@
 import FS from 'fs'
 import Path from 'path'
 import promisify from 'sb-promisify'
-import type { ConfigGiven, Config, ConfigDirectoryTransferGiven, ConfigDirectoryTransfer } from './types'
+import type { ConfigGiven, Config, PutFilesOptions, PutDirectoryOptions } from './types'
 
 const CODE_REGEXP = /Error: (E[\S]+): /
+const DEFAULT_CONCURRENCY = 5
 const readFile = promisify(FS.readFile)
 export const stat = promisify(FS.stat)
 export const readdir = promisify(FS.readdir)
@@ -86,25 +87,44 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
   return config
 }
 
-export function normalizePutDirectoryConfig(givenConfig: ConfigDirectoryTransferGiven): ConfigDirectoryTransfer {
-  const config: Object = Object.assign({}, givenConfig)
-  if (config.tick) {
-    if (typeof config.tick !== 'function') {
+export function normalizePutFilesOptions(givenConfig: Object): PutFilesOptions {
+  const config = {}
+
+  if (givenConfig.sftpOptions && typeof givenConfig.sftpOptions === 'object') {
+    config.sftpOptions = givenConfig.sftpOptions
+  } else config.sftpOptions = {}
+  if (typeof givenConfig.concurrency === 'number') {
+    config.concurrency = givenConfig.concurrency
+  } else config.concurrency = DEFAULT_CONCURRENCY
+  if (typeof givenConfig.sftp === 'object') {
+    config.sftp = givenConfig.sftp
+  } else config.sftp = null
+
+  return config
+}
+
+export function normalizePutDirectoryOptions(givenConfig: Object): PutDirectoryOptions {
+  const config: Object = normalizePutFilesOptions(givenConfig)
+
+  if (givenConfig.tick) {
+    if (typeof givenConfig.tick !== 'function') {
       throw new Error('config.tick must be a function')
     }
+    config.tick = givenConfig.tick
   } else {
     config.tick = function() { }
   }
-  if (config.validate) {
-    if (typeof config.validate !== 'function') {
+  if (givenConfig.validate) {
+    if (typeof givenConfig.validate !== 'function') {
       throw new Error('config.validate must be a function')
     }
+    config.validate = givenConfig.validate
   } else {
     config.validate = function(path) {
       return Path.basename(path).substr(0, 1) !== '.'
     }
   }
-  config.recursive = {}.hasOwnProperty.call(config, 'recursive') ? !!config.recursive : true
+  config.recursive = {}.hasOwnProperty.call(givenConfig, 'recursive') ? !!givenConfig.recursive : true
   return config
 }
 

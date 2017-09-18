@@ -17,14 +17,16 @@ export type ConfigGiven = {
   privateKey?: string,
 }
 
-export type ConfigDirectoryTransfer = {
+export type PutFilesOptions = {
+  sftp: ?Object,
+  sftpOptions: Object,
+  concurrency: number,
+}
+export type PutDirectoryOptions = {
+  sftp: ?Object,
+  sftpOptions: Object,
+  concurrency: number,
   recursive: boolean,
   tick: ((localPath: string, remotePath: string, error: ?Error) => void),
   validate: ((localPath: string) => boolean),
-}
-
-export type ConfigDirectoryTransferGiven = {
-  recursive?: boolean,
-  tick?: ((localPath: string, remotePath: string, error: ?Error) => void),
-  validate?: ((localPath: string) => boolean),
 }
