@@ -1,3 +1,8 @@
+#### 5.0.0
+
+- Change signature of `put{Files,Directory}` methods
+- Create empty directories remotely in `putDirectory`
+
 #### 4.3.3
 
 - Fix passing options in `execCommand`
