@@ -230,4 +230,26 @@ describe('SSH2', function() {
       expect(await exists(file)).toBe(true)
     }
   })
+  sshit('allows stream callbacks on exec', async function(port, client) {
+    await connectWithPassword(port, client)
+    const outputFromCallbacks = { stdout: [], stderr: [] }
+    await client.exec('node', [getFixturePath('test-program')], {
+      stream: 'both',
+      onStderr(chunk) { outputFromCallbacks.stderr.push(chunk) },
+      onStdout(chunk) { outputFromCallbacks.stdout.push(chunk) },
+    })
+    expect(outputFromCallbacks.stdout.join('').trim()).toBe('STDOUT')
+    expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
+  })
+  sshit('allows stream callbacks on execCommand', async function(port, client) {
+    await connectWithPassword(port, client)
+    const outputFromCallbacks = { stdout: [], stderr: [] }
+    await client.execCommand(`node ${getFixturePath('test-program')}`, {
+      stream: 'both',
+      onStderr(chunk) { outputFromCallbacks.stderr.push(chunk) },
+      onStdout(chunk) { outputFromCallbacks.stdout.push(chunk) },
+    })
+    expect(outputFromCallbacks.stdout.join('').trim()).toBe('STDOUT')
+    expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
+  })
 })
