@@ -238,7 +238,7 @@ class SSH {
     }
 
     try {
-      await pMap(files, async function(file) {
+      await pMap(files, async (file) => {
         const localFile = Path.join(localDirectory, file)
         const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/')
         const remoteFileDirectory = Path.dirname(remoteFile)
