@@ -1,5 +1,6 @@
 #### 5.0.0
 
+- Add `onStdout`, `onStderr` to `exec{,Command}`
 - Change signature of `put{Files,Directory}` methods
 - Create empty directories remotely in `putDirectory`
 
