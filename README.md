@@ -83,6 +83,16 @@ ssh.connect({
   ssh.exec('hh_client', ['--json'], { cwd: '/var/www', stream: 'stdout', options: { pty: true } }).then(function(result) {
     console.log('STDOUT: ' + result)
   })
+  // With streaming stdout/stderr callbacks
+  ssh.exec('hh_client', ['--json'], {
+    cwd: '/var/www',
+    onStdout(chunk) {
+      console.log('stdoutChunk', chunk.toString('utf8'))
+    },
+    onStderr(chunk) {
+      console.log('stderrChunk', chunk.toString('utf8'))
+    },
+  })
 })
 ```
 
@@ -102,13 +112,21 @@ type PutDirectoryOptions = {
   tick?: ((localPath: string, remotePath: string, error: ?Error) => void),
   validate?: ((localPath: string) => boolean),
 }
+type ExecOptions = {
+  cwd?: string,
+  options?: Object // passed to ssh2.exec
+  stdin?: string,
+  stream?: 'stdout' | 'stderr' | 'both',
+  onStdout?: ((chunk: Buffer) => void),
+  onStderr?: ((chunk: Buffer) => void),
+}
 
 class SSH{
   connect(config: SSH2Config): Promise<this>
   requestSFTP(): Promise<SSH2SFTP>
   requestShell(): Promise<SSH2Shell>
   mkdir(path: string, method: 'sftp' | 'exec' = 'sftp', givenSftp?: Object): Promise<string>
-  exec(command: string, parameters: Array<string>, options: { cwd?: string, options?: Object, stdin?: string, stream?: 'stdout' | 'stderr', 'both' } = {}): Promise<Object | string>
+  exec(command: string, parameters: Array<string>, options: ExecOptions = {}): Promise<Object | string>
   execCommand(command: string, options: { cwd: string, stdin: string } = {}): Promise<{ stdout: string, options?: Object, stderr: string, signal: ?string, code: number }>
   putFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
   getFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
