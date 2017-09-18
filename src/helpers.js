@@ -106,23 +106,25 @@ export function normalizePutFilesOptions(givenConfig: Object): PutFilesOptions {
 export function normalizePutDirectoryOptions(givenConfig: Object): PutDirectoryOptions {
   const config: Object = normalizePutFilesOptions(givenConfig)
 
-  if (config.tick) {
-    if (typeof config.tick !== 'function') {
+  if (givenConfig.tick) {
+    if (typeof givenConfig.tick !== 'function') {
       throw new Error('config.tick must be a function')
     }
+    config.tick = givenConfig.tick
   } else {
     config.tick = function() { }
   }
-  if (config.validate) {
-    if (typeof config.validate !== 'function') {
+  if (givenConfig.validate) {
+    if (typeof givenConfig.validate !== 'function') {
       throw new Error('config.validate must be a function')
     }
+    config.validate = givenConfig.validate
   } else {
     config.validate = function(path) {
       return Path.basename(path).substr(0, 1) !== '.'
     }
   }
-  config.recursive = {}.hasOwnProperty.call(config, 'recursive') ? !!config.recursive : true
+  config.recursive = {}.hasOwnProperty.call(givenConfig, 'recursive') ? !!givenConfig.recursive : true
   return config
 }
 
