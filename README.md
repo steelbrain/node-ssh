@@ -131,7 +131,7 @@ class SSH{
   putFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
   getFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
   putFiles(files: Array<{ local: string, remote: string }>, options: PutFilesOptions = {}): Promise<void>
-  putDirectory(localDirectory: string, remoteDirectory: string, options: PutDirectoryOptions: {}): Promise<boolean>
+  putDirectory(localDirectory: string, remoteDirectory: string, options: PutDirectoryOptions = {}): Promise<boolean>
   dispose(): void
 }
 ```
