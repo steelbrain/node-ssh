@@ -80,7 +80,9 @@ function handleSFTP(accept) {
     const handle = parseInt(givenHandle, 10)
     if (handles.has(handle)) {
       handles.delete(handle)
-      FS.close(handle)
+      FS.close(handle, function() {
+        /* No Op */
+      })
       sftpStream.status(reqid, STATUS_CODE.OK)
     } else {
       sftpStream.status(reqid, STATUS_CODE.FAILURE)

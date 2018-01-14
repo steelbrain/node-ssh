@@ -102,15 +102,15 @@ describe('SSH2', function() {
 
   sshit('creates directories with sftp properly', async function(port, client) {
     await connectWithPassword(port, client)
-    expect(await exists(getFixturePath('ignored/a/b', 'sftp'))).toBe(false)
-    await client.mkdir(getFixturePath('ignored/a/b', 'sftp'))
-    expect(await exists(getFixturePath('ignored/a/b', 'sftp'))).toBe(true)
+    expect(await exists(getFixturePath('ignored/a/b'))).toBe(false)
+    await client.mkdir(getFixturePath('ignored/a/b'), 'sftp')
+    expect(await exists(getFixturePath('ignored/a/b'))).toBe(true)
   })
   sshit('creates directories with exec properly', async function(port, client) {
     await connectWithPassword(port, client)
-    expect(await exists(getFixturePath('ignored/a/b', 'exec'))).toBe(false)
-    await client.mkdir(getFixturePath('ignored/a/b', 'exec'))
-    expect(await exists(getFixturePath('ignored/a/b', 'exec'))).toBe(true)
+    expect(await exists(getFixturePath('ignored/a/b'))).toBe(false)
+    await client.mkdir(getFixturePath('ignored/a/b'), 'exec')
+    expect(await exists(getFixturePath('ignored/a/b'))).toBe(true)
   })
   sshit('throws error when it cant create directories', async function(port, client) {
     await connectWithPassword(port, client)
@@ -189,13 +189,11 @@ describe('SSH2', function() {
       { local: getFixturePath('multiple/ii'), remote: getFixturePath('ignored/ii') },
       { local: getFixturePath('multiple/jj'), remote: getFixturePath('ignored/jj') },
     ]
-    for (const file of files) {
-      expect(await exists(file.remote)).toBe(false)
-    }
+    const existsBefore = await Promise.all(files.map(file => exists(file.remote)))
+    expect(existsBefore.every(Boolean)).toBe(false)
     await client.putFiles(files)
-    for (const file of files) {
-      expect(await exists(file.remote)).toBe(true)
-    }
+    const existsAfter = await Promise.all(files.map(file => exists(file.remote)))
+    expect(existsAfter.every(Boolean)).toBe(true)
   })
   sshit('puts entire directories at once', async function(port, client) {
     await connectWithPassword(port, client)
@@ -214,9 +212,8 @@ describe('SSH2', function() {
       getFixturePath('ignored/really/really/really/really/yes/deep files'),
       getFixturePath('ignored/really/really/really/really/deep'),
     ]
-    for (const file of remoteFiles) {
-      expect(await exists(file)).toBe(false)
-    }
+    const existsBefore = await Promise.all(remoteFiles.map(file => exists(file)))
+    expect(existsBefore.every(Boolean)).toBe(false)
     let ticks = 0
     await client.putDirectory(getFixturePath('multiple'), getFixturePath('ignored'), {
       tick(local, remote, error) {
@@ -226,9 +223,8 @@ describe('SSH2', function() {
       },
     })
     expect(ticks).toBe(remoteFiles.length)
-    for (const file of remoteFiles) {
-      expect(await exists(file)).toBe(true)
-    }
+    const existsAfter = await Promise.all(remoteFiles.map(file => exists(file)))
+    expect(existsAfter.every(Boolean)).toBe(true)
   })
   sshit('allows stream callbacks on exec', async function(port, client) {
     await connectWithPassword(port, client)
