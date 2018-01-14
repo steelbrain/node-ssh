@@ -123,7 +123,7 @@ describe('Helpers', function() {
       await expectToThrow(async function() {
         await normalizeConfig({
           host: 'localhost',
-          password() { },
+          password() {},
         })
       }, 'config.password must be a string')
     })

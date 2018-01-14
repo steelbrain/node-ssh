@@ -32,7 +32,9 @@ export async function mkdirSftp(path: string, sftp: Object): Promise<void> {
   let stats
   try {
     stats = await promisify(sftp.stat).call(sftp, path)
-  } catch (_) { /* No Op */ }
+  } catch (_) {
+    /* No Op */
+  }
   if (stats) {
     if (stats.isDirectory()) {
       // Already exists, nothing to worry about
@@ -112,7 +114,7 @@ export function normalizePutDirectoryOptions(givenConfig: Object): PutDirectoryO
     }
     config.tick = givenConfig.tick
   } else {
-    config.tick = function() { }
+    config.tick = function() {}
   }
   if (givenConfig.validate) {
     if (typeof givenConfig.validate !== 'function') {

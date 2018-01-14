@@ -10,7 +10,7 @@ import * as Helpers from './helpers'
 import type { ConfigGiven } from './types'
 
 class SSH {
-  connection: ?SSH2;
+  connection: ?SSH2
   constructor() {
     this.connection = null
   }
@@ -19,20 +19,21 @@ class SSH {
     this.connection = connection
     return new Promise(function(resolve) {
       resolve(Helpers.normalizeConfig(givenConfig))
-    }).then(config =>
-      new Promise((resolve, reject) => {
-        connection.on('error', reject)
-        connection.on('ready', () => {
-          connection.removeListener('error', reject)
-          resolve(this)
-        })
-        connection.on('end', () => {
-          if (this.connection === connection) {
-            this.connection = null
-          }
-        })
-        connection.connect(config)
-      }),
+    }).then(
+      config =>
+        new Promise((resolve, reject) => {
+          connection.on('error', reject)
+          connection.on('ready', () => {
+            connection.removeListener('error', reject)
+            resolve(this)
+          })
+          connection.on('end', () => {
+            if (this.connection === connection) {
+              this.connection = null
+            }
+          })
+          connection.connect(config)
+        }),
     )
   }
   async requestShell(): Promise<Object> {
@@ -59,10 +60,10 @@ class SSH {
       }
     } else {
       invariant(!givenSftp || typeof givenSftp === 'object', 'sftp must be an object')
-      const sftp = givenSftp || await this.requestSFTP()
+      const sftp = givenSftp || (await this.requestSFTP())
 
       const makeSftpDirectory = retry =>
-        Helpers.mkdirSftp(path, sftp).catch((error) => {
+        Helpers.mkdirSftp(path, sftp).catch(error => {
           if (retry && error && (error.message === 'No such file' || error.code === 'ENOENT')) {
             return this.mkdir(Path.dirname(path), 'sftp', sftp).then(() => makeSftpDirectory(false))
           }
@@ -85,15 +86,18 @@ class SSH {
       stdin?: string,
       stream?: string,
       options?: Object,
-      onStdout?: ((chunk: Buffer) => void),
-      onStderr?: ((chunk: Buffer) => void),
+      onStdout?: (chunk: Buffer) => void,
+      onStderr?: (chunk: Buffer) => void,
     } = {},
   ): Promise<string | Object> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof options === 'object' && options, 'options must be an Object')
     invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
     invariant(!options.stdin || typeof options.stdin === 'string', 'options.stdin must be a string')
-    invariant(!options.stream || ['stdout', 'stderr', 'both'].indexOf(options.stream) !== -1, 'options.stream must be among "stdout", "stderr" and "both"')
+    invariant(
+      !options.stream || ['stdout', 'stderr', 'both'].indexOf(options.stream) !== -1,
+      'options.stream must be among "stdout", "stderr" and "both"',
+    )
     invariant(!options.options || typeof options.options === 'object', 'options.options must be an object')
 
     const output = await this.execCommand([command].concat(shellEscape(parameters)).join(' '), options)
@@ -114,8 +118,8 @@ class SSH {
       cwd?: string,
       stdin?: string,
       options?: Object,
-      onStdout?: ((chunk: Buffer) => void),
-      onStderr?: ((chunk: Buffer) => void),
+      onStdout?: (chunk: Buffer) => void,
+      onStderr?: (chunk: Buffer) => void,
     } = {},
   ): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
     let command = givenCommand
@@ -132,23 +136,27 @@ class SSH {
     }
     const output = { stdout: [], stderr: [] }
     return new Promise(function(resolve, reject) {
-      connection.exec(command, options.options || {}, Helpers.generateCallback(function(stream) {
-        stream.on('data', function(chunk) {
-          if (options.onStdout) options.onStdout(chunk)
-          output.stdout.push(chunk)
-        })
-        stream.stderr.on('data', function(chunk) {
-          if (options.onStderr) options.onStderr(chunk)
-          output.stderr.push(chunk)
-        })
-        if (options.stdin) {
-          stream.write(options.stdin)
-          stream.end()
-        }
-        stream.on('close', function(code, signal) {
-          resolve({ code, signal, stdout: output.stdout.join('').trim(), stderr: output.stderr.join('').trim() })
-        })
-      }, reject))
+      connection.exec(
+        command,
+        options.options || {},
+        Helpers.generateCallback(function(stream) {
+          stream.on('data', function(chunk) {
+            if (options.onStdout) options.onStdout(chunk)
+            output.stdout.push(chunk)
+          })
+          stream.stderr.on('data', function(chunk) {
+            if (options.onStderr) options.onStderr(chunk)
+            output.stderr.push(chunk)
+          })
+          if (options.stdin) {
+            stream.write(options.stdin)
+            stream.end()
+          }
+          stream.on('close', function(code, signal) {
+            resolve({ code, signal, stdout: output.stdout.join('').trim(), stderr: output.stderr.join('').trim() })
+          })
+        }, reject),
+      )
     })
   }
   async getFile(localFile: string, remoteFile: string, givenSftp: ?Object = null, givenOpts: ?Object = null): Promise<void> {
@@ -159,7 +167,7 @@ class SSH {
     invariant(!givenOpts || typeof givenOpts === 'object', 'opts must be an object')
 
     const opts = givenOpts || {}
-    const sftp = givenSftp || await this.requestSFTP()
+    const sftp = givenSftp || (await this.requestSFTP())
 
     try {
       await new Promise(function(resolve, reject) {
@@ -181,17 +189,22 @@ class SSH {
 
     const that = this
     const opts = givenOpts || {}
-    const sftp = givenSftp || await this.requestSFTP()
+    const sftp = givenSftp || (await this.requestSFTP())
 
     function putFile(retry: boolean) {
       return new Promise(function(resolve, reject) {
-        sftp.fastPut(localFile, remoteFile, opts, Helpers.generateCallback(resolve, function(error) {
-          if (error.message === 'No such file' && retry) {
-            resolve(that.mkdir(Path.dirname(remoteFile), 'sftp', sftp).then(() => putFile(false)))
-          } else {
-            reject(error)
-          }
-        }))
+        sftp.fastPut(
+          localFile,
+          remoteFile,
+          opts,
+          Helpers.generateCallback(resolve, function(error) {
+            if (error.message === 'No such file' && retry) {
+              resolve(that.mkdir(Path.dirname(remoteFile), 'sftp', sftp).then(() => putFile(false)))
+            } else {
+              reject(error)
+            }
+          }),
+        )
       })
     }
 
@@ -216,10 +229,10 @@ class SSH {
 
     const transferred = []
     const config = Helpers.normalizePutFilesOptions(givenConfig)
-    const sftp = config.sftp || await this.requestSFTP()
+    const sftp = config.sftp || (await this.requestSFTP())
 
     try {
-      await pMap(files, async (file) => {
+      await pMap(files, async file => {
         await this.putFile(file.local, file.remote, sftp, config.sftpOptions)
         transferred.push(file)
       })
@@ -241,7 +254,7 @@ class SSH {
     invariant(typeof givenConfig === 'object' && givenConfig, 'config must be an object')
 
     const config = Helpers.normalizePutDirectoryOptions(givenConfig)
-    const sftp = config.sftp || await this.requestSFTP()
+    const sftp = config.sftp || (await this.requestSFTP())
 
     const scanned = await scanDirectory(localDirectory, config.recursive, config.validate)
     const files = scanned.files.map(i => Path.relative(localDirectory, i))
@@ -251,7 +264,7 @@ class SSH {
     let directoriesQueue = Promise.resolve()
     const directoriesCreated = new Set()
 
-    const createDirectory = async (path) => {
+    const createDirectory = async path => {
       if (!directoriesCreated.has(path)) {
         directoriesCreated.add(path)
         directoriesQueue = directoriesQueue.then(() => this.mkdir(path, 'sftp', sftp))
@@ -260,23 +273,35 @@ class SSH {
     }
 
     try {
-      await pMap(files, async (file) => {
-        const localFile = Path.join(localDirectory, file)
-        const remoteFile = Path.join(remoteDirectory, file).split(Path.sep).join('/')
-        const remoteFileDirectory = Path.dirname(remoteFile)
-        await createDirectory(remoteFileDirectory)
-        try {
-          await this.putFile(localFile, remoteFile, sftp, config.sftpOptions)
-          config.tick(localFile, remoteFile, null)
-        } catch (_) {
-          failed = true
-          config.tick(localFile, remoteFile, _)
-        }
-      }, { concurrency: config.concurrency })
-      await pMap(directories, async function(entry) {
-        const remoteEntry = Path.join(remoteDirectory, entry).split(Path.sep).join('/')
-        await createDirectory(remoteEntry)
-      }, { concurrency: config.concurrency })
+      await pMap(
+        files,
+        async file => {
+          const localFile = Path.join(localDirectory, file)
+          const remoteFile = Path.join(remoteDirectory, file)
+            .split(Path.sep)
+            .join('/')
+          const remoteFileDirectory = Path.dirname(remoteFile)
+          await createDirectory(remoteFileDirectory)
+          try {
+            await this.putFile(localFile, remoteFile, sftp, config.sftpOptions)
+            config.tick(localFile, remoteFile, null)
+          } catch (_) {
+            failed = true
+            config.tick(localFile, remoteFile, _)
+          }
+        },
+        { concurrency: config.concurrency },
+      )
+      await pMap(
+        directories,
+        async function(entry) {
+          const remoteEntry = Path.join(remoteDirectory, entry)
+            .split(Path.sep)
+            .join('/')
+          await createDirectory(remoteEntry)
+        },
+        { concurrency: config.concurrency },
+      )
     } finally {
       if (!config.sftp) {
         sftp.end()

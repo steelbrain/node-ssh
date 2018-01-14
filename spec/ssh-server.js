@@ -150,11 +150,14 @@ function handleAuthentication(ctx) {
 }
 
 export default function createServer() {
-  const server = new ssh2.Server({
-    hostKeys: [FS.readFileSync(PRIVATE_KEY_PATH)],
-  }, function(client) {
-    client.on('authentication', handleAuthentication)
-    client.on('session', handleSession)
-  })
+  const server = new ssh2.Server(
+    {
+      hostKeys: [FS.readFileSync(PRIVATE_KEY_PATH)],
+    },
+    function(client) {
+      client.on('authentication', handleAuthentication)
+      client.on('session', handleSession)
+    },
+  )
   return server
 }

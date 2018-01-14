@@ -27,6 +27,6 @@ export type PutDirectoryOptions = {
   sftpOptions: Object,
   concurrency: number,
   recursive: boolean,
-  tick: ((localPath: string, remotePath: string, error: ?Error) => void),
-  validate: ((localPath: string) => boolean),
+  tick: (localPath: string, remotePath: string, error: ?Error) => void,
+  validate: (localPath: string) => boolean,
 }

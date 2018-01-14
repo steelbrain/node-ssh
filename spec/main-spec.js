@@ -17,7 +17,7 @@ describe('SSH2', function() {
   function getFixturePath(path: string): string {
     return Path.join(__dirname, 'fixtures', path)
   }
-  function sshit(title: string, callback: ((port: number, client: SSH2, server: Object) => Promise<void>)): void {
+  function sshit(title: string, callback: (port: number, client: SSH2, server: Object) => Promise<void>): void {
     it(title, async function() {
       const server = createServer()
       const client = new SSH2()
@@ -235,8 +235,12 @@ describe('SSH2', function() {
     const outputFromCallbacks = { stdout: [], stderr: [] }
     await client.exec('node', [getFixturePath('test-program')], {
       stream: 'both',
-      onStderr(chunk) { outputFromCallbacks.stderr.push(chunk) },
-      onStdout(chunk) { outputFromCallbacks.stdout.push(chunk) },
+      onStderr(chunk) {
+        outputFromCallbacks.stderr.push(chunk)
+      },
+      onStdout(chunk) {
+        outputFromCallbacks.stdout.push(chunk)
+      },
     })
     expect(outputFromCallbacks.stdout.join('').trim()).toBe('STDOUT')
     expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
@@ -246,8 +250,12 @@ describe('SSH2', function() {
     const outputFromCallbacks = { stdout: [], stderr: [] }
     await client.execCommand(`node ${getFixturePath('test-program')}`, {
       stream: 'both',
-      onStderr(chunk) { outputFromCallbacks.stderr.push(chunk) },
-      onStdout(chunk) { outputFromCallbacks.stdout.push(chunk) },
+      onStderr(chunk) {
+        outputFromCallbacks.stderr.push(chunk)
+      },
+      onStdout(chunk) {
+        outputFromCallbacks.stdout.push(chunk)
+      },
     })
     expect(outputFromCallbacks.stdout.join('').trim()).toBe('STDOUT')
     expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
