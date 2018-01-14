@@ -4,7 +4,7 @@
   "description": "SS2 with Promises",
   "main": "lib/index.js",
   "scripts": {
-    "test": "(apm test) && (flow check) && (eslint . )",
+    "test": "(apm test) && (flow check) && (eslint . ) && (prettier -l '{src,spec}/**/*.js')",
     "clean": "rm -rf lib",
     "build": "npm run clean; babel src --out-dir lib",
     "watch": "npm run clean; babel src --out-dir lib --watch"
@@ -13,11 +13,7 @@
     "type": "git",
     "url": "https://github.com/steelbrain/node-ssh"
   },
-  "keywords": [
-    "ssh",
-    "ssh2",
-    "sftp"
-  ],
+  "keywords": ["ssh", "ssh2", "sftp"],
   "author": "steelbrain <i@steelbrain.me>",
   "license": "MIT",
   "bugs": {
