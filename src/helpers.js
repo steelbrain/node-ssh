@@ -87,6 +87,10 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
     }
   }
 
+  if (!Object.prototype.hasOwnProperty.call(config, 'tryKeyboard')) {
+    config.tryKeyboard = false
+  }
+
   if (config.tryKeyboard === true && typeof config.onKeyboardInteractive !== 'function') {
     config.onKeyboardInteractive = (name, instructions, instructionsLang, prompts, finish) => {
       if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
