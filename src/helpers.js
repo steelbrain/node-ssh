@@ -87,9 +87,7 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
     }
   }
 
-  if (!Object.prototype.hasOwnProperty.call(config, 'tryKeyboard')) {
-    config.tryKeyboard = false
-  }
+  config.tryKeyboard = !!config.tryKeyboard
 
   if (config.tryKeyboard === true && typeof config.onKeyboardInteractive !== 'function') {
     config.onKeyboardInteractive = (name, instructions, instructionsLang, prompts, finish) => {
