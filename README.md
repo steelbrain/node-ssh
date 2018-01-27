@@ -136,6 +136,32 @@ class SSH{
 }
 ```
 
+### Keyboard-interactive user authentication
+
+In some cases you have to enable keyboard-interactive user authentication. Otherwise you will get an `All configured authentication methods failed` error.
+
+#### Example:
+
+```js
+const password = 'test'
+
+ssh.connect({
+  host: 'localhost',
+  username: 'steel',
+  password,
+  tryKeyboard: true
+  onKeyboardInteractive: (name, instructions, instructionsLang, prompts, finish) => {
+      if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
+        finish([password])
+      }
+    }
+})
+```
+
+
+
+For further information see: https://github.com/mscdex/ssh2/issues/604
+
 ### License
 This project is licensed under the terms of MIT license. See the LICENSE file for more info.
 

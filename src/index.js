@@ -23,6 +23,9 @@ class SSH {
       config =>
         new Promise((resolve, reject) => {
           connection.on('error', reject)
+          if (config.onKeyboardInteractive) {
+            connection.on('keyboard-interactive', config.onKeyboardInteractive)
+          }
           connection.on('ready', () => {
             connection.removeListener('error', reject)
             resolve(this)

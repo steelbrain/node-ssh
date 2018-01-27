@@ -86,6 +86,21 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
       throw new Error('config.password must be a string')
     }
   }
+
+  if (!Object.prototype.hasOwnProperty.call(config, 'tryKeyboard')) {
+    config.tryKeyboard = false
+  }
+
+  if (config.tryKeyboard === true && typeof config.onKeyboardInteractive !== 'function') {
+    config.onKeyboardInteractive = (name, instructions, instructionsLang, prompts, finish) => {
+      if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
+        finish([config.password])
+      }
+    }
+  } else {
+    config.onKeyboardInteractive = null
+  }
+
   return config
 }
 
