@@ -148,7 +148,7 @@ const password = 'test'
 ssh.connect({
   host: 'localhost',
   username: 'steel',
-  port: '2222',
+  port: 22,
   password,
   tryKeyboard: true
   onKeyboardInteractive: (name, instructions, instructionsLang, prompts, finish) => {
