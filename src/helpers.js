@@ -89,10 +89,12 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
 
   config.tryKeyboard = !!config.tryKeyboard
 
-  if (config.tryKeyboard === true && typeof config.onKeyboardInteractive !== 'function') {
-    config.onKeyboardInteractive = (name, instructions, instructionsLang, prompts, finish) => {
-      if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
-        finish([config.password])
+  if (config.tryKeyboard === true) {
+      if (typeof config.onKeyboardInteractive !== 'function') {
+      config.onKeyboardInteractive = (name, instructions, instructionsLang, prompts, finish) => {
+        if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
+          finish([config.password])
+        }
       }
     }
   } else {
