@@ -150,7 +150,7 @@ ssh.connect({
   username: 'steel',
   port: 22,
   password,
-  tryKeyboard: true
+  tryKeyboard: true,
   onKeyboardInteractive: (name, instructions, instructionsLang, prompts, finish) => {
       if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
         finish([password])
