@@ -1,3 +1,7 @@
+#### 5.1.1
+
+* Fixed an issue with keyboard authentication validation
+
 #### 5.1.0
 
 * Add keyboard authentication support (Thanks @dominiklessel)
