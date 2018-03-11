@@ -27,7 +27,7 @@
     "sb-promisify": "^2.0.1",
     "sb-scandir": "^2.0.0",
     "shell-escape": "^0.2.0",
-    "ssh2": "^0.5.0"
+    "ssh2": "^0.6.0"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
