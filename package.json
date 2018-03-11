@@ -39,6 +39,6 @@
     "prettier": "^1.10.2",
     "pty.js": "^0.3.1",
     "sb-babel-cli": "0.1.1",
-    "ssh2-streams": "^0.1.20"
+    "ssh2-streams": "^0.2.0"
   }
 }
