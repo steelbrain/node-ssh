@@ -1,3 +1,7 @@
+#### 5.1.2
+
+* Fix timeout issue with authentication
+
 #### 5.1.1
 
 * Fixed an issue with keyboard authentication validation

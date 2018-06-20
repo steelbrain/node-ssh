@@ -39,7 +39,10 @@ class SSH {
             if (this.connection === connection) {
               this.connection = null
             }
-            reject(new Error('No response from server'))
+            const error = new Error('No response from server')
+            // $FlowIgnore: Custom attribute
+            error.code = 'ETIMEDOUT'
+            reject(error)
           })
           connection.connect(config)
         }),
