@@ -35,15 +35,11 @@ class SSH {
               this.connection = null
             }
           })
-          connection.on('close', hadError => {
+          connection.on('close', () => {
             if (this.connection === connection) {
               this.connection = null
             }
-            if (hadError) {
-              reject()
-            } else {
-              resolve(this)
-            }
+            reject(new Error('No response from server'))
           })
           connection.connect(config)
         }),
