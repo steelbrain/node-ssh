@@ -171,17 +171,18 @@ class SSH {
             stream.write(options.stdin)
             stream.end()
           } else if (options.stdin instanceof EventEmitter) {
-            options.stdin.on('data', function(chunk) {
+            const events = options.stdin
+            events.on('data', function(chunk) {
               stream.write(chunk)
             })
-            options.stdin.on('end', function() {
+            events.on('end', function() {
               stream.end()
             })
-            options.stdin.on('signal', function(signal, cb) {
+            events.on('signal', function(signal, cb) {
               const cont = stream.signal(signal)
               if (cb) cont ? cb() : stream.once('continue', cb)
             })
-            options.stdin.on('window', function({ rows, cols, height, width }, cb) {
+            events.on('window', function({ rows, cols, height, width }, cb) {
               const cont = stream.setWindow(rows, cols, height, width)
               if (cb) cont ? cb() : stream.once('continue', cb)
             })
