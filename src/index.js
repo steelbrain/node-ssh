@@ -1,6 +1,7 @@
 /* @flow */
 
 import Path from 'path'
+import EventEmitter from 'events'
 import SSH2 from 'ssh2'
 import pMap from 'p-map'
 import invariant from 'assert'
@@ -95,7 +96,7 @@ class SSH {
     parameters: Array<string> = [],
     options: {
       cwd?: string,
-      stdin?: string,
+      stdin?: string | EventEmitter,
       stream?: string,
       options?: Object,
       onStdout?: (chunk: Buffer) => void,
@@ -105,7 +106,10 @@ class SSH {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof options === 'object' && options, 'options must be an Object')
     invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
-    invariant(!options.stdin || typeof options.stdin === 'string', 'options.stdin must be a string')
+    invariant(
+      !options.stdin || typeof options.stdin === 'string' || options.stdin instanceof EventEmitter,
+      'options.stdin must be a string or an EventEmitter',
+    )
     invariant(
       !options.stream || ['stdout', 'stderr', 'both'].indexOf(options.stream) !== -1,
       'options.stream must be among "stdout", "stderr" and "both"',
@@ -128,7 +132,7 @@ class SSH {
     givenCommand: string,
     options: {
       cwd?: string,
-      stdin?: string,
+      stdin?: string | EventEmitter,
       options?: Object,
       onStdout?: (chunk: Buffer) => void,
       onStderr?: (chunk: Buffer) => void,
@@ -139,7 +143,10 @@ class SSH {
     invariant(connection, 'Not connected to server')
     invariant(typeof options === 'object' && options, 'options must be an Object')
     invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
-    invariant(!options.stdin || typeof options.stdin === 'string', 'options.stdin must be a string')
+    invariant(
+      !options.stdin || typeof options.stdin === 'string' || options.stdin instanceof EventEmitter,
+      'options.stdin must be a string or an EventEmitter',
+    )
     invariant(!options.options || typeof options.options === 'object', 'options.options must be an object')
 
     if (options.cwd) {
@@ -160,9 +167,24 @@ class SSH {
             if (options.onStderr) options.onStderr(chunk)
             output.stderr.push(chunk)
           })
-          if (options.stdin) {
+          if (typeof options.stdin == 'string') {
             stream.write(options.stdin)
             stream.end()
+          } else if (options.stdin instanceof EventEmitter) {
+            options.stdin.on('data', function(chunk) {
+              stream.write(chunk)
+            })
+            options.stdin.on('end', function() {
+              stream.end()
+            })
+            options.stdin.on('signal', function(signal, cb) {
+              const cont = stream.signal(signal)
+              if (cb) cont ? cb() : stream.once('continue', cb)
+            })
+            options.stdin.on('window', function({ rows, cols, height, width }, cb) {
+              const cont = stream.setWindow(rows, cols, height, width)
+              if (cb) cont ? cb() : stream.once('continue', cb)
+            })
           }
           stream.on('close', function(code, signal) {
             resolve({ code, signal, stdout: output.stdout.join('').trim(), stderr: output.stderr.join('').trim() })

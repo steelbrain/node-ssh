@@ -115,7 +115,7 @@ type PutDirectoryOptions = {
 type ExecOptions = {
   cwd?: string,
   options?: Object // passed to ssh2.exec
-  stdin?: string,
+  stdin?: string | EventEmitter,
   stream?: 'stdout' | 'stderr' | 'both',
   onStdout?: ((chunk: Buffer) => void),
   onStderr?: ((chunk: Buffer) => void),
