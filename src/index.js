@@ -180,11 +180,17 @@ class SSH {
             })
             events.on('signal', function(signal, cb) {
               const cont = stream.signal(signal)
-              if (cb) cont ? cb() : stream.once('continue', cb)
+              if (cb) {
+                if (cont) cb()
+                else stream.once('continue', cb)
+              }
             })
             events.on('window', function({ rows, cols, height, width }, cb) {
               const cont = stream.setWindow(rows, cols, height, width)
-              if (cb) cont ? cb() : stream.once('continue', cb)
+              if (cb) {
+                if (cont) cb()
+                else stream.once('continue', cb)
+              }
             })
           }
           stream.on('close', function(code, signal) {
