@@ -167,7 +167,7 @@ class SSH {
             if (options.onStderr) options.onStderr(chunk)
             output.stderr.push(chunk)
           })
-          if (typeof options.stdin == 'string') {
+          if (typeof options.stdin == 'string' && options.stdin) {
             stream.write(options.stdin)
             stream.end()
           } else if (options.stdin instanceof EventEmitter) {
