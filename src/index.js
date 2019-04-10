@@ -260,7 +260,7 @@ class SSH {
   async putDirectory(localDirectory: string, remoteDirectory: string, givenConfig: Object = {}): Promise<boolean> {
     invariant(this.connection, 'Not connected to server')
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
-    invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'localDirectory must be a string')
+    invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
     invariant(await Helpers.exists(localDirectory), `localDirectory does not exist at ${localDirectory}`)
     invariant((await Helpers.stat(localDirectory)).isDirectory(), `localDirectory is not a directory at ${localDirectory}`)
     invariant(typeof givenConfig === 'object' && givenConfig, 'config must be an object')
