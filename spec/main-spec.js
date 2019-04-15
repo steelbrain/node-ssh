@@ -63,6 +63,9 @@ async function connectWithInlinePrivateKey(port, client) {
 test.after(function() {
   ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
 })
+test.before(function() {
+  ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
+})
 
 sshit('connects to a server with password', async function(t, port, client) {
   await t.notThrowsAsync(async function() {
