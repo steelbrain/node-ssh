@@ -49,14 +49,14 @@ class SSH {
     )
   }
   async requestShell(): Promise<Object> {
-    const connection = this.connection
+    const { connection } = this
     invariant(connection, 'Not connected to server')
     return new Promise(function(resolve, reject) {
       connection.shell(Helpers.generateCallback(resolve, reject))
     })
   }
   async requestSFTP(): Promise<Object> {
-    const connection = this.connection
+    const { connection } = this
     invariant(connection, 'Not connected to server')
     return new Promise(function(resolve, reject) {
       connection.sftp(Helpers.generateCallback(resolve, reject))
@@ -135,7 +135,7 @@ class SSH {
     } = {},
   ): Promise<{ stdout: string, stderr: string, code: number, signal: ?string }> {
     let command = givenCommand
-    const connection = this.connection
+    const { connection } = this
     invariant(connection, 'Not connected to server')
     invariant(typeof options === 'object' && options, 'options must be an Object')
     invariant(!options.cwd || typeof options.cwd === 'string', 'options.cwd must be a string')
@@ -232,7 +232,7 @@ class SSH {
     invariant(this.connection, 'Not connected to server')
     invariant(Array.isArray(files), 'files must be an array')
 
-    for (let i = 0, length = files.length; i < length; ++i) {
+    for (let i = 0, { length } = files; i < length; ++i) {
       const file = files[i]
       invariant(file, 'files items must be valid objects')
       invariant(file.local && typeof file.local === 'string', `files[${i}].local must be a string`)

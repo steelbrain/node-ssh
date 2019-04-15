@@ -24,7 +24,7 @@ function handleSFTP(accept) {
     }
     handles.add(handleId)
 
-    const handle = new Buffer(4)
+    const handle = Buffer.alloc(4)
     handle.write(handleId.toString())
     sftpStream.handle(reqid, handle)
   })
@@ -35,7 +35,7 @@ function handleSFTP(accept) {
       return
     }
 
-    const contents = new Buffer(length)
+    const contents = Buffer.alloc(length)
     try {
       FS.readSync(handle, contents, 0, length, offset)
     } catch (error) {

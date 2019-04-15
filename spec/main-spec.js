@@ -1,3 +1,5 @@
+// @flow
+
 import fs from 'fs'
 import path from 'path'
 import invariant from 'assert'
@@ -70,6 +72,11 @@ sshit('connects to a server with password', async function(t, port, client) {
 sshit('connects to a server with a private key', async function(t, port, client) {
   await t.notThrowsAsync(async function() {
     await connectWithPrivateKey(port, client)
+  })
+})
+sshit('connects to a server with an inline private key', async function(t, port, client) {
+  await t.notThrowsAsync(async function() {
+    await connectWithInlinePrivateKey(port, client)
   })
 })
 sshit('requests a shell that works', async function(t, port, client) {
