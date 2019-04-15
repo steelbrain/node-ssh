@@ -4,7 +4,11 @@
   "description": "SS2 with Promises",
   "main": "lib/index.js",
   "scripts": {
-    "test": "(apm test) && (flow check) && (eslint . ) && (prettier -l '{src,spec}/**/*.js')",
+    "test:spec": "ava spec/*-spec.js",
+    "test:flow": "flow check",
+    "test:lint": "eslint .",
+    "test:prettier": "prettier -l '{src,spec}/**/*.js'",
+    "test": "(npm run test:spec) && (npm run test:flow) && (npm run test:lint) && (npm run test:prettier)",
     "build": "sb-babel-cli -o lib src",
     "watch": "npm run build -- -w"
   },
@@ -33,10 +37,20 @@
     "@babel/core": "^7.4.3",
     "@babel/preset-env": "^7.4.3",
     "@babel/preset-flow": "^7.0.0",
+    "@babel/register": "^7.4.0",
+    "ava": "^1.4.1",
     "eslint-config-steelbrain": "^7.0.0",
     "flow-bin": "^0.97.0",
     "node-pty": "^0.8.1",
     "sb-babel-cli": "^1.2.1",
     "ssh2-streams": "^0.4.2"
+  },
+  "ava": {
+    "files": [
+      "spec/*.js"
+    ],
+    "require": [
+      "@babel/register"
+    ]
   }
 }

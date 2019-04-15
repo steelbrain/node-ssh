@@ -1,6 +1,4 @@
-/* @flow */
-
-import FS from 'fs'
+import fs from 'fs'
 import Path from 'path'
 import invariant from 'assert'
 import ChildProcess from 'child_process'
@@ -57,7 +55,7 @@ describe('SSH2', function() {
       host: '127.0.0.1',
       port,
       username: 'steel',
-      privateKey: FS.readFileSync(PRIVATE_KEY_PATH, 'utf8'),
+      privateKey: fs.readFileSync(PRIVATE_KEY_PATH, 'utf8'),
     })
   }
 
@@ -164,7 +162,7 @@ describe('SSH2', function() {
     expect(await exists(targetFile)).toBe(false)
     await client.getFile(targetFile, sourceFile)
     expect(await exists(targetFile)).toBe(true)
-    expect(FS.readFileSync(targetFile, 'utf8').trim()).toBe(FS.readFileSync(sourceFile, 'utf8').trim())
+    expect(fs.readFileSync(targetFile, 'utf8').trim()).toBe(fs.readFileSync(sourceFile, 'utf8').trim())
   })
   sshit('puts files properly', async function(port, client) {
     await connectWithPassword(port, client)
@@ -173,7 +171,7 @@ describe('SSH2', function() {
     expect(await exists(targetFile)).toBe(false)
     await client.putFile(sourceFile, targetFile)
     expect(await exists(targetFile)).toBe(true)
-    expect(FS.readFileSync(targetFile, 'utf8').trim()).toBe(FS.readFileSync(sourceFile, 'utf8').trim())
+    expect(fs.readFileSync(targetFile, 'utf8').trim()).toBe(fs.readFileSync(sourceFile, 'utf8').trim())
   })
   sshit('puts multiple files properly', async function(port, client) {
     await connectWithPassword(port, client)

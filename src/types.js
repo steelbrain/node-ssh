@@ -7,6 +7,7 @@ export type Config = {
   username: string,
   password: ?string,
   privateKey: ?string,
+  onKeyboardInteractive: ?() => void,
 }
 
 export type ConfigGiven = {
@@ -15,6 +16,7 @@ export type ConfigGiven = {
   username: string,
   password?: string,
   privateKey?: string,
+  onKeyboardInteractive?: () => void | boolean,
 }
 
 export type PutFilesOptions = {
