@@ -9,8 +9,8 @@
     "test:lint": "eslint .",
     "test:prettier": "prettier -l '{src,spec}/**/*.js'",
     "test": "(npm run test:spec) && (npm run test:flow) && (npm run test:lint) && (npm run test:prettier)",
-    "build": "sb-babel-cli -o lib src",
-    "watch": "npm run build -- -w"
+    "prepare": "sb-babel-cli -o lib src",
+    "watch": "npm run prepare -- -w"
   },
   "repository": {
     "type": "git",
