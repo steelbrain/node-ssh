@@ -1,3 +1,8 @@
+#### 6.0.0
+
+* Breaking upgrade to `ssh2` dependency
+* Internal cleanup / testing system overhaul
+
 #### 5.1.2
 
 * Fix timeout issue with authentication
