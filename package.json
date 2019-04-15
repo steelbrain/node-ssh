@@ -27,7 +27,7 @@
     "sb-promisify": "^2.0.1",
     "sb-scandir": "^2.0.0",
     "shell-escape": "^0.2.0",
-    "ssh2": "^0.5.0"
+    "ssh2": "^0.8.2"
   },
   "devDependencies": {
     "babel-core": "^6.26.0",
@@ -39,6 +39,6 @@
     "prettier": "^1.10.2",
     "pty.js": "^0.3.1",
     "sb-babel-cli": "0.1.1",
-    "ssh2-streams": "^0.1.20"
+    "ssh2-streams": "^0.4.2"
   }
 }
