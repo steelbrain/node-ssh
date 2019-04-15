@@ -4,9 +4,13 @@
   "description": "SS2 with Promises",
   "main": "lib/index.js",
   "scripts": {
-    "test": "(apm test) && (flow check) && (eslint . ) && (prettier -l '{src,spec}/**/*.js')",
-    "build": "sb-babel-cli -o lib src",
-    "watch": "npm run build -- -w"
+    "test:spec": "ava spec/*-spec.js",
+    "test:flow": "flow check",
+    "test:lint": "eslint .",
+    "test:prettier": "prettier -l '{src,spec}/**/*.js'",
+    "test": "(npm run test:spec) && (npm run test:flow) && (npm run test:lint) && (npm run test:prettier)",
+    "prepare": "sb-babel-cli -o lib src",
+    "watch": "npm run prepare -- -w"
   },
   "repository": {
     "type": "git",
@@ -23,22 +27,31 @@
     "url": "https://github.com/steelbrain/node-ssh/issues"
   },
   "dependencies": {
-    "p-map": "^1.2.0",
+    "p-map": "^2.1.0",
     "sb-promisify": "^2.0.1",
     "sb-scandir": "^2.0.0",
     "shell-escape": "^0.2.0",
-    "ssh2": "^0.5.0"
+    "ssh2": "^0.8.2"
   },
   "devDependencies": {
-    "babel-core": "^6.26.0",
-    "babel-preset-steelbrain": "^5.0.3",
-    "eslint-config-prettier": "^2.9.0",
-    "eslint-config-steelbrain": "^4.0.1",
-    "flow-bin": "^0.63.1",
-    "jasmine-fix": "^1.3.1",
-    "prettier": "^1.10.2",
+    "@babel/core": "^7.4.3",
+    "@babel/preset-env": "^7.4.3",
+    "@babel/preset-flow": "^7.0.0",
+    "@babel/register": "^7.4.0",
+    "ava": "^1.4.1",
+    "eslint-config-steelbrain": "^7.0.0",
+    "flow-bin": "^0.97.0",
+    "prettier": "^1.17.0",
     "pty.js": "^0.3.1",
-    "sb-babel-cli": "0.1.1",
-    "ssh2-streams": "^0.1.20"
+    "sb-babel-cli": "^1.2.1",
+    "ssh2-streams": "^0.4.2"
+  },
+  "ava": {
+    "files": [
+      "spec/*.js"
+    ],
+    "require": [
+      "@babel/register"
+    ]
   }
 }

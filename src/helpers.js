@@ -1,4 +1,4 @@
-/* @flow */
+// @flow
 
 import FS from 'fs'
 import Path from 'path'
@@ -14,7 +14,7 @@ export const readdir = promisify(FS.readdir)
 function transformError(givenError) {
   const code = CODE_REGEXP.exec(givenError)
   if (code) {
-    // eslint-disable-next-line no-param-reassign
+    // eslint-disable-next-line no-param-reassign,prefer-destructuring
     givenError.code = code[1]
   }
   return givenError
@@ -66,7 +66,7 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
     throw new Error('config.host or config.sock must be provided')
   }
   if (config.privateKey) {
-    const privateKey = config.privateKey
+    const { privateKey } = config
     if (typeof privateKey !== 'string') {
       throw new Error('config.privateKey must be a string')
     }
@@ -81,7 +81,7 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
       }
     }
   } else if (config.password) {
-    const password = config.password
+    const { password } = config
     if (typeof password !== 'string') {
       throw new Error('config.password must be a string')
     }

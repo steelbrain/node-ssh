@@ -1,15 +1,10 @@
-/* @flow */
+import path from 'path'
 
-import Path from 'path'
+export const PUBLIC_KEY_PATH = path.join(__dirname, 'fixtures', 'id_rsa.pub')
+export const PRIVATE_KEY_PATH = path.join(__dirname, 'fixtures', 'id_rsa')
 
-export const PUBLIC_KEY_PATH = Path.join(__dirname, 'fixtures', 'id_rsa.pub')
-export const PRIVATE_KEY_PATH = Path.join(__dirname, 'fixtures', 'id_rsa')
-
-export async function expectToThrow(callback: () => Promise<void> | void, message: string) {
-  try {
-    await callback()
-    throw new Error('Function did not throw an error')
-  } catch (error) {
-    expect(error.message).toBe(message)
-  }
+export function wait(delay) {
+  return new Promise(function(resolve) {
+    setTimeout(resolve, delay)
+  })
 }

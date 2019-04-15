@@ -1,3 +1,10 @@
 {
-  "presets": ["steelbrain"]
+  "presets": [
+    "@babel/flow",
+    ["@babel/env", {
+      "targets": {
+        "node": "6"
+      }
+    }]
+  ]
 }

@@ -1,0 +1,39 @@
+version: 2
+jobs:
+  build_and_test:
+    working_directory: ~/php-serialize
+    # pty.js only works upto Node v8
+    docker:
+      - image: node:8-jessie
+    steps:
+      - checkout
+      - restore_cache:
+          name: Restore NPM Package Cache
+          keys:
+            - npm-packages-{{ .Branch }}-{{ checksum "package-lock.json" }}
+            - npm-packages-{{ .Branch }}
+            - npm-packages-master
+            - npm-packages-
+      - run:
+          name: Packager Version
+          command: npm --version
+      - run:
+          name: Install Dependencies
+          command: npm install
+      - save_cache:
+          name: Save NPM Package Cache
+          key: npm-packages-{{ .Branch }}-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules/
+      - run:
+          name: Compile sources
+          command: npm run prepare
+      - run:
+          name: Test
+          command: npm run test
+
+workflows:
+  version: 2
+  build_and_test:
+    jobs:
+      - build_and_test
