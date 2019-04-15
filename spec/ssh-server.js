@@ -4,7 +4,7 @@ import FS from 'fs'
 import { SFTPStream } from 'ssh2-streams'
 import ChildProcess from 'child_process'
 
-import pty from 'pty.js'
+import * as pty from 'pty.js'
 import ssh2 from 'ssh2'
 import { PRIVATE_KEY_PATH } from './helpers'
 
