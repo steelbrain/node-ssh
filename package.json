@@ -40,7 +40,7 @@
     "@babel/register": "^7.4.0",
     "ava": "^1.4.1",
     "eslint-config-steelbrain": "^7.0.0",
-    "flow-bin": "^0.97.0",
+    "flow-bin": "^0.98.0",
     "prettier": "^1.17.0",
     "pty.js": "^0.3.1",
     "sb-babel-cli": "^1.2.1",
