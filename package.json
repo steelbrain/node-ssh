@@ -38,7 +38,7 @@
     "@babel/preset-env": "^7.4.3",
     "@babel/preset-flow": "^7.0.0",
     "@babel/register": "^7.4.0",
-    "ava": "^1.4.1",
+    "ava": "^2.4.0",
     "eslint-config-steelbrain": "^7.0.0",
     "flow-bin": "^0.97.0",
     "prettier": "^1.17.0",
