@@ -12,6 +12,7 @@
     "prepare": "sb-babel-cli -o lib src",
     "watch": "npm run prepare -- -w"
   },
+  "typings": "node-ssh.d.ts",
   "repository": {
     "type": "git",
     "url": "https://github.com/steelbrain/node-ssh"
