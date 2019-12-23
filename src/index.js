@@ -232,7 +232,7 @@ class SSH {
     invariant(this.connection, 'Not connected to server')
     invariant(Array.isArray(files), 'files must be an array')
 
-    for (let i = 0, { length } = files; i < length; ++i) {
+    for (let i = 0, { length } = files; i < length; i += 1) {
       const file = files[i]
       invariant(file, 'files items must be valid objects')
       invariant(file.local && typeof file.local === 'string', `files[${i}].local must be a string`)
