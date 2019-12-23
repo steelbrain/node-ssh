@@ -27,7 +27,7 @@
     "url": "https://github.com/steelbrain/node-ssh/issues"
   },
   "dependencies": {
-    "p-map": "^2.1.0",
+    "p-map": "^3.0.0",
     "sb-promisify": "^2.0.1",
     "sb-scandir": "^2.0.0",
     "shell-escape": "^0.2.0",
@@ -38,11 +38,11 @@
     "@babel/preset-env": "^7.7.7",
     "@babel/preset-flow": "^7.7.4",
     "@babel/register": "^7.7.7",
-    "ava": "^1.4.1",
+    "ava": "^2.4.0",
     "eslint-config-steelbrain": "^8.0.0-beta1",
-    "flow-bin": "^0.97.0",
+    "flow-bin": "^0.114.0",
     "pty.js": "^0.3.1",
-    "sb-babel-cli": "^1.2.1",
+    "sb-babel-cli": "^2.1.0",
     "ssh2-streams": "^0.4.8"
   },
   "ava": {
