@@ -1,3 +1,7 @@
+#### 7.0.0
+
+* Potential breaking upgrade to `ssh2` dependency
+
 #### 6.0.0
 
 * Breaking upgrade to `ssh2` dependency
