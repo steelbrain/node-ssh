@@ -18,9 +18,11 @@ function getFixturePath(fixturePath: string): string {
 }
 function sshit(title: string, callback: (t: Object, port: number, client: SSH2, server: Object) => Promise<void>): void {
   test(title, async function(t) {
+    ports += 1
+
     const server = createServer()
     const client = new SSH2()
-    const port = ports++
+    const port = ports
     await new Promise(function(resolve) {
       server.listen(port, '127.0.0.1', resolve)
     })
@@ -218,7 +220,7 @@ sshit('puts entire directories at once', async function(t, port, client) {
     tick(local, remote, error) {
       t.is(error, null)
       t.is(remoteFiles.indexOf(remote) !== -1, true)
-      ticks++
+      ticks += 1
     },
   })
   t.is(ticks, remoteFiles.length)
