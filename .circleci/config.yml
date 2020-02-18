@@ -1,7 +1,7 @@
 version: 2
 jobs:
   build_and_test:
-    working_directory: ~/php-serialize
+    working_directory: ~/project
     # pty.js only works upto Node v8
     docker:
       - image: node:8-jessie
