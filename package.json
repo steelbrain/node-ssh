@@ -42,7 +42,7 @@
     "babel-eslint": "^10.0.3",
     "eslint-config-steelbrain": "^8.0.0-beta1",
     "eslint-plugin-flowtype": "^4.5.2",
-    "flow-bin": "^0.114.0",
+    "flow-bin": "^0.119.0",
     "pty.js": "^0.3.1",
     "sb-babel-cli": "^2.1.0",
     "ssh2-streams": "^0.4.8"
