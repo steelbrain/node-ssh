@@ -75,7 +75,7 @@ export async function normalizeConfig(givenConfig: ConfigGiven): Promise<Config>
         config.privateKey = await readFile(privateKey, 'utf8')
       } catch (error) {
         if (error.code === 'ENOENT') {
-          throw new Error(`config.privateKey does not exist at ${privateKey}`)
+          throw new Error(`config.privateKey does not exist at given fs path`)
         }
         throw error
       }
