@@ -1,3 +1,7 @@
+#### 7.0.1
+
+* Do not include privateKey path in error message
+
 #### 7.0.0
 
 * Potential breaking upgrade to `ssh2` dependency
