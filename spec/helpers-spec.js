@@ -178,7 +178,7 @@ test('throws if privateKey is a file and does not exist', async function(t) {
       host: 'localhost',
       privateKey: keyPath,
     })
-  }, `config.privateKey does not exist at ${keyPath}`)
+  }, `config.privateKey does not exist at given fs path`)
 })
 test('does not throw if privateKey is valid', async function(t) {
   await t.notThrowsAsync(async function() {
