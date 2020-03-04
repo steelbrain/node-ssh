@@ -143,8 +143,7 @@ class SSH {
     invariant(!options.options || typeof options.options === 'object', 'options.options must be an object')
 
     if (options.cwd) {
-      // NOTE: Output piping cd command to hide directory non-existent errors
-      command = `cd ${shellEscape([options.cwd])} 1> /dev/null 2> /dev/null; ${command}`
+      command = `cd ${shellEscape([options.cwd])}; ${command}`
     }
     const output = { stdout: [], stderr: [] }
     return new Promise(function(resolve, reject) {
