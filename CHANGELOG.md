@@ -1,3 +1,7 @@
+#### 8.0.0
+
+* Stop swallowing non-existent cwd errors in `execCommand` #272 (Thanks @dadamssg)
+
 #### 7.0.1
 
 * Do not include privateKey path in error message
