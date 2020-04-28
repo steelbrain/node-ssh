@@ -38,7 +38,7 @@
     "@babel/preset-env": "^7.7.7",
     "@babel/preset-flow": "^7.7.4",
     "@babel/register": "^7.7.7",
-    "ava": "^2.4.0",
+    "ava": "^3.8.1",
     "babel-eslint": "^10.0.3",
     "eslint-config-steelbrain": "^8.0.0-beta1",
     "eslint-plugin-flowtype": "^4.5.2",
