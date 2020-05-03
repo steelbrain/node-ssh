@@ -1,3 +1,18 @@
 {
-  "extends": ["steelbrain", "plugin:flowtype/recommended", "prettier", "prettier/flowtype"]
+  "extends": "steelbrain",
+  "rules": {
+    "camelcase": "warn",
+    "prettier/prettier": "off",
+    "no-underscore-dangle": "off",
+    "no-use-before-define": "off",
+    "import/extensions": "off",
+    "@typescript-eslint/no-use-before-define": "off",
+    "@typescript-eslint/no-inferrable-types": "off",
+    "@typescript-eslint/member-delimiter-style": "off"
+  },
+  "settings": {
+    "react": {
+      "version": "16.0"
+    }
+  }
 }

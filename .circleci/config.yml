@@ -2,35 +2,34 @@ version: 2
 jobs:
   build_and_test:
     working_directory: ~/project
-    # pty.js only works upto Node v8
     docker:
-      - image: node:8-jessie
+      - image: node:12
     steps:
       - checkout
       - restore_cache:
-          name: Restore NPM Package Cache
+          name: Restore Yarn Package Cache
           keys:
-            - npm-packages-{{ .Branch }}-{{ checksum "package-lock.json" }}
-            - npm-packages-{{ .Branch }}
-            - npm-packages-master
-            - npm-packages-
+            - yarn-packages-{{ .Branch }}-{{ checksum "yarn.lock" }}
+            - yarn-packages-{{ .Branch }}
+            - yarn-packages-master
+            - yarn-packages-
       - run:
           name: Packager Version
-          command: npm --version
+          command: yarn --version
       - run:
           name: Install Dependencies
-          command: npm install
+          command: yarn
       - save_cache:
-          name: Save NPM Package Cache
-          key: npm-packages-{{ .Branch }}-{{ checksum "package-lock.json" }}
+          name: Save Yarn Package Cache
+          key: yarn-packages-{{ .Branch }}-{{ checksum "yarn.lock" }}
           paths:
             - node_modules/
       - run:
-          name: Compile sources
-          command: npm run prepare
+          name: Lint sources
+          command: yarn lint
       - run:
           name: Test
-          command: npm run test
+          command: yarn test
 
 workflows:
   version: 2

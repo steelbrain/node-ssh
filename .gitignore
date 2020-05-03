@@ -1,5 +1,6 @@
-.idea/
+.idea
 node_modules
+*.log
 /lib
-*.DS_Store
-spec/fixtures/ignored
+.DS_Store
+/test/fixtures/ignored
