@@ -1,3 +1,10 @@
+#### Upcoming
+
+* Add `withSFTP` and `withShell` methods
+* Connection timed out error is now an instance of `SSHError`
+* Invalid argument errors are now `AssertionError` instances
+* `onKeyboardInteractive` default will only be set if a `config.password` is provided
+
 #### 8.0.0
 
 * Stop swallowing non-existent cwd errors in `execCommand` #272 (Thanks @dadamssg)

@@ -118,6 +118,7 @@ class NodeSSH {
 
     return this
   }
+
   async requestShell(): Promise<ClientChannel> {
     const connection = this.getConnection()
 
@@ -132,6 +133,21 @@ class NodeSSH {
     })
   }
 
+  async withShell(callback: ((channel: ClientChannel) => Promise<void>)): Promise<void> {
+    invariant(typeof callback === 'function', 'callback must be a valid function')
+
+    const shell = await this.requestShell()
+    try {
+      await callback(shell)
+    } finally {
+      // Try to close gracefully
+      if (!shell.close()) {
+        // Destroy local socket if it doesn't work
+        shell.destroy()
+      }
+    }
+  }
+
   async requestSFTP(): Promise<SFTPWrapper> {
     const connection = this.getConnection()
 
@@ -144,6 +160,17 @@ class NodeSSH {
         }
       })
     })
+  }
+
+  async withSFTP(callback: ((sftp: SFTPWrapper) => Promise<void>)): Promise<void> {
+    invariant(typeof callback === 'function', 'callback must be a valid function')
+
+    const sftp = await this.requestSFTP()
+    try {
+      await callback(sftp)
+    } finally {
+      sftp.end()
+    }
   }
 
   dispose() {
