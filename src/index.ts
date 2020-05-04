@@ -55,7 +55,7 @@ interface SSHPutFilesOptions {
   transferOptions?: TransferOptions
 }
 
-interface SSHPutDirectoryOptions extends SSHPutFilesOptions {
+interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
   tick?: (localFile: string, remoteFile: string, error: Error | null) => void
   validate?: (path: string) => boolean
   recursive?: boolean
@@ -538,7 +538,7 @@ class NodeSSH {
       recursive = true,
       tick = DEFAULT_TICK,
       validate = DEFAULT_VALIDATE,
-    }: SSHPutDirectoryOptions = {},
+    }: SSHGetPutDirectoryOptions = {},
   ): Promise<boolean> {
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
     invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
@@ -633,7 +633,7 @@ class NodeSSH {
       recursive = true,
       tick = DEFAULT_TICK,
       validate = DEFAULT_VALIDATE,
-    }: SSHPutDirectoryOptions = {},
+    }: SSHGetPutDirectoryOptions = {},
   ): Promise<boolean> {
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
     invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
