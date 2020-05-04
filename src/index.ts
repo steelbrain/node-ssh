@@ -1,6 +1,7 @@
 import fs from 'fs'
 import fsPath from 'path'
 import shellEscape from 'shell-escape'
+import scanDirectory from 'sb-scandir'
 import { PromiseQueue } from 'sb-promise-queue'
 import invariant, { AssertionError } from 'assert'
 import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2'
@@ -8,6 +9,10 @@ import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from '
 import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
 const DEFAULT_CONCURRENCY = 5
+const DEFAULT_VALIDATE = (path: string) => !fsPath.basename(path).startsWith('.')
+const DEFAULT_TICK = () => {
+  /* No Op */
+}
 
 type Config = ConnectConfig & {
   password?: string
@@ -47,6 +52,12 @@ interface SSHPutFilesOptions {
   sftp?: SFTPWrapper | null
   concurrency?: number
   transferOptions?: TransferOptions
+}
+
+interface SSHPutDirectoryOptions extends SSHPutFilesOptions {
+  tick?: (localFile: string, remoteFile: string, error: Error | null) => void
+  validate?: (path: string) => boolean
+  recursive?: boolean
 }
 
 type SSHMkdirMethod = 'sftp' | 'exec'
@@ -503,6 +514,105 @@ class NodeSSH {
         sftp.end()
       }
     }
+  }
+
+  async putDirectory(
+    localDirectory: string,
+    remoteDirectory: string,
+    {
+      concurrency = DEFAULT_CONCURRENCY,
+      sftp: givenSftp = null,
+      transferOptions = {},
+      recursive = true,
+      tick = DEFAULT_TICK,
+      validate = DEFAULT_VALIDATE,
+    }: SSHPutDirectoryOptions = {},
+  ): Promise<boolean> {
+    invariant(this.connection, 'Not connected to server')
+    invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
+    invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
+
+    const localDirectoryStat: fs.Stats = await new Promise(resolve => {
+      fs.stat(localDirectory, (err, stat) => {
+        resolve(stat || null)
+      })
+    })
+
+    invariant(localDirectoryStat != null, `localDirectory does not exist at ${localDirectory}`)
+    invariant(localDirectoryStat.isDirectory(), `localDirectory is not a directory at ${localDirectory}`)
+
+    const sftp = givenSftp || (await this.requestSFTP())
+
+    const scanned = await scanDirectory(localDirectory, {
+      recursive,
+      validate,
+    })
+    const files = scanned.files.map(item => fsPath.relative(localDirectory, item))
+    const directories = scanned.directories.map(item => fsPath.relative(localDirectory, item))
+
+    // Sort shortest to longest
+    directories.sort((a, b) => a.length - b.length)
+
+    let failed = false
+    const directoriesCreated = new Set()
+
+    const createDirectory = async (path: string) => {
+      if (!directoriesCreated.has(path)) {
+        directoriesCreated.add(path)
+        this.mkdir(path, 'sftp', sftp)
+      }
+    }
+
+    try {
+      // Do the directories first.
+      await new Promise((resolve, reject) => {
+        const queue = new PromiseQueue({ concurrency })
+
+        directories.forEach(directory => {
+          queue
+            .add(async () => {
+              await createDirectory(directory.split(fsPath.sep).join('/'))
+            })
+            .catch(reject)
+        })
+
+        resolve(queue.waitTillIdle())
+      })
+
+      // and now the files
+      await new Promise((resolve, reject) => {
+        const queue = new PromiseQueue({ concurrency })
+
+        files.forEach(file => {
+          queue
+            .add(async () => {
+              const localFile = fsPath.join(localDirectory, file)
+              const remoteFile = fsPath
+                .join(remoteDirectory, file)
+                .split(fsPath.sep)
+                .join('/')
+              const remoteFileDirectory = fsPath.dirname(remoteFile)
+              await createDirectory(remoteFileDirectory)
+              try {
+                await this.putFile(localFile, remoteFile, sftp, transferOptions)
+                tick(localFile, remoteFile, null)
+              } catch (_) {
+                failed = true
+                tick(localFile, remoteFile, _)
+              }
+            })
+            .catch(reject)
+        })
+
+        resolve(queue.waitTillIdle())
+      })
+    } finally {
+      if (!givenSftp) {
+        sftp.end()
+      }
+    }
+
+    return !failed
   }
 
   dispose() {
