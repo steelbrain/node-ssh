@@ -644,7 +644,7 @@ class NodeSSH {
 
     const sftp = givenSftp || (await this.requestSFTP())
 
-    const scanned = await scanDirectory(localDirectory, {
+    const scanned = await scanDirectory(remoteDirectory, {
       recursive,
       validate,
       concurrency,
@@ -673,8 +673,8 @@ class NodeSSH {
         },
       },
     })
-    const files = scanned.files.map(item => fsPath.relative(localDirectory, item))
-    const directories = scanned.directories.map(item => fsPath.relative(localDirectory, item))
+    const files = scanned.files.map(item => fsPath.relative(remoteDirectory, item))
+    const directories = scanned.directories.map(item => fsPath.relative(remoteDirectory, item))
 
     // Sort shortest to longest
     directories.sort((a, b) => a.length - b.length)
@@ -685,7 +685,6 @@ class NodeSSH {
     const createDirectory = async (path: string) => {
       if (!directoriesCreated.has(path)) {
         directoriesCreated.add(path)
-        await makeDir(path)
       }
     }
 
@@ -697,7 +696,12 @@ class NodeSSH {
         directories.forEach(directory => {
           queue
             .add(async () => {
-              await createDirectory(directory.split(fsPath.sep).join('/'))
+              await makeDir(
+                fsPath
+                  .join(localDirectory, directory)
+                  .split('/')
+                  .join(fsPath.sep),
+              )
             })
             .catch(reject)
         })

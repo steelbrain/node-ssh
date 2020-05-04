@@ -19,8 +19,10 @@ function getFixturePath(fixturePath: string): string {
 function sshit(
   title: string,
   callback: (t: ExecutionContext<unknown>, port: number, client: NodeSSH, server: Server) => Promise<void>,
+  skip = false,
 ): void {
-  test(title, async function(t) {
+  const testFunc = skip ? test.skip : test
+  testFunc(title, async function(t) {
     ports += 1
 
     const server = createServer()
@@ -67,9 +69,11 @@ async function connectWithInlinePrivateKey(port, client) {
 
 test.after(function() {
   ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
+  ChildProcess.exec(`rm -rf ${getFixturePath('ignored-2/*')}`)
 })
 test.before(function() {
   ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
+  ChildProcess.exec(`rm -rf ${getFixturePath('ignored-2/*')}`)
 })
 
 sshit('connects to a server with password', async function(t, port, client) {
@@ -230,6 +234,39 @@ sshit('puts entire directories at once', async function(t, port, client) {
   filesReceived.sort()
   t.deepEqual(remoteFiles, filesReceived)
   const existsAfter = await Promise.all(remoteFiles.map(file => exists(file)))
+  t.is(existsAfter.every(Boolean), true)
+})
+sshit('gets entire directories at once', async function(t, port, client) {
+  await connectWithPassword(port, client)
+  const localFiles = [
+    getFixturePath('ignored-2/aa'),
+    getFixturePath('ignored-2/bb'),
+    getFixturePath('ignored-2/cc'),
+    getFixturePath('ignored-2/dd'),
+    getFixturePath('ignored-2/ee/ff'),
+    getFixturePath('ignored-2/ff'),
+    getFixturePath('ignored-2/gg'),
+    getFixturePath('ignored-2/hh'),
+    getFixturePath('ignored-2/ii'),
+    getFixturePath('ignored-2/jj'),
+    getFixturePath('ignored-2/really/really/really/really/really/more deep files'),
+    getFixturePath('ignored-2/really/really/really/really/yes/deep files'),
+    getFixturePath('ignored-2/really/really/really/really/deep'),
+  ]
+  const filesReceived = []
+  const existsBefore = await Promise.all(localFiles.map(file => exists(file)))
+  t.is(existsBefore.every(Boolean), false)
+  await client.getDirectory(getFixturePath('ignored-2'), getFixturePath('multiple'), {
+    tick(local, remote, error) {
+      t.is(error, null)
+      t.is(localFiles.indexOf(local) !== -1, true)
+      filesReceived.push(local)
+    },
+  })
+  localFiles.sort()
+  filesReceived.sort()
+  t.deepEqual(localFiles, filesReceived)
+  const existsAfter = await Promise.all(localFiles.map(file => exists(file)))
   t.is(existsAfter.every(Boolean), true)
 })
 sshit('allows stream callbacks on exec', async function(t, port, client) {

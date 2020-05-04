@@ -4,3 +4,4 @@ node_modules
 /lib
 .DS_Store
 /test/fixtures/ignored
+/test/fixtures/ignored-2
