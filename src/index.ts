@@ -329,7 +329,13 @@ class NodeSSH {
           channel.write(options.stdin)
           channel.end()
         }
-        channel.on('exit', function(code, signal) {
+        let code: number | null = null
+        let signal: string | null = null
+        channel.on('exit', function(code_, signal_) {
+          code = code_ || null
+          signal = signal_ || null
+        })
+        channel.on('close', function() {
           resolve({
             code: code != null ? code : null,
             signal: signal != null ? signal : null,
