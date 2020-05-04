@@ -127,6 +127,7 @@ function handleSession(acceptSession) {
     const request = accept()
     const spawnedProcess = ptySpawn(process.env.SHELL || 'bash', [], ptyInfo)
     request.pipe(spawnedProcess)
+    // @ts-ignore
     spawnedProcess.pipe(request)
   })
   session.on('exec', function(accept, reject, info) {

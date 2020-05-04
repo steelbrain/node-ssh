@@ -4,24 +4,27 @@ import fs from 'fs'
 import path from 'path'
 import invariant from 'assert'
 import ChildProcess from 'child_process'
-import test from 'ava'
+import test, { ExecutionContext } from 'ava'
+import { Server } from 'ssh2'
 
-import SSH2 from '../lib'
-import { exists } from '../lib/helpers'
+import NodeSSH from '..'
 import createServer from './ssh-server'
-import { PRIVATE_KEY_PATH, wait } from './helpers'
+import { PRIVATE_KEY_PATH, wait, exists } from './helpers'
 
 let ports = 8876
 
 function getFixturePath(fixturePath: string): string {
   return path.join(__dirname, 'fixtures', fixturePath)
 }
-function sshit(title: string, callback: (t: Object, port: number, client: SSH2, server: Object) => Promise<void>): void {
+function sshit(
+  title: string,
+  callback: (t: ExecutionContext<unknown>, port: number, client: NodeSSH, server: Server) => Promise<void>,
+): void {
   test(title, async function(t) {
     ports += 1
 
     const server = createServer()
-    const client = new SSH2()
+    const client = new NodeSSH()
     const port = ports
     await new Promise(function(resolve) {
       server.listen(port, '127.0.0.1', resolve)
@@ -249,7 +252,6 @@ sshit('allows stream callbacks on execCommand', async function(t, port, client) 
   await connectWithPassword(port, client)
   const outputFromCallbacks = { stdout: [], stderr: [] }
   await client.execCommand(`node ${getFixturePath('test-program')}`, {
-    stream: 'both',
     onStderr(chunk) {
       outputFromCallbacks.stderr.push(chunk)
     },
