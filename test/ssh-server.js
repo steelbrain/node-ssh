@@ -4,7 +4,7 @@ import FS from 'fs'
 import { SFTPStream } from 'ssh2-streams'
 import ChildProcess from 'child_process'
 
-import * as pty from 'pty.js'
+import { spawn as ptySpawn } from 'node-pty'
 import ssh2 from 'ssh2'
 import { PRIVATE_KEY_PATH } from './helpers'
 
@@ -108,7 +108,7 @@ function handleSFTP(accept) {
 
 function handleSession(acceptSession) {
   const session = acceptSession()
-  let ptyInfo: ?Object = null
+  let ptyInfo: Record<string, any> | null = null
   session.on('pty', function(accept, _, info) {
     accept()
     ptyInfo = {
@@ -125,15 +125,15 @@ function handleSession(acceptSession) {
       return
     }
     const request = accept()
-    const spawnedProcess = pty.spawn(process.env.SHELL || 'bash', [], ptyInfo)
-    request.pipe(spawnedProcess.socket)
-    spawnedProcess.stdout.pipe(request)
+    const spawnedProcess = ptySpawn(process.env.SHELL || 'bash', [], ptyInfo)
+    request.pipe(spawnedProcess)
+    spawnedProcess.pipe(request)
   })
   session.on('exec', function(accept, reject, info) {
     const response = accept()
     const spawnedProcess = ChildProcess.exec(info.command)
     response.pipe(spawnedProcess.stdin)
-    spawnedProcess.stdout.pipe(response)
+    spawnedProcess.stdout.pipe(response.stdout)
     spawnedProcess.stderr.pipe(response.stderr)
   })
   session.on('sftp', handleSFTP)
