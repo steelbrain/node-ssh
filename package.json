@@ -1,6 +1,6 @@
 {
   "name": "node-ssh",
-  "version": "8.0.0",
+  "version": "9.0.0",
   "description": "SS2 with Promises",
   "main": "lib/cjs/index.js",
   "typings": "lib/typings/index.d.ts",
