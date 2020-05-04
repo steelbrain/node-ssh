@@ -1,4 +1,4 @@
-#### Upcoming
+#### 9.0.0
 
 * Add support for Putty private key files
 * Add `getDirectory` method
