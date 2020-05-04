@@ -1,19 +1,17 @@
 Node-SSH - SSH2 with Promises
 =========
 
-[![Greenkeeper badge](https://badges.greenkeeper.io/steelbrain/node-ssh.svg)](https://greenkeeper.io/)
-
-Node-SSH is an extremely lightweight Promise wrapper for [ssh2][ssh2], Period.
+Node-SSH is an extremely lightweight Promise wrapper for [ssh2][ssh2].
 
 #### Example
 
 ```js
-var path, node_ssh, ssh, fs
+var path, NodeSSH, ssh, fs
 
 fs = require('fs')
 path = require('path')
-node_ssh = require('node-ssh')
-ssh = new node_ssh()
+NodeSSH = require('node-ssh')
+ssh = new NodeSSH()
 
 ssh.connect({
   host: 'localhost',
@@ -98,42 +96,137 @@ ssh.connect({
 
 #### API
 
-```js
-type PutFilesOptions = {
-  sftp: ?Object,
-  sftpOptions?: Object,
-  concurrency?: number = 5,
-}
-type PutDirectoryOptions = {
-  sftp: ?Object,
-  sftpOptions?: Object,
-  concurrency?: number = 5,
-  recursive?: boolean,
-  tick?: ((localPath: string, remotePath: string, error: ?Error) => void),
-  validate?: ((localPath: string) => boolean),
-}
-type ExecOptions = {
-  cwd?: string,
-  options?: Object // passed to ssh2.exec
-  stdin?: string,
-  stream?: 'stdout' | 'stderr' | 'both',
-  onStdout?: ((chunk: Buffer) => void),
-  onStderr?: ((chunk: Buffer) => void),
+```ts
+// API reference in Typescript typing format:
+import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2';
+import { Prompt, TransferOptions } from 'ssh2-streams';
+// ^ You do NOT need to import these package, these are here for reference of where the
+// types are coming from.
+
+declare type Config = ConnectConfig & {
+    password?: string;
+    privateKey?: string;
+    tryKeyboard?: boolean;
+    onKeyboardInteractive?: (
+      name: string,
+      instructions: string,
+      lang: string,
+      prompts: Prompt[],
+      finish: (responses: string[]) => void
+    ) => void;
+};
+
+interface SSHExecCommandOptions {
+    cwd?: string;
+    stdin?: string;
+    execOptions?: ExecOptions;
+    encoding?: BufferEncoding;
+    onChannel?: (clientChannel: ClientChannel) => void;
+    onStdout?: (chunk: Buffer) => void;
+    onStderr?: (chunk: Buffer) => void;
 }
 
-class SSH{
-  connect(config: SSH2Config): Promise<this>
-  requestSFTP(): Promise<SSH2SFTP>
-  requestShell(): Promise<SSH2Shell>
-  mkdir(path: string, method: 'sftp' | 'exec' = 'sftp', givenSftp?: Object): Promise<string>
-  exec(command: string, parameters: Array<string>, options: ExecOptions = {}): Promise<Object | string>
-  execCommand(command: string, options: { cwd: string, stdin: string } = {}): Promise<{ stdout: string, options?: Object, stderr: string, signal: ?string, code: number }>
-  putFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
-  getFile(localFile: string, remoteFile: string, sftp: ?Object = null, opts: ?Object = null): Promise<void>
-  putFiles(files: Array<{ local: string, remote: string }>, options: PutFilesOptions = {}): Promise<void>
-  putDirectory(localDirectory: string, remoteDirectory: string, options: PutDirectoryOptions = {}): Promise<boolean>
-  dispose(): void
+interface SSHExecCommandResponse {
+    stdout: string;
+    stderr: string;
+    code: number | null;
+    signal: string | null;
 }
+
+interface SSHExecOptions extends SSHExecCommandOptions {
+    stream?: 'stdout' | 'stderr' | 'both';
+}
+
+interface SSHPutFilesOptions {
+    sftp?: SFTPWrapper | null;
+    concurrency?: number;
+    transferOptions?: TransferOptions;
+}
+
+interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
+    tick?: (localFile: string, remoteFile: string, error: Error | null) => void;
+    validate?: (path: string) => boolean;
+    recursive?: boolean;
+}
+
+class NodeSSH {
+    connection: Client | null;
+    connect(config: Config): Promise<this>;
+
+    requestShell(): Promise<ClientChannel>;
+
+    withShell(
+      callback: (channel: ClientChannel) => Promise<void>
+    ): Promise<void>;
+
+    requestSFTP(): Promise<SFTPWrapper>;
+
+    withSFTP(
+      callback: (sftp: SFTPWrapper) => Promise<void>
+    ): Promise<void>;
+
+    execCommand(
+      command: string,
+      options?: SSHExecCommandOptions
+    ): Promise<SSHExecCommandResponse>;
+
+    exec(
+      command: string,
+      parameters: string[],
+      options?: SSHExecOptions & {
+          stream?: 'stdout' | 'stderr';
+      }
+    ): Promise<string>;
+
+    exec(
+      command: string,
+      parameters: string[],
+      options?: SSHExecOptions & {
+          stream: 'both';
+      }
+    ): Promise<SSHExecCommandResponse>;
+
+    mkdir(
+      path: string,
+      method?: 'sftp' | 'exec',
+      sftp?: SFTPWrapper | null
+    ): Promise<void>;
+
+    getFile(
+      localFile: string,
+      remoteFile: string,
+      sftp?: SFTPWrapper | null,
+      transferOptions?: TransferOptions | null
+    ): Promise<void>;
+
+    putFile(
+      localFile: string,
+      remoteFile: string,
+      sftp?: SFTPWrapper | null,
+      transferOptions?: TransferOptions | null
+    ): Promise<void>;
+
+    putFiles(files: Array<{
+        local: string;
+        remote: string;
+    }>, options?: SSHPutFilesOptions): Promise<void>;
+
+    putDirectory(
+      localDirectory: string,
+      remoteDirectory: string,
+      options?: SSHGetPutDirectoryOptions
+    ): Promise<boolean>;
+
+    getDirectory(
+      localDirectory: string,
+      remoteDirectory: string,
+      options?: SSHGetPutDirectoryOptions
+    ): Promise<boolean>;
+
+    dispose(): void;
+}
+
+module.exports = NodeSSH;
 ```
 
 ### Keyboard-interactive user authentication

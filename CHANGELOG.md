@@ -1,3 +1,15 @@
+#### Upcoming
+
+* Add support for Putty private key files
+* Add `getDirectory` method
+* Add `onChannel` support to `execCommand`
+* Rename `options.options` in `execCommand` to be `options.execOptions`
+* Rename `options.sftpOptions` to `options.transferOptions` in `putFiles`
+* Add `withSFTP` and `withShell` methods
+* Connection timed out error is now an instance of `SSHError`
+* Invalid argument errors are now `AssertionError` instances
+* `onKeyboardInteractive` default will only be set if a `config.password` is provided
+
 #### 8.0.0
 
 * Stop swallowing non-existent cwd errors in `execCommand` #272 (Thanks @dadamssg)

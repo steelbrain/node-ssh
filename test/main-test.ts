@@ -4,24 +4,29 @@ import fs from 'fs'
 import path from 'path'
 import invariant from 'assert'
 import ChildProcess from 'child_process'
-import test from 'ava'
+import test, { ExecutionContext } from 'ava'
+import { Server } from 'ssh2'
 
-import SSH2 from '../lib'
-import { exists } from '../lib/helpers'
+import NodeSSH from '../src'
 import createServer from './ssh-server'
-import { PRIVATE_KEY_PATH, wait } from './helpers'
+import { PRIVATE_KEY_PATH, wait, exists } from './helpers'
 
 let ports = 8876
 
 function getFixturePath(fixturePath: string): string {
   return path.join(__dirname, 'fixtures', fixturePath)
 }
-function sshit(title: string, callback: (t: Object, port: number, client: SSH2, server: Object) => Promise<void>): void {
-  test(title, async function(t) {
+function sshit(
+  title: string,
+  callback: (t: ExecutionContext<unknown>, port: number, client: NodeSSH, server: Server) => Promise<void>,
+  skip = false,
+): void {
+  const testFunc = skip ? test.skip : test
+  testFunc(title, async function(t) {
     ports += 1
 
     const server = createServer()
-    const client = new SSH2()
+    const client = new NodeSSH()
     const port = ports
     await new Promise(function(resolve) {
       server.listen(port, '127.0.0.1', resolve)
@@ -64,9 +69,11 @@ async function connectWithInlinePrivateKey(port, client) {
 
 test.after(function() {
   ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
+  ChildProcess.exec(`rm -rf ${getFixturePath('ignored-2/*')}`)
 })
 test.before(function() {
   ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
+  ChildProcess.exec(`rm -rf ${getFixturePath('ignored-2/*')}`)
 })
 
 sshit('connects to a server with password', async function(t, port, client) {
@@ -213,18 +220,53 @@ sshit('puts entire directories at once', async function(t, port, client) {
     getFixturePath('ignored/really/really/really/really/yes/deep files'),
     getFixturePath('ignored/really/really/really/really/deep'),
   ]
+  const filesReceived = []
   const existsBefore = await Promise.all(remoteFiles.map(file => exists(file)))
   t.is(existsBefore.every(Boolean), false)
-  let ticks = 0
   await client.putDirectory(getFixturePath('multiple'), getFixturePath('ignored'), {
     tick(local, remote, error) {
       t.is(error, null)
       t.is(remoteFiles.indexOf(remote) !== -1, true)
-      ticks += 1
+      filesReceived.push(remote)
     },
   })
-  t.is(ticks, remoteFiles.length)
+  remoteFiles.sort()
+  filesReceived.sort()
+  t.deepEqual(remoteFiles, filesReceived)
   const existsAfter = await Promise.all(remoteFiles.map(file => exists(file)))
+  t.is(existsAfter.every(Boolean), true)
+})
+sshit('gets entire directories at once', async function(t, port, client) {
+  await connectWithPassword(port, client)
+  const localFiles = [
+    getFixturePath('ignored-2/aa'),
+    getFixturePath('ignored-2/bb'),
+    getFixturePath('ignored-2/cc'),
+    getFixturePath('ignored-2/dd'),
+    getFixturePath('ignored-2/ee/ff'),
+    getFixturePath('ignored-2/ff'),
+    getFixturePath('ignored-2/gg'),
+    getFixturePath('ignored-2/hh'),
+    getFixturePath('ignored-2/ii'),
+    getFixturePath('ignored-2/jj'),
+    getFixturePath('ignored-2/really/really/really/really/really/more deep files'),
+    getFixturePath('ignored-2/really/really/really/really/yes/deep files'),
+    getFixturePath('ignored-2/really/really/really/really/deep'),
+  ]
+  const filesReceived = []
+  const existsBefore = await Promise.all(localFiles.map(file => exists(file)))
+  t.is(existsBefore.every(Boolean), false)
+  await client.getDirectory(getFixturePath('ignored-2'), getFixturePath('multiple'), {
+    tick(local, remote, error) {
+      t.is(error, null)
+      t.is(localFiles.indexOf(local) !== -1, true)
+      filesReceived.push(local)
+    },
+  })
+  localFiles.sort()
+  filesReceived.sort()
+  t.deepEqual(localFiles, filesReceived)
+  const existsAfter = await Promise.all(localFiles.map(file => exists(file)))
   t.is(existsAfter.every(Boolean), true)
 })
 sshit('allows stream callbacks on exec', async function(t, port, client) {
@@ -249,7 +291,6 @@ sshit('allows stream callbacks on execCommand', async function(t, port, client) 
   await connectWithPassword(port, client)
   const outputFromCallbacks = { stdout: [], stderr: [] }
   await client.execCommand(`node ${getFixturePath('test-program')}`, {
-    stream: 'both',
     onStderr(chunk) {
       outputFromCallbacks.stderr.push(chunk)
     },

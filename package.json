@@ -2,57 +2,64 @@
   "name": "node-ssh",
   "version": "8.0.0",
   "description": "SS2 with Promises",
-  "main": "lib/index.js",
+  "main": "lib/cjs/index.js",
+  "typings": "lib/typings/index.d.ts",
+  "module": "lib/esm/index.js",
   "scripts": {
-    "test:spec": "ava spec/*-spec.js",
-    "test:flow": "flow check",
-    "test:lint": "eslint .",
-    "test:prettier": "prettier -l '{src,spec}/**/*.js'",
-    "test": "(npm run test:spec) && (npm run test:flow) && (npm run test:lint) && (npm run test:prettier)",
-    "prepare": "sb-babel-cli -o lib src",
-    "watch": "npm run prepare -- -w"
+    "test": "ava",
+    "lint": "(tsc -p . --noEmit) && (eslint . --ext .ts) && (prettier --list-different src/*.ts)",
+    "prepare": "yarn build:clean ; yarn build:cjs ; yarn build:typings",
+    "build:clean": "rm -rf lib",
+    "build:cjs": "tsc --module commonjs --target es2018 --outDir lib/cjs",
+    "build:typings": "tsc --declaration --outDir lib/typings --emitDeclarationOnly"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/steelbrain/node-ssh"
+    "url": "git+https://github.com/steelbrain/node-ssh.git"
   },
   "keywords": [
     "ssh",
     "ssh2",
     "sftp"
   ],
-  "author": "steelbrain <i@steelbrain.me>",
+  "author": "steelbrain",
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/steelbrain/node-ssh/issues"
   },
-  "dependencies": {
-    "p-map": "^3.0.0",
-    "sb-promisify": "^2.0.1",
-    "sb-scandir": "^2.0.0",
-    "shell-escape": "^0.2.0",
-    "ssh2": "^0.8.7"
-  },
+  "files": [
+    "lib/*"
+  ],
+  "homepage": "https://github.com/steelbrain/node-ssh#readme",
   "devDependencies": {
-    "@babel/core": "^7.7.7",
-    "@babel/preset-env": "^7.7.7",
-    "@babel/preset-flow": "^7.7.4",
-    "@babel/register": "^7.7.7",
-    "ava": "^2.4.0",
-    "babel-eslint": "^10.0.3",
-    "eslint-config-steelbrain": "^8.0.0-beta1",
-    "eslint-plugin-flowtype": "^4.5.2",
-    "flow-bin": "^0.114.0",
-    "pty.js": "^0.3.1",
-    "sb-babel-cli": "^2.1.0",
-    "ssh2-streams": "^0.4.8"
+    "@types/shell-escape": "^0.2.0",
+    "@types/ssh2": "^0.5.43",
+    "ava": "^3.7.0",
+    "eslint-config-steelbrain": "^9.0.1",
+    "node-pty": "^0.9.0",
+    "ssh2-streams": "^0.4.10",
+    "ts-node": "^8.8.2",
+    "typescript": "^3.8.3"
+  },
+  "dependencies": {
+    "make-dir": "^3.1.0",
+    "sb-promise-queue": "^2.0.0",
+    "sb-scandir": "^3.0.0",
+    "shell-escape": "^0.2.0",
+    "ssh2": "^0.8.9"
   },
   "ava": {
     "files": [
-      "spec/*.js"
+      "test/*-test.ts"
+    ],
+    "extensions": [
+      "ts"
     ],
     "require": [
-      "@babel/register"
+      "ts-node/register/transpile-only"
     ]
+  },
+  "engines": {
+    "node": ">= 8"
   }
 }

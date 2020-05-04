@@ -4,7 +4,7 @@ import FS from 'fs'
 import { SFTPStream } from 'ssh2-streams'
 import ChildProcess from 'child_process'
 
-import * as pty from 'pty.js'
+import { spawn as ptySpawn } from 'node-pty'
 import ssh2 from 'ssh2'
 import { PRIVATE_KEY_PATH } from './helpers'
 
@@ -12,7 +12,10 @@ const STATUS_CODE = ssh2.SFTP_STATUS_CODE
 
 function handleSFTP(accept) {
   const sftpStream = accept()
+
+  let dirHandle = 105185
   const handles: Set<number> = new Set()
+  const dirHandles: Map<number, string[]> = new Map()
   sftpStream.on('OPEN', function(reqid, filename, flags) {
     let handleId
     try {
@@ -78,6 +81,11 @@ function handleSFTP(accept) {
   })
   sftpStream.on('CLOSE', function(reqid, givenHandle) {
     const handle = parseInt(givenHandle, 10)
+    if (dirHandles.has(handle)) {
+      dirHandles.delete(handle)
+      sftpStream.status(reqid, STATUS_CODE.OK)
+      return
+    }
     if (handles.has(handle)) {
       handles.delete(handle)
       FS.close(handle, function() {
@@ -104,11 +112,50 @@ function handleSFTP(accept) {
       sftpStream.status(reqid, STATUS_CODE.FAILURE, error.message)
     }
   })
+  sftpStream.on('OPENDIR', function(reqid, path) {
+    let stat
+    try {
+      stat = FS.statSync(path)
+    } catch (error) {
+      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      return
+    }
+    if (!stat.isDirectory()) {
+      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      return
+    }
+    const contents = FS.readdirSync(path)
+
+    dirHandle += 1
+    const currentDirHandle = dirHandle
+    dirHandles.set(currentDirHandle, contents)
+    const handle = Buffer.alloc(8)
+    handle.write(currentDirHandle.toString())
+    sftpStream.handle(reqid, handle)
+  })
+  sftpStream.on('READDIR', function(reqid, givenHandle) {
+    const handle = parseInt(givenHandle, 10)
+    const contents = dirHandles.get(handle)
+    if (contents == null || !contents.length) {
+      sftpStream.status(reqid, STATUS_CODE.EOF)
+      return
+    }
+
+    const item = contents.pop()
+
+    sftpStream.name(reqid, [
+      {
+        filename: item,
+        longname: item,
+        attrs: null,
+      },
+    ])
+  })
 }
 
 function handleSession(acceptSession) {
   const session = acceptSession()
-  let ptyInfo: ?Object = null
+  let ptyInfo: Record<string, any> | null = null
   session.on('pty', function(accept, _, info) {
     accept()
     ptyInfo = {
@@ -125,15 +172,16 @@ function handleSession(acceptSession) {
       return
     }
     const request = accept()
-    const spawnedProcess = pty.spawn(process.env.SHELL || 'bash', [], ptyInfo)
-    request.pipe(spawnedProcess.socket)
-    spawnedProcess.stdout.pipe(request)
+    const spawnedProcess = ptySpawn(process.env.SHELL || 'bash', [], ptyInfo)
+    request.pipe(spawnedProcess)
+    // @ts-ignore
+    spawnedProcess.pipe(request)
   })
   session.on('exec', function(accept, reject, info) {
     const response = accept()
     const spawnedProcess = ChildProcess.exec(info.command)
     response.pipe(spawnedProcess.stdin)
-    spawnedProcess.stdout.pipe(response)
+    spawnedProcess.stdout.pipe(response.stdout)
     spawnedProcess.stderr.pipe(response.stderr)
   })
   session.on('sftp', handleSFTP)
