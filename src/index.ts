@@ -1,13 +1,38 @@
 import fs from 'fs'
-import invariant, {AssertionError} from 'assert'
-import { Client, ConnectConfig, ClientChannel, SFTPWrapper } from 'ssh2'
-import type {Prompt} from 'ssh2-streams'
+import shellEscape from 'shell-escape'
+import invariant, { AssertionError } from 'assert'
+import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2'
+// eslint-disable-next-line import/no-extraneous-dependencies
+import { Prompt } from 'ssh2-streams'
 
 type Config = ConnectConfig & {
   password?: string
   privateKey?: string
   tryKeyboard?: boolean
-  onKeyboardInteractive?: ((name: string, instructions: string, lang: string, prompts: Prompt[], finish: (responses: string[]) => void) => void)
+  onKeyboardInteractive?: (
+    name: string,
+    instructions: string,
+    lang: string,
+    prompts: Prompt[],
+    finish: (responses: string[]) => void,
+  ) => void
+}
+
+interface ExecCommandOptions {
+  cwd?: string
+  stdin?: string
+  execOptions?: ExecOptions
+  encoding?: BufferEncoding
+  onChannel?: (clientChannel: ClientChannel) => void
+  onStdout?: (chunk: Buffer) => void
+  onStderr?: (chunk: Buffer) => void
+}
+
+interface ExecCommandResponse {
+  stdout: string
+  stderr: string
+  code: number | null
+  signal: string | null
 }
 
 async function readFile(filePath: string): Promise<string> {
@@ -32,7 +57,7 @@ class NodeSSH {
   connection: Client | null = null
 
   private getConnection(): Client {
-    const {connection} = this
+    const { connection } = this
     if (connection == null) {
       throw new Error('Not connected to server')
     }
@@ -43,7 +68,7 @@ class NodeSSH {
   public async connect(givenConfig: Config): Promise<this> {
     invariant(givenConfig != null && typeof givenConfig === 'object', 'config must be a valid object')
 
-    const config: Config = {...givenConfig}
+    const config: Config = { ...givenConfig }
 
     invariant(config.username != null && typeof config.username === 'string', 'config.username must be a valid string')
 
@@ -52,12 +77,15 @@ class NodeSSH {
     } else if (config.sock != null) {
       invariant(typeof config.sock === 'object', 'config.sock must be a valid object')
     } else {
-      throw new AssertionError({message: 'Either config.host or config.sock must be provided'})
+      throw new AssertionError({ message: 'Either config.host or config.sock must be provided' })
     }
 
     if (config.privateKey != null) {
       invariant(typeof config.privateKey === 'string', 'config.privateKey must be a valid string')
-      invariant(config.passphrase == null || typeof config.passphrase === 'string', 'config.passphrase must be a valid string')
+      invariant(
+        config.passphrase == null || typeof config.passphrase === 'string',
+        'config.passphrase must be a valid string',
+      )
 
       if (!(config.privateKey.includes('BEGIN') && config.privateKey.includes('KEY'))) {
         // Must be an fs path
@@ -65,7 +93,7 @@ class NodeSSH {
           config.privateKey = await readFile(config.privateKey)
         } catch (err) {
           if (err != null && err.code === 'ENOENT') {
-            throw new AssertionError({message: 'config.privateKey does not exist at given fs path'})
+            throw new AssertionError({ message: 'config.privateKey does not exist at given fs path' })
           }
           throw err
         }
@@ -78,9 +106,12 @@ class NodeSSH {
       invariant(typeof config.tryKeyboard === 'boolean', 'config.tryKeyboard must be a valid boolean')
     }
     if (config.tryKeyboard) {
-      const {password} = config
+      const { password } = config
       if (config.onKeyboardInteractive != null) {
-        invariant(typeof config.onKeyboardInteractive === 'function', 'config.onKeyboardInteractive must be a valid function')
+        invariant(
+          typeof config.onKeyboardInteractive === 'function',
+          'config.onKeyboardInteractive must be a valid function',
+        )
       } else if (password != null) {
         config.onKeyboardInteractive = (name, instructions, instructionsLang, prompts, finish) => {
           if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
@@ -133,7 +164,7 @@ class NodeSSH {
     })
   }
 
-  async withShell(callback: ((channel: ClientChannel) => Promise<void>)): Promise<void> {
+  async withShell(callback: (channel: ClientChannel) => Promise<void>): Promise<void> {
     invariant(typeof callback === 'function', 'callback must be a valid function')
 
     const shell = await this.requestShell()
@@ -162,7 +193,7 @@ class NodeSSH {
     })
   }
 
-  async withSFTP(callback: ((sftp: SFTPWrapper) => Promise<void>)): Promise<void> {
+  async withSFTP(callback: (sftp: SFTPWrapper) => Promise<void>): Promise<void> {
     invariant(typeof callback === 'function', 'callback must be a valid function')
 
     const sftp = await this.requestSFTP()
@@ -171,6 +202,71 @@ class NodeSSH {
     } finally {
       sftp.end()
     }
+  }
+
+  async execCommand(givenCommand: string, options: ExecCommandOptions = {}): Promise<ExecCommandResponse> {
+    invariant(typeof givenCommand === 'string', 'command must be a valid string')
+    invariant(options != null && typeof options === 'object', 'options must be a valid object')
+    invariant(options.cwd == null || typeof options.cwd === 'string', 'options.cwd must be a valid string')
+    invariant(options.stdin == null || typeof options.stdin === 'string', 'options.stdin must be a valid string')
+    invariant(
+      options.execOptions == null || typeof options.execOptions === 'object',
+      'options.execOptions must be a valid object',
+    )
+    invariant(options.encoding == null || typeof options.encoding === 'string', 'options.encoding must be a valid string')
+    invariant(
+      options.onChannel == null || typeof options.onChannel === 'function',
+      'options.onChannel must be a valid function',
+    )
+    invariant(
+      options.onStdout == null || typeof options.onStdout === 'function',
+      'options.onStdout must be a valid function',
+    )
+    invariant(
+      options.onStderr == null || typeof options.onStderr === 'function',
+      'options.onStderr must be a valid function',
+    )
+
+    let command = givenCommand
+
+    if (options.cwd) {
+      command = `cd ${shellEscape([options.cwd])} ; ${command}`
+    }
+    const connection = this.getConnection()
+
+    const output: { stdout: string[]; stderr: string[] } = { stdout: [], stderr: [] }
+
+    return new Promise((resolve, reject) => {
+      connection.exec(command, options.execOptions != null ? options.execOptions : {}, (err, channel) => {
+        if (err) {
+          reject(err)
+          return
+        }
+        if (options.onChannel) {
+          options.onChannel(channel)
+        }
+        channel.on('data', function(chunk: Buffer) {
+          if (options.onStdout) options.onStdout(chunk)
+          output.stdout.push(chunk.toString(options.encoding))
+        })
+        channel.stderr.on('data', function(chunk: Buffer) {
+          if (options.onStderr) options.onStderr(chunk)
+          output.stderr.push(chunk.toString(options.encoding))
+        })
+        if (options.stdin) {
+          channel.write(options.stdin)
+          channel.end()
+        }
+        channel.on('exit', function(code, signal) {
+          resolve({
+            code: code != null ? code : null,
+            signal: signal != null ? signal : null,
+            stdout: output.stdout.join('').trim(),
+            stderr: output.stderr.join('').trim(),
+          })
+        })
+      })
+    })
   }
 
   dispose() {

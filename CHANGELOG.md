@@ -1,5 +1,7 @@
 #### Upcoming
 
+* Add `onChannel` support to `execCommand`
+* Rename `options.options` in `execCommand` to be `options.execOptions`
 * Add `withSFTP` and `withShell` methods
 * Connection timed out error is now an instance of `SSHError`
 * Invalid argument errors are now `AssertionError` instances
