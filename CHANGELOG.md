@@ -1,5 +1,6 @@
 #### Upcoming
 
+* Add support for Putty private key files
 * Add `getDirectory` method
 * Add `onChannel` support to `execCommand`
 * Rename `options.options` in `execCommand` to be `options.execOptions`
