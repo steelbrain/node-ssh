@@ -2,6 +2,7 @@
 
 * Add `onChannel` support to `execCommand`
 * Rename `options.options` in `execCommand` to be `options.execOptions`
+* Rename `options.sftpOptions` to `options.transferOptions` in `putFiles`
 * Add `withSFTP` and `withShell` methods
 * Connection timed out error is now an instance of `SSHError`
 * Invalid argument errors are now `AssertionError` instances

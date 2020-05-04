@@ -1,6 +1,7 @@
 import fs from 'fs'
 import fsPath from 'path'
 import shellEscape from 'shell-escape'
+import { PromiseQueue } from 'sb-promise-queue'
 import invariant, { AssertionError } from 'assert'
 import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2'
 // eslint-disable-next-line import/no-extraneous-dependencies
@@ -40,6 +41,12 @@ interface SSHExecCommandResponse {
 
 interface SSHExecOptions extends SSHExecCommandOptions {
   stream?: 'stdout' | 'stderr' | 'both'
+}
+
+interface SSHPutFilesOptions {
+  sftp?: SFTPWrapper | null
+  concurrency?: number
+  transferOptions?: TransferOptions
 }
 
 type SSHMkdirMethod = 'sftp' | 'exec'
@@ -90,8 +97,8 @@ async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
       })
     })
   } catch (err) {
-    if (err != null && typeof err.message === 'string') {
-      const matches = SFTP_MKDIR_ERR_CODE_REGEXP.exec(err.message)
+    if (err != null && typeof err.stack === 'string') {
+      const matches = SFTP_MKDIR_ERR_CODE_REGEXP.exec(err.stack)
       if (matches != null) {
         throw new SSHError(err.message, matches[1])
       }
@@ -449,6 +456,48 @@ class NodeSSH {
 
     try {
       await putFile(true)
+    } finally {
+      if (!givenSftp) {
+        sftp.end()
+      }
+    }
+  }
+
+  async putFiles(
+    files: { local: string; remote: string }[],
+    { concurrency = DEFAULT_CONCURRENCY, sftp: givenSftp = null, transferOptions = {} }: SSHPutFilesOptions = {},
+  ): Promise<void> {
+    invariant(Array.isArray(files), 'files must be an array')
+
+    for (let i = 0, { length } = files; i < length; i += 1) {
+      const file = files[i]
+      invariant(file, 'files items must be valid objects')
+      invariant(file.local && typeof file.local === 'string', `files[${i}].local must be a string`)
+      invariant(file.remote && typeof file.remote === 'string', `files[${i}].remote must be a string`)
+    }
+
+    const transferred: typeof files = []
+    const sftp = givenSftp || (await this.requestSFTP())
+    const queue = new PromiseQueue({ concurrency })
+
+    try {
+      await new Promise((resolve, reject) => {
+        files.forEach(file => {
+          queue
+            .add(async () => {
+              await this.putFile(file.local, file.remote, sftp, transferOptions)
+              transferred.push(file)
+            })
+            .catch(reject)
+        })
+
+        queue.waitTillIdle().then(resolve)
+      })
+    } catch (error) {
+      if (error != null) {
+        error.transferred = transferred
+      }
+      throw error
     } finally {
       if (!givenSftp) {
         sftp.end()
