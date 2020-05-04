@@ -560,14 +560,6 @@ class NodeSSH {
     directories.sort((a, b) => a.length - b.length)
 
     let failed = false
-    const directoriesCreated = new Set()
-
-    const createDirectory = async (path: string) => {
-      if (!directoriesCreated.has(path)) {
-        directoriesCreated.add(path)
-        await this.mkdir(path, 'sftp', sftp)
-      }
-    }
 
     try {
       // Do the directories first.
@@ -577,7 +569,14 @@ class NodeSSH {
         directories.forEach(directory => {
           queue
             .add(async () => {
-              await createDirectory(directory.split(fsPath.sep).join('/'))
+              await this.mkdir(
+                fsPath
+                  .join(remoteDirectory, directory)
+                  .split(fsPath.sep)
+                  .join('/'),
+                'sftp',
+                sftp,
+              )
             })
             .catch(reject)
         })
@@ -597,7 +596,6 @@ class NodeSSH {
                 .join(remoteDirectory, file)
                 .split(fsPath.sep)
                 .join('/')
-              await createDirectory(fsPath.dirname(remoteFile))
               try {
                 await this.putFile(localFile, remoteFile, sftp, transferOptions)
                 tick(localFile, remoteFile, null)

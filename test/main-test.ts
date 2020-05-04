@@ -7,7 +7,7 @@ import ChildProcess from 'child_process'
 import test, { ExecutionContext } from 'ava'
 import { Server } from 'ssh2'
 
-import NodeSSH from '..'
+import NodeSSH from '../src'
 import createServer from './ssh-server'
 import { PRIVATE_KEY_PATH, wait, exists } from './helpers'
 
@@ -216,17 +216,19 @@ sshit('puts entire directories at once', async function(t, port, client) {
     getFixturePath('ignored/really/really/really/really/yes/deep files'),
     getFixturePath('ignored/really/really/really/really/deep'),
   ]
+  const filesReceived = []
   const existsBefore = await Promise.all(remoteFiles.map(file => exists(file)))
   t.is(existsBefore.every(Boolean), false)
-  let ticks = 0
   await client.putDirectory(getFixturePath('multiple'), getFixturePath('ignored'), {
     tick(local, remote, error) {
       t.is(error, null)
       t.is(remoteFiles.indexOf(remote) !== -1, true)
-      ticks += 1
+      filesReceived.push(remote)
     },
   })
-  t.is(ticks, remoteFiles.length)
+  remoteFiles.sort()
+  filesReceived.sort()
+  t.deepEqual(remoteFiles, filesReceived)
   const existsAfter = await Promise.all(remoteFiles.map(file => exists(file)))
   t.is(existsAfter.every(Boolean), true)
 })
