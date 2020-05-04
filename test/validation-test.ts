@@ -5,7 +5,7 @@ import path from 'path'
 import { Socket } from 'net'
 import test from 'ava'
 
-import { PRIVATE_KEY_PATH } from './helpers'
+import { PRIVATE_KEY_PATH, PRIVATE_KEY_PPK_PATH } from './helpers'
 import NodeSSH from '../src'
 
 async function normalizeConfig(config: any) {
@@ -314,6 +314,17 @@ test('does not throw if privateKey is valid', async function(t) {
         username: 'asd',
         host: 'localhost',
         privateKey: fs.readFileSync(PRIVATE_KEY_PATH, 'utf8'),
+      })
+    },
+    null,
+    'connect ECONNREFUSED 127.0.0.1:22',
+  )
+  await t.throwsAsync(
+    async function() {
+      await normalizeConfig({
+        username: 'asd',
+        host: 'localhost',
+        privateKey: fs.readFileSync(PRIVATE_KEY_PPK_PATH, 'utf8'),
       })
     },
     null,

@@ -159,7 +159,12 @@ class NodeSSH {
         'config.passphrase must be a valid string',
       )
 
-      if (!(config.privateKey.includes('BEGIN') && config.privateKey.includes('KEY'))) {
+      if (
+        !(
+          (config.privateKey.includes('BEGIN') && config.privateKey.includes('KEY')) ||
+          config.privateKey.includes('PuTTY-User-Key-File-2')
+        )
+      ) {
         // Must be an fs path
         try {
           config.privateKey = await readFile(config.privateKey)
