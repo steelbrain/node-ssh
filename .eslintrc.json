@@ -5,6 +5,7 @@
     "prettier/prettier": "off",
     "no-underscore-dangle": "off",
     "no-use-before-define": "off",
+    "no-dupe-class-members": "off",
     "max-classes-per-file": "off",
     "import/extensions": "off",
     "@typescript-eslint/no-use-before-define": "off",

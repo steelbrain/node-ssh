@@ -18,7 +18,7 @@ type Config = ConnectConfig & {
   ) => void
 }
 
-interface ExecCommandOptions {
+interface SSHExecCommandOptions {
   cwd?: string
   stdin?: string
   execOptions?: ExecOptions
@@ -28,11 +28,15 @@ interface ExecCommandOptions {
   onStderr?: (chunk: Buffer) => void
 }
 
-interface ExecCommandResponse {
+interface SSHExecCommandResponse {
   stdout: string
   stderr: string
   code: number | null
   signal: string | null
+}
+
+interface SSHExecOptions extends SSHExecCommandOptions {
+  stream?: 'stdout' | 'stderr' | 'both'
 }
 
 async function readFile(filePath: string): Promise<string> {
@@ -204,7 +208,7 @@ class NodeSSH {
     }
   }
 
-  async execCommand(givenCommand: string, options: ExecCommandOptions = {}): Promise<ExecCommandResponse> {
+  async execCommand(givenCommand: string, options: SSHExecCommandOptions = {}): Promise<SSHExecCommandResponse> {
     invariant(typeof givenCommand === 'string', 'command must be a valid string')
     invariant(options != null && typeof options === 'object', 'options must be a valid object')
     invariant(options.cwd == null || typeof options.cwd === 'string', 'options.cwd must be a valid string')
@@ -267,6 +271,35 @@ class NodeSSH {
         })
       })
     })
+  }
+
+  exec(command: string, parameters: string[], options: SSHExecOptions & { stream: 'stdout' }): Promise<string>
+  exec(command: string, parameters: string[], options: SSHExecOptions & { stream: 'stderr' }): Promise<string>
+  exec(command: string, parameters: string[], options: SSHExecOptions & { stream: 'both' }): Promise<SSHExecCommandResponse>
+  async exec(command: string, parameters: string[], options: SSHExecOptions = {}): Promise<SSHExecCommandResponse | string> {
+    invariant(typeof command === 'string', 'command must be a valid string')
+    invariant(Array.isArray(parameters), 'parameters must be a valid array')
+    invariant(parameters.every(item => typeof item === 'string'), 'parameters items must be valid string')
+    invariant(options != null && typeof options === 'object', 'options must be a valid object')
+    invariant(
+      options.stream == null || ['both', 'stdout', 'stderr'].includes(options.stream),
+      'options.stream must be one of both, stdout, stderr',
+    )
+
+    const completeCommand = `${command} ${shellEscape(parameters)}`
+    const response = await this.execCommand(completeCommand, options)
+
+    if (options.stream == null || options.stream === 'stdout') {
+      if (response.stderr) {
+        throw new Error(response.stderr)
+      }
+      return response.stdout
+    }
+    if (options.stream === 'stderr') {
+      return response.stderr
+    }
+
+    return response
   }
 
   dispose() {
