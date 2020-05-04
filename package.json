@@ -10,7 +10,7 @@
     "lint": "(tsc -p . --noEmit) && (eslint . --ext .ts) && (prettier --list-different src/*.ts)",
     "prepare": "yarn build:clean ; yarn build:cjs ; yarn build:typings",
     "build:clean": "rm -rf lib",
-    "build:cjs": "tsc --module commonjs --target es5 --outDir lib/cjs",
+    "build:cjs": "tsc --module commonjs --target es2018 --outDir lib/cjs",
     "build:typings": "tsc --declaration --outDir lib/typings --emitDeclarationOnly"
   },
   "repository": {

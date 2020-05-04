@@ -1,9 +1,10 @@
 import fs from 'fs'
+import fsPath from 'path'
 import shellEscape from 'shell-escape'
 import invariant, { AssertionError } from 'assert'
 import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2'
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { Prompt } from 'ssh2-streams'
+import { Prompt, Stats } from 'ssh2-streams'
 
 type Config = ConnectConfig & {
   password?: string
@@ -39,6 +40,8 @@ interface SSHExecOptions extends SSHExecCommandOptions {
   stream?: 'stdout' | 'stderr' | 'both'
 }
 
+type SSHMkdirMethod = 'sftp' | 'exec'
+
 async function readFile(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
     fs.readFile(filePath, 'utf8', (err, res) => {
@@ -49,6 +52,50 @@ async function readFile(filePath: string): Promise<string> {
       }
     })
   })
+}
+
+const SFTP_MKDIR_ERR_CODE_REGEXP = /Error: (E[\S]+): /
+async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
+  let stats: Stats | null = null
+  try {
+    stats = await new Promise((resolve, reject) => {
+      sftp.stat(path, (err, res) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(res)
+        }
+      })
+    })
+  } catch (_) {
+    /* No Op */
+  }
+  if (stats) {
+    if (stats.isDirectory()) {
+      // Already exists, nothing to worry about
+      return
+    }
+    throw new Error('mkdir() failed, target already exists and is not a directory')
+  }
+  try {
+    await new Promise((resolve, reject) => {
+      sftp.mkdir(path, err => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve()
+        }
+      })
+    })
+  } catch (err) {
+    if (err != null && typeof err.message === 'string') {
+      const matches = SFTP_MKDIR_ERR_CODE_REGEXP.exec(err.message)
+      if (matches != null) {
+        throw new SSHError(err.message, matches[1])
+      }
+      throw err
+    }
+  }
 }
 
 class SSHError extends Error {
@@ -273,9 +320,8 @@ class NodeSSH {
     })
   }
 
-  exec(command: string, parameters: string[], options: SSHExecOptions & { stream: 'stdout' }): Promise<string>
-  exec(command: string, parameters: string[], options: SSHExecOptions & { stream: 'stderr' }): Promise<string>
-  exec(command: string, parameters: string[], options: SSHExecOptions & { stream: 'both' }): Promise<SSHExecCommandResponse>
+  exec(command: string, parameters: string[], options?: SSHExecOptions & { stream?: 'stdout' | 'stderr' }): Promise<string>
+  exec(command: string, parameters: string[], options?: SSHExecOptions & { stream: 'both' }): Promise<SSHExecCommandResponse>
   async exec(command: string, parameters: string[], options: SSHExecOptions = {}): Promise<SSHExecCommandResponse | string> {
     invariant(typeof command === 'string', 'command must be a valid string')
     invariant(Array.isArray(parameters), 'parameters must be a valid array')
@@ -300,6 +346,34 @@ class NodeSSH {
     }
 
     return response
+  }
+
+  async mkdir(path: string, method: SSHMkdirMethod = 'sftp', givenSftp: SFTPWrapper | null = null): Promise<void> {
+    invariant(typeof path === 'string', 'path must be a valid string')
+    invariant(typeof method === 'string' && (method === 'sftp' || method === 'exec'), 'method must be either sftp or exec')
+
+    if (method === 'exec') {
+      await this.exec('mkdir', ['-p', path])
+      return
+    }
+    const sftp = givenSftp || (await this.requestSFTP())
+
+    const makeSftpDirectory = async (retry: boolean) =>
+      makeDirectoryWithSftp(path, sftp).catch(async (error: SSHError) => {
+        if (!retry || error == null || (error.message !== 'No such file' && error.code !== 'ENOENT')) {
+          throw error
+        }
+        await this.mkdir(fsPath.dirname(path), 'sftp', sftp)
+        await makeSftpDirectory(false)
+      })
+
+    try {
+      await makeSftpDirectory(true)
+    } finally {
+      if (!givenSftp) {
+        sftp.end()
+      }
+    }
   }
 
   dispose() {
