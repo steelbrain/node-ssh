@@ -1,5 +1,6 @@
 import fs from 'fs'
 import fsPath from 'path'
+import makeDir from 'make-dir'
 import shellEscape from 'shell-escape'
 import scanDirectory from 'sb-scandir'
 import { PromiseQueue } from 'sb-promise-queue'
@@ -528,7 +529,6 @@ class NodeSSH {
       validate = DEFAULT_VALIDATE,
     }: SSHPutDirectoryOptions = {},
   ): Promise<boolean> {
-    invariant(this.connection, 'Not connected to server')
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
     invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
 
@@ -559,7 +559,7 @@ class NodeSSH {
     const createDirectory = async (path: string) => {
       if (!directoriesCreated.has(path)) {
         directoriesCreated.add(path)
-        this.mkdir(path, 'sftp', sftp)
+        await this.mkdir(path, 'sftp', sftp)
       }
     }
 
@@ -591,10 +591,131 @@ class NodeSSH {
                 .join(remoteDirectory, file)
                 .split(fsPath.sep)
                 .join('/')
-              const remoteFileDirectory = fsPath.dirname(remoteFile)
-              await createDirectory(remoteFileDirectory)
+              await createDirectory(fsPath.dirname(remoteFile))
               try {
                 await this.putFile(localFile, remoteFile, sftp, transferOptions)
+                tick(localFile, remoteFile, null)
+              } catch (_) {
+                failed = true
+                tick(localFile, remoteFile, _)
+              }
+            })
+            .catch(reject)
+        })
+
+        resolve(queue.waitTillIdle())
+      })
+    } finally {
+      if (!givenSftp) {
+        sftp.end()
+      }
+    }
+
+    return !failed
+  }
+
+  async getDirectory(
+    localDirectory: string,
+    remoteDirectory: string,
+    {
+      concurrency = DEFAULT_CONCURRENCY,
+      sftp: givenSftp = null,
+      transferOptions = {},
+      recursive = true,
+      tick = DEFAULT_TICK,
+      validate = DEFAULT_VALIDATE,
+    }: SSHPutDirectoryOptions = {},
+  ): Promise<boolean> {
+    invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
+    invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
+
+    const localDirectoryStat: fs.Stats = await new Promise(resolve => {
+      fs.stat(localDirectory, (err, stat) => {
+        resolve(stat || null)
+      })
+    })
+
+    invariant(localDirectoryStat != null, `localDirectory does not exist at ${localDirectory}`)
+    invariant(localDirectoryStat.isDirectory(), `localDirectory is not a directory at ${localDirectory}`)
+
+    const sftp = givenSftp || (await this.requestSFTP())
+
+    const scanned = await scanDirectory(localDirectory, {
+      recursive,
+      validate,
+      concurrency,
+      fileSystem: {
+        readdir(path) {
+          return new Promise((resolve, reject) => {
+            sftp.readdir(path, (err, res) => {
+              if (err) {
+                reject(err)
+              } else {
+                resolve(res.map(item => item.filename))
+              }
+            })
+          })
+        },
+        stat(path) {
+          return new Promise((resolve, reject) => {
+            sftp.stat(path, (err, res) => {
+              if (err) {
+                reject(err)
+              } else {
+                resolve(res as any)
+              }
+            })
+          })
+        },
+      },
+    })
+    const files = scanned.files.map(item => fsPath.relative(localDirectory, item))
+    const directories = scanned.directories.map(item => fsPath.relative(localDirectory, item))
+
+    // Sort shortest to longest
+    directories.sort((a, b) => a.length - b.length)
+
+    let failed = false
+    const directoriesCreated = new Set()
+
+    const createDirectory = async (path: string) => {
+      if (!directoriesCreated.has(path)) {
+        directoriesCreated.add(path)
+        await makeDir(path)
+      }
+    }
+
+    try {
+      // Do the directories first.
+      await new Promise((resolve, reject) => {
+        const queue = new PromiseQueue({ concurrency })
+
+        directories.forEach(directory => {
+          queue
+            .add(async () => {
+              await createDirectory(directory.split(fsPath.sep).join('/'))
+            })
+            .catch(reject)
+        })
+
+        resolve(queue.waitTillIdle())
+      })
+
+      // and now the files
+      await new Promise((resolve, reject) => {
+        const queue = new PromiseQueue({ concurrency })
+
+        files.forEach(file => {
+          queue
+            .add(async () => {
+              const localFile = fsPath.join(localDirectory, file)
+              const remoteFile = fsPath
+                .join(remoteDirectory, file)
+                .split(fsPath.sep)
+                .join('/')
+              await createDirectory(fsPath.dirname(remoteFile))
+              try {
+                await this.getFile(localFile, remoteFile, sftp, transferOptions)
                 tick(localFile, remoteFile, null)
               } catch (_) {
                 failed = true

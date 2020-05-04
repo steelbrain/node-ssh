@@ -1,5 +1,6 @@
 #### Upcoming
 
+* Add `getDirectory` method
 * Add `onChannel` support to `execCommand`
 * Rename `options.options` in `execCommand` to be `options.execOptions`
 * Rename `options.sftpOptions` to `options.transferOptions` in `putFiles`

@@ -42,6 +42,7 @@
     "typescript": "^3.8.3"
   },
   "dependencies": {
+    "make-dir": "^3.1.0",
     "sb-promise-queue": "^2.0.0",
     "sb-scandir": "^3.0.0",
     "shell-escape": "^0.2.0",
