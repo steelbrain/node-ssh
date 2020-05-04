@@ -4,7 +4,9 @@ import shellEscape from 'shell-escape'
 import invariant, { AssertionError } from 'assert'
 import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2'
 // eslint-disable-next-line import/no-extraneous-dependencies
-import { Prompt, Stats } from 'ssh2-streams'
+import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
+
+const DEFAULT_CONCURRENCY = 5
 
 type Config = ConnectConfig & {
   password?: string
@@ -325,12 +327,14 @@ class NodeSSH {
   async exec(command: string, parameters: string[], options: SSHExecOptions = {}): Promise<SSHExecCommandResponse | string> {
     invariant(typeof command === 'string', 'command must be a valid string')
     invariant(Array.isArray(parameters), 'parameters must be a valid array')
-    invariant(parameters.every(item => typeof item === 'string'), 'parameters items must be valid string')
     invariant(options != null && typeof options === 'object', 'options must be a valid object')
     invariant(
       options.stream == null || ['both', 'stdout', 'stderr'].includes(options.stream),
       'options.stream must be one of both, stdout, stderr',
     )
+    for (let i = 0, { length } = parameters; i < length; i += 1) {
+      invariant(typeof parameters[i] === 'string', `parameters[${i}] must be a valid string`)
+    }
 
     const completeCommand = `${command} ${shellEscape(parameters)}`
     const response = await this.execCommand(completeCommand, options)
@@ -351,6 +355,7 @@ class NodeSSH {
   async mkdir(path: string, method: SSHMkdirMethod = 'sftp', givenSftp: SFTPWrapper | null = null): Promise<void> {
     invariant(typeof path === 'string', 'path must be a valid string')
     invariant(typeof method === 'string' && (method === 'sftp' || method === 'exec'), 'method must be either sftp or exec')
+    invariant(givenSftp == null || typeof givenSftp === 'object', 'sftp must be a valid object')
 
     if (method === 'exec') {
       await this.exec('mkdir', ['-p', path])
@@ -369,6 +374,81 @@ class NodeSSH {
 
     try {
       await makeSftpDirectory(true)
+    } finally {
+      if (!givenSftp) {
+        sftp.end()
+      }
+    }
+  }
+
+  async getFile(
+    localFile: string,
+    remoteFile: string,
+    givenSftp: SFTPWrapper | null = null,
+    transferOptions: TransferOptions | null = null,
+  ): Promise<void> {
+    invariant(typeof localFile === 'string', 'localFile must be a valid string')
+    invariant(typeof remoteFile === 'string', 'remoteFile must be a valid string')
+    invariant(givenSftp == null || typeof givenSftp === 'object', 'sftp must be a valid object')
+    invariant(transferOptions == null || typeof transferOptions === 'object', 'transferOptions must be a valid object')
+
+    const sftp = givenSftp || (await this.requestSFTP())
+
+    try {
+      await new Promise((resolve, reject) => {
+        sftp.fastGet(remoteFile, localFile, transferOptions || {}, err => {
+          if (err) {
+            reject(err)
+          } else {
+            resolve()
+          }
+        })
+      })
+    } finally {
+      if (!givenSftp) {
+        sftp.end()
+      }
+    }
+  }
+
+  async putFile(
+    localFile: string,
+    remoteFile: string,
+    givenSftp: SFTPWrapper | null = null,
+    transferOptions: TransferOptions | null = null,
+  ): Promise<void> {
+    invariant(typeof localFile === 'string', 'localFile must be a valid string')
+    invariant(typeof remoteFile === 'string', 'remoteFile must be a valid string')
+    invariant(givenSftp == null || typeof givenSftp === 'object', 'sftp must be a valid object')
+    invariant(transferOptions == null || typeof transferOptions === 'object', 'transferOptions must be a valid object')
+    invariant(
+      await new Promise(resolve => {
+        fs.access(localFile, fs.constants.R_OK, err => {
+          resolve(err === null)
+        })
+      }),
+      `localFile does not exist at ${localFile}`,
+    )
+    const sftp = givenSftp || (await this.requestSFTP())
+
+    const putFile = (retry: boolean) => {
+      return new Promise(function(resolve, reject) {
+        sftp.fastPut(localFile, remoteFile, transferOptions || {}, err => {
+          if (err == null) {
+            resolve()
+            return
+          }
+          if (err.message === 'No such file' && retry) {
+            resolve(this.mkdir(fsPath.dirname(remoteFile), 'sftp', sftp).then(() => putFile(false)))
+          } else {
+            reject(err)
+          }
+        })
+      })
+    }
+
+    try {
+      await putFile(true)
     } finally {
       if (!givenSftp) {
         sftp.end()
