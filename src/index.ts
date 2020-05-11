@@ -9,12 +9,6 @@ import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from '
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
-const DEFAULT_CONCURRENCY = 5
-const DEFAULT_VALIDATE = (path: string) => !fsPath.basename(path).startsWith('.')
-const DEFAULT_TICK = () => {
-  /* No Op */
-}
-
 type Config = ConnectConfig & {
   password?: string
   privateKey?: string
@@ -62,6 +56,25 @@ interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
 }
 
 type SSHMkdirMethod = 'sftp' | 'exec'
+
+const DEFAULT_CONCURRENCY = 5
+const DEFAULT_VALIDATE = (path: string) => !fsPath.basename(path).startsWith('.')
+const DEFAULT_TICK = () => {
+  /* No Op */
+}
+
+class SSHError extends Error {
+  constructor(message: string, public code: string | null = null) {
+    super(message)
+  }
+}
+
+function unixifyPath(path: string) {
+  if (path.includes('\\')) {
+    return path.split('\\').join('/')
+  }
+  return path
+}
 
 async function readFile(filePath: string): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -116,12 +129,6 @@ async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
       }
       throw err
     }
-  }
-}
-
-class SSHError extends Error {
-  constructor(message: string, public code: string | null = null) {
-    super(message)
   }
 }
 
@@ -225,6 +232,10 @@ class NodeSSH {
     })
 
     return this
+  }
+
+  public isConnected(): boolean {
+    return this.connection != null
   }
 
   async requestShell(): Promise<ClientChannel> {
@@ -388,13 +399,13 @@ class NodeSSH {
     invariant(givenSftp == null || typeof givenSftp === 'object', 'sftp must be a valid object')
 
     if (method === 'exec') {
-      await this.exec('mkdir', ['-p', path])
+      await this.exec('mkdir', ['-p', unixifyPath(path)])
       return
     }
     const sftp = givenSftp || (await this.requestSFTP())
 
     const makeSftpDirectory = async (retry: boolean) =>
-      makeDirectoryWithSftp(path, sftp).catch(async (error: SSHError) => {
+      makeDirectoryWithSftp(unixifyPath(path), sftp).catch(async (error: SSHError) => {
         if (!retry || error == null || (error.message !== 'No such file' && error.code !== 'ENOENT')) {
           throw error
         }
@@ -426,7 +437,7 @@ class NodeSSH {
 
     try {
       await new Promise((resolve, reject) => {
-        sftp.fastGet(remoteFile, localFile, transferOptions || {}, err => {
+        sftp.fastGet(remoteFile, unixifyPath(localFile), transferOptions || {}, err => {
           if (err) {
             reject(err)
           } else {
@@ -463,11 +474,12 @@ class NodeSSH {
 
     const putFile = (retry: boolean) => {
       return new Promise(function(resolve, reject) {
-        sftp.fastPut(localFile, remoteFile, transferOptions || {}, err => {
+        sftp.fastPut(localFile, unixifyPath(remoteFile), transferOptions || {}, err => {
           if (err == null) {
             resolve()
             return
           }
+
           if (err.message === 'No such file' && retry) {
             resolve(this.mkdir(fsPath.dirname(remoteFile), 'sftp', sftp).then(() => putFile(false)))
           } else {
@@ -574,14 +586,7 @@ class NodeSSH {
         directories.forEach(directory => {
           queue
             .add(async () => {
-              await this.mkdir(
-                fsPath
-                  .join(remoteDirectory, directory)
-                  .split(fsPath.sep)
-                  .join('/'),
-                'sftp',
-                sftp,
-              )
+              await this.mkdir(fsPath.join(remoteDirectory, directory), 'sftp', sftp)
             })
             .catch(reject)
         })
@@ -597,10 +602,7 @@ class NodeSSH {
           queue
             .add(async () => {
               const localFile = fsPath.join(localDirectory, file)
-              const remoteFile = fsPath
-                .join(remoteDirectory, file)
-                .split(fsPath.sep)
-                .join('/')
+              const remoteFile = fsPath.join(remoteDirectory, file)
               try {
                 await this.putFile(localFile, remoteFile, sftp, transferOptions)
                 tick(localFile, remoteFile, null)
@@ -685,13 +687,6 @@ class NodeSSH {
     directories.sort((a, b) => a.length - b.length)
 
     let failed = false
-    const directoriesCreated = new Set()
-
-    const createDirectory = async (path: string) => {
-      if (!directoriesCreated.has(path)) {
-        directoriesCreated.add(path)
-      }
-    }
 
     try {
       // Do the directories first.
@@ -701,12 +696,7 @@ class NodeSSH {
         directories.forEach(directory => {
           queue
             .add(async () => {
-              await makeDir(
-                fsPath
-                  .join(localDirectory, directory)
-                  .split('/')
-                  .join(fsPath.sep),
-              )
+              await makeDir(fsPath.join(localDirectory, directory))
             })
             .catch(reject)
         })
@@ -722,11 +712,7 @@ class NodeSSH {
           queue
             .add(async () => {
               const localFile = fsPath.join(localDirectory, file)
-              const remoteFile = fsPath
-                .join(remoteDirectory, file)
-                .split(fsPath.sep)
-                .join('/')
-              await createDirectory(fsPath.dirname(remoteFile))
+              const remoteFile = fsPath.join(remoteDirectory, file)
               try {
                 await this.getFile(localFile, remoteFile, sftp, transferOptions)
                 tick(localFile, remoteFile, null)

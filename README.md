@@ -151,7 +151,10 @@ interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
 
 class NodeSSH {
     connection: Client | null;
+
     connect(config: Config): Promise<this>;
+
+    isConnected(): boolean;
 
     requestShell(): Promise<ClientChannel>;
 
