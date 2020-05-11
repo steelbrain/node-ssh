@@ -437,7 +437,7 @@ class NodeSSH {
 
     try {
       await new Promise((resolve, reject) => {
-        sftp.fastGet(remoteFile, unixifyPath(localFile), transferOptions || {}, err => {
+        sftp.fastGet(unixifyPath(remoteFile), localFile, transferOptions || {}, err => {
           if (err) {
             reject(err)
           } else {
@@ -656,6 +656,12 @@ class NodeSSH {
       validate,
       concurrency,
       fileSystem: {
+        basename(path) {
+          return fsPath.posix.basename(path)
+        },
+        join(pathA, pathB) {
+          return fsPath.posix.join(pathA, pathB)
+        },
         readdir(path) {
           return new Promise((resolve, reject) => {
             sftp.readdir(path, (err, res) => {
