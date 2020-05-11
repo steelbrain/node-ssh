@@ -1,6 +1,7 @@
 #### 10.0.0
 
 * Unixy all paths before passing onwards
+* Add `isConnected` method
 
 #### 9.0.0
 

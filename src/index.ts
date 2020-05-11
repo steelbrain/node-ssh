@@ -234,6 +234,10 @@ class NodeSSH {
     return this
   }
 
+  public isConnected(): boolean {
+    return this.connection != null
+  }
+
   async requestShell(): Promise<ClientChannel> {
     const connection = this.getConnection()
 
