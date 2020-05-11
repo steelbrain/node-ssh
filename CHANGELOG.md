@@ -1,3 +1,7 @@
+#### 10.0.0
+
+* Unixy all paths before passing onwards
+
 #### 9.0.0
 
 * Add support for Putty private key files
