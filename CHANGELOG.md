@@ -1,3 +1,7 @@
+#### 10.0.1
+
+* Fix unixification of paths (Thanks @mbr4477)
+
 #### 10.0.0
 
 * Unixy all paths before passing onwards
