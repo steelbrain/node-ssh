@@ -104,8 +104,12 @@ import { Prompt, TransferOptions } from 'ssh2-streams';
 // types are coming from.
 
 declare type Config = ConnectConfig & {
+    host?: string;
+    port?: number;
+    username?: string;
     password?: string;
     privateKey?: string;
+    passphrase?: string;
     tryKeyboard?: boolean;
     onKeyboardInteractive?: (
       name: string,
