@@ -337,7 +337,7 @@ class NodeSSH {
           if (options.onStdout) options.onStdout(chunk)
           output.stdout.push(chunk.toString(options.encoding))
         })
-        channel.stderr.on('data', (chunk: Buffer)  => {
+        channel.stderr.on('data', (chunk: Buffer) => {
           if (options.onStderr) options.onStderr(chunk)
           output.stderr.push(chunk.toString(options.encoding))
         })
