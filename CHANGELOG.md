@@ -1,3 +1,7 @@
+#### 10.0.2
+
+* Prefer arrow callbacks - Fixes #304 (Thanks @ururk)
+
 #### 10.0.1
 
 * Fix unixification of paths (Thanks @mbr4477)

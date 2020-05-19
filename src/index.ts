@@ -241,7 +241,7 @@ class NodeSSH {
   async requestShell(): Promise<ClientChannel> {
     const connection = this.getConnection()
 
-    return new Promise(function(resolve, reject) {
+    return new Promise((resolve, reject) => {
       connection.shell((err, res) => {
         if (err) {
           reject(err)
@@ -270,7 +270,7 @@ class NodeSSH {
   async requestSFTP(): Promise<SFTPWrapper> {
     const connection = this.getConnection()
 
-    return new Promise(function(resolve, reject) {
+    return new Promise((resolve, reject) => {
       connection.sftp((err, res) => {
         if (err) {
           reject(err)
@@ -333,11 +333,11 @@ class NodeSSH {
         if (options.onChannel) {
           options.onChannel(channel)
         }
-        channel.on('data', function(chunk: Buffer) {
+        channel.on('data', (chunk: Buffer) => {
           if (options.onStdout) options.onStdout(chunk)
           output.stdout.push(chunk.toString(options.encoding))
         })
-        channel.stderr.on('data', function(chunk: Buffer) {
+        channel.stderr.on('data', (chunk: Buffer)  => {
           if (options.onStderr) options.onStderr(chunk)
           output.stderr.push(chunk.toString(options.encoding))
         })
@@ -347,11 +347,11 @@ class NodeSSH {
         }
         let code: number | null = null
         let signal: string | null = null
-        channel.on('exit', function(code_, signal_) {
+        channel.on('exit', (code_, signal_) => {
           code = code_ || null
           signal = signal_ || null
         })
-        channel.on('close', function() {
+        channel.on('close', () => {
           resolve({
             code: code != null ? code : null,
             signal: signal != null ? signal : null,
@@ -473,7 +473,7 @@ class NodeSSH {
     const sftp = givenSftp || (await this.requestSFTP())
 
     const putFile = (retry: boolean) => {
-      return new Promise(function(resolve, reject) {
+      return new Promise((resolve, reject) => {
         sftp.fastPut(localFile, unixifyPath(remoteFile), transferOptions || {}, err => {
           if (err == null) {
             resolve()
