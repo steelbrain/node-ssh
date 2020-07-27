@@ -978,9 +978,9 @@ eslint-config-prettier@^6.0.0:
     get-stdin "^6.0.0"
 
 eslint-config-steelbrain@^9.0.1:
-  version "9.0.1"
-  resolved "https://registry.yarnpkg.com/eslint-config-steelbrain/-/eslint-config-steelbrain-9.0.1.tgz#c4c37645480ee3055ec2b0a8abee18db28806727"
-  integrity sha512-dGGoU+HFXLbf9Rfsh8t7FdufW1VE9/jceV1IT8julhNak+EA4qNyAoxJGZkUv8sdA3vXv6RzxaLEFlkijJfU9Q==
+  version "9.0.2"
+  resolved "https://registry.yarnpkg.com/eslint-config-steelbrain/-/eslint-config-steelbrain-9.0.2.tgz#e563eb6e9317e59737f24bbe04a6d6c836adc4f1"
+  integrity sha512-EI/884yHbWYJmI8CaDlyeSYVe/Swkj8TsViuGJZwOknIwpHSuefH8+N8v22o5WvnWJbpnZf3Yk6Af8t0C/ojaw==
   dependencies:
     "@typescript-eslint/eslint-plugin" "^2.18.0"
     "@typescript-eslint/parser" "^2.18.0"
