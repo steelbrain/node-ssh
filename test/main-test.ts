@@ -20,20 +20,20 @@ function sshit(
   skip = false,
 ): void {
   const testFunc = skip ? test.skip : test
-  testFunc(title, async function (t) {
+  testFunc(title, async function(t) {
     ports += 1
 
     const server = createServer()
     const client = new NodeSSH()
     const port = ports
-    await new Promise(function (resolve) {
+    await new Promise(function(resolve) {
       server.listen(port, '127.0.0.1', resolve)
     })
     try {
       await callback(t, port, client, server)
     } finally {
       client.dispose()
-      await new Promise(function (resolve) {
+      await new Promise(function(resolve) {
         server.close(resolve)
       })
     }
@@ -65,35 +65,35 @@ async function connectWithInlinePrivateKey(port, client) {
   })
 }
 
-test.after(function () {
+test.after(function() {
   ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
   ChildProcess.exec(`rm -rf ${getFixturePath('ignored-2/*')}`)
 })
-test.before(function () {
+test.before(function() {
   ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
   ChildProcess.exec(`rm -rf ${getFixturePath('ignored-2/*')}`)
 })
 
-sshit('connects to a server with password', async function (t, port, client) {
-  await t.notThrowsAsync(async function () {
+sshit('connects to a server with password', async function(t, port, client) {
+  await t.notThrowsAsync(async function() {
     await connectWithPassword(port, client)
   })
 })
-sshit('connects to a server with a private key', async function (t, port, client) {
-  await t.notThrowsAsync(async function () {
+sshit('connects to a server with a private key', async function(t, port, client) {
+  await t.notThrowsAsync(async function() {
     await connectWithPrivateKey(port, client)
   })
 })
-sshit('connects to a server with an inline private key', async function (t, port, client) {
-  await t.notThrowsAsync(async function () {
+sshit('connects to a server with an inline private key', async function(t, port, client) {
+  await t.notThrowsAsync(async function() {
     await connectWithInlinePrivateKey(port, client)
   })
 })
-sshit('requests a shell that works', async function (t, port, client) {
+sshit('requests a shell that works', async function(t, port, client) {
   await connectWithPassword(port, client)
   const data = []
   const shell = await client.requestShell()
-  shell.on('data', function (chunk) {
+  shell.on('data', function(chunk) {
     data.push(chunk)
   })
   shell.write('ls /\n')
@@ -103,19 +103,19 @@ sshit('requests a shell that works', async function (t, port, client) {
   t.regex(joinedData, /ls \//)
 })
 
-sshit('creates directories with sftp properly', async function (t, port, client) {
+sshit('creates directories with sftp properly', async function(t, port, client) {
   await connectWithPassword(port, client)
   t.is(await exists(getFixturePath('ignored/a/b')), false)
   await client.mkdir(getFixturePath('ignored/a/b'), 'sftp')
   t.is(await exists(getFixturePath('ignored/a/b')), true)
 })
-sshit('creates directories with exec properly', async function (t, port, client) {
+sshit('creates directories with exec properly', async function(t, port, client) {
   await connectWithPassword(port, client)
   t.is(await exists(getFixturePath('ignored/a/b')), false)
   await client.mkdir(getFixturePath('ignored/a/b'), 'exec')
   t.is(await exists(getFixturePath('ignored/a/b')), true)
 })
-sshit('throws error when it cant create directories', async function (t, port, client) {
+sshit('throws error when it cant create directories', async function(t, port, client) {
   await connectWithPassword(port, client)
   try {
     await client.mkdir('/etc/passwd/asdasdasd')
@@ -124,17 +124,17 @@ sshit('throws error when it cant create directories', async function (t, port, c
     t.is(_.message.indexOf('ENOTDIR: not a directory') !== -1, true)
   }
 })
-sshit('exec with correct escaped parameters', async function (t, port, client) {
+sshit('exec with correct escaped parameters', async function(t, port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('echo', ['$some', 'S\\Thing', '"Yo"'])
   t.is(result, '$some S\\Thing "Yo"')
 })
-sshit('exec with correct cwd', async function (t, port, client) {
+sshit('exec with correct cwd', async function(t, port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('pwd', [], { cwd: '/etc' })
   t.is(result, '/etc')
 })
-sshit('throws if stream is stdout and stuff is written to stderr', async function (t, port, client) {
+sshit('throws if stream is stdout and stuff is written to stderr', async function(t, port, client) {
   await connectWithPassword(port, client)
   try {
     await client.exec('node', ['-e', 'console.error("Test")'])
@@ -143,12 +143,12 @@ sshit('throws if stream is stdout and stuff is written to stderr', async functio
     t.is(_.message, 'Test')
   }
 })
-sshit('does not throw if stream is stderr and is written to', async function (t, port, client) {
+sshit('does not throw if stream is stderr and is written to', async function(t, port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('node', ['-e', 'console.error("Test")'], { stream: 'stderr' })
   t.is(result, 'Test')
 })
-sshit('returns both streams if asked to', async function (t, port, client) {
+sshit('returns both streams if asked to', async function(t, port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('node', ['-e', 'console.log("STDOUT"); console.error("STDERR")'], { stream: 'both' })
   invariant(typeof result === 'object' && result)
@@ -158,12 +158,12 @@ sshit('returns both streams if asked to', async function (t, port, client) {
     t.is(result.stderr, 'STDERR')
   }
 })
-sshit('writes to stdin properly', async function (t, port, client) {
+sshit('writes to stdin properly', async function(t, port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('node', ['-e', 'process.stdin.pipe(process.stdout)'], { stdin: 'Twinkle!\nStars!' })
   t.is(result, 'Twinkle!\nStars!')
 })
-sshit('gets files properly', async function (t, port, client) {
+sshit('gets files properly', async function(t, port, client) {
   await connectWithPassword(port, client)
   const sourceFile = __filename
   const targetFile = getFixturePath('ignored/test-get')
@@ -172,7 +172,7 @@ sshit('gets files properly', async function (t, port, client) {
   t.is(await exists(targetFile), true)
   t.is(fs.readFileSync(targetFile, 'utf8').trim(), fs.readFileSync(sourceFile, 'utf8').trim())
 })
-sshit('puts files properly', async function (t, port, client) {
+sshit('puts files properly', async function(t, port, client) {
   await connectWithPassword(port, client)
   const sourceFile = __filename
   const targetFile = getFixturePath('ignored/test-get')
@@ -181,7 +181,7 @@ sshit('puts files properly', async function (t, port, client) {
   t.is(await exists(targetFile), true)
   t.is(fs.readFileSync(targetFile, 'utf8').trim(), fs.readFileSync(sourceFile, 'utf8').trim())
 })
-sshit('puts multiple files properly', async function (t, port, client) {
+sshit('puts multiple files properly', async function(t, port, client) {
   await connectWithPassword(port, client)
 
   const files = [
@@ -195,13 +195,13 @@ sshit('puts multiple files properly', async function (t, port, client) {
     { local: getFixturePath('multiple/ii'), remote: getFixturePath('ignored/ii') },
     { local: getFixturePath('multiple/jj'), remote: getFixturePath('ignored/jj') },
   ]
-  const existsBefore = await Promise.all(files.map((file) => exists(file.remote)))
+  const existsBefore = await Promise.all(files.map(file => exists(file.remote)))
   t.is(existsBefore.every(Boolean), false)
   await client.putFiles(files)
-  const existsAfter = await Promise.all(files.map((file) => exists(file.remote)))
+  const existsAfter = await Promise.all(files.map(file => exists(file.remote)))
   t.is(existsAfter.every(Boolean), true)
 })
-sshit('puts entire directories at once', async function (t, port, client) {
+sshit('puts entire directories at once', async function(t, port, client) {
   await connectWithPassword(port, client)
   const remoteFiles = [
     getFixturePath('ignored/aa'),
@@ -219,7 +219,7 @@ sshit('puts entire directories at once', async function (t, port, client) {
     getFixturePath('ignored/really/really/really/really/deep'),
   ]
   const filesReceived = []
-  const existsBefore = await Promise.all(remoteFiles.map((file) => exists(file)))
+  const existsBefore = await Promise.all(remoteFiles.map(file => exists(file)))
   t.is(existsBefore.every(Boolean), false)
   await client.putDirectory(getFixturePath('multiple'), getFixturePath('ignored'), {
     tick(local, remote, error) {
@@ -231,10 +231,10 @@ sshit('puts entire directories at once', async function (t, port, client) {
   remoteFiles.sort()
   filesReceived.sort()
   t.deepEqual(remoteFiles, filesReceived)
-  const existsAfter = await Promise.all(remoteFiles.map((file) => exists(file)))
+  const existsAfter = await Promise.all(remoteFiles.map(file => exists(file)))
   t.is(existsAfter.every(Boolean), true)
 })
-sshit('gets entire directories at once', async function (t, port, client) {
+sshit('gets entire directories at once', async function(t, port, client) {
   await connectWithPassword(port, client)
   const localFiles = [
     getFixturePath('ignored-2/aa'),
@@ -252,7 +252,7 @@ sshit('gets entire directories at once', async function (t, port, client) {
     getFixturePath('ignored-2/really/really/really/really/deep'),
   ]
   const filesReceived = []
-  const existsBefore = await Promise.all(localFiles.map((file) => exists(file)))
+  const existsBefore = await Promise.all(localFiles.map(file => exists(file)))
   t.is(existsBefore.every(Boolean), false)
   await client.getDirectory(getFixturePath('ignored-2'), getFixturePath('multiple'), {
     tick(local, remote, error) {
@@ -264,10 +264,10 @@ sshit('gets entire directories at once', async function (t, port, client) {
   localFiles.sort()
   filesReceived.sort()
   t.deepEqual(localFiles, filesReceived)
-  const existsAfter = await Promise.all(localFiles.map((file) => exists(file)))
+  const existsAfter = await Promise.all(localFiles.map(file => exists(file)))
   t.is(existsAfter.every(Boolean), true)
 })
-sshit('allows stream callbacks on exec', async function (t, port, client) {
+sshit('allows stream callbacks on exec', async function(t, port, client) {
   await connectWithPassword(port, client)
   const outputFromCallbacks = { stdout: [], stderr: [] }
   await client.exec('node', [getFixturePath('test-program')], {
@@ -285,7 +285,7 @@ sshit('allows stream callbacks on exec', async function (t, port, client) {
     t.is(outputFromCallbacks.stderr.join('').trim(), 'STDERR')
   }
 })
-sshit('allows stream callbacks on execCommand', async function (t, port, client) {
+sshit('allows stream callbacks on execCommand', async function(t, port, client) {
   await connectWithPassword(port, client)
   const outputFromCallbacks = { stdout: [], stderr: [] }
   await client.execCommand(`node ${getFixturePath('test-program')}`, {
