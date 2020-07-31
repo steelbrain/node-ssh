@@ -1,11 +1,11 @@
-import invariant, { AssertionError } from 'assert'
 import fs from 'fs'
+import fsPath from 'path'	
 import makeDir from 'make-dir'
-import fsPath from 'path'
-import { PromiseQueue } from 'sb-promise-queue'
-import scanDirectory from 'sb-scandir'
 import shellEscape from 'shell-escape'
-import { Client, ClientChannel, ConnectConfig, ExecOptions, SFTPWrapper } from 'ssh2'
+import scanDirectory from 'sb-scandir'	
+import { PromiseQueue } from 'sb-promise-queue'
+import invariant, { AssertionError } from 'assert'
+import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2'
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
