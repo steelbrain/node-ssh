@@ -1,7 +1,3 @@
-#### 1.1.0
-
-* Add ESM module exports for upcoming Node.js versions
-
 #### 10.0.2
 
 * Prefer arrow callbacks - Fixes #304 (Thanks @ururk)
