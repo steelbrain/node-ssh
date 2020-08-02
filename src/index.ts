@@ -132,7 +132,7 @@ async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
   }
 }
 
-export class NodeSSH {
+export default class NodeSSH {
   connection: Client | null = null
 
   private getConnection(): Client {

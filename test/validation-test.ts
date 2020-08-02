@@ -4,7 +4,7 @@ import { Socket } from 'net'
 import test, { ExecutionContext } from 'ava'
 
 import { PRIVATE_KEY_PATH, PRIVATE_KEY_PPK_PATH } from './helpers'
-import { NodeSSH } from '../src'
+import NodeSSH from '../src'
 
 async function normalizeConfig(config) {
   return new NodeSSH().connect(config)
