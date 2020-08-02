@@ -5,6 +5,14 @@
   "main": "lib/cjs/index.js",
   "typings": "lib/typings/index.d.ts",
   "module": "lib/esm/index.js",
+  "exports": {
+    ".": {
+      "import": "./lib/esm/index.js",
+      "require": "./lib/cjs/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "type": "module",
   "scripts": {
     "test": "ava",
     "lint": "(tsc -p . --noEmit) && (eslint . --ext .ts) && (prettier --list-different src/*.ts)",
