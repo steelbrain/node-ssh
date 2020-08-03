@@ -5,7 +5,7 @@ import shellEscape from 'shell-escape'
 import scanDirectory from 'sb-scandir'
 import { PromiseQueue } from 'sb-promise-queue'
 import invariant, { AssertionError } from 'assert'
-import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2'
+import SSH2, { ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2'
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
@@ -133,9 +133,9 @@ async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
 }
 
 export class NodeSSH {
-  connection: Client | null = null
+  connection: SSH2.Client | null = null
 
-  private getConnection(): Client {
+  private getConnection(): SSH2.Client {
     const { connection } = this
     if (connection == null) {
       throw new Error('Not connected to server')
@@ -205,7 +205,7 @@ export class NodeSSH {
       }
     }
 
-    const connection = new Client()
+    const connection = new SSH2.Client()
     this.connection = connection
 
     await new Promise((resolve, reject) => {
