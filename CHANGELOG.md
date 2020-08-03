@@ -1,6 +1,8 @@
 #### 1.1.0
 
 * Add ESM module exports for upcoming Node.js versions
+* BREAKING: Changed export to named, so it becomes `const {NodeSSH} = require('node-ssh')` and `import {NodeSSH} from 'node-ssh'`
+* Export Typescript types from package
 
 #### 10.0.2
 
