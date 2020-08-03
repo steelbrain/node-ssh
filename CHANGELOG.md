@@ -1,4 +1,4 @@
-#### 1.1.0
+#### 11.0.0
 
 * Add ESM module exports for upcoming Node.js versions
 * BREAKING: Changed export to named, so it becomes `const {NodeSSH} = require('node-ssh')` and `import {NodeSSH} from 'node-ssh'`
