@@ -55,6 +55,8 @@ ssh.connect({
   ssh.putDirectory('/home/steel/Lab', '/home/steel/Lab', {
     recursive: true,
     concurrency: 10,
+    // ^ WARNING: Not all servers support high concurrency
+    // try a bunch of values and see what works on your server
     validate: function(itemPath) {
       const baseName = path.basename(itemPath)
       return baseName.substr(0, 1) !== '.' && // do not allow dot files

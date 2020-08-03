@@ -57,7 +57,7 @@ export interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
 
 export type SSHMkdirMethod = 'sftp' | 'exec'
 
-const DEFAULT_CONCURRENCY = 5
+const DEFAULT_CONCURRENCY = 1
 const DEFAULT_VALIDATE = (path: string) => !fsPath.basename(path).startsWith('.')
 const DEFAULT_TICK = () => {
   /* No Op */

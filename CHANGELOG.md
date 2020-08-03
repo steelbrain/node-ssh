@@ -3,6 +3,7 @@
 * Add ESM module exports for upcoming Node.js versions
 * BREAKING: Changed export to named, so it becomes `const {NodeSSH} = require('node-ssh')` and `import {NodeSSH} from 'node-ssh'`
 * Export Typescript types from package
+* Set default concurrency to `1` to ensure compatibility with wider array of servers
 
 #### 10.0.2
 
