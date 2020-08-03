@@ -2534,22 +2534,17 @@ safe-buffer@~5.1.1:
   resolved "https://registry.yarnpkg.com/safer-buffer/-/safer-buffer-2.1.2.tgz#44fa161b0187b9549dd84bb91802f9bd8385cd6a"
   integrity sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==
 
-sb-promise-queue@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/sb-promise-queue/-/sb-promise-queue-2.0.0.tgz#e275a92a958f34b8bd9c8c6cbb760ac39598cb09"
-  integrity sha512-VV7y/iVTM34Aks5GAPn+VRSIx/O95SYfXqZy8nPo9jYvtJKaLMVwnV8X6Zl9oxjZAsWlKVi30N2zbzW0R2RLmg==
-
 sb-promise-queue@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/sb-promise-queue/-/sb-promise-queue-2.1.0.tgz#7e44bebef643f75d809a3db7f605b815d877a04d"
   integrity sha512-zwq4YuP1FQFkGx2Q7GIkZYZ6PqWpV+bg0nIO1sJhWOyGyhqbj0MsTvK6lCFo5TQwX5pZr6SCQ75e8PCDCuNvkg==
 
-sb-scandir@^3.0.0:
-  version "3.0.0"
-  resolved "https://registry.yarnpkg.com/sb-scandir/-/sb-scandir-3.0.0.tgz#b2f462094f661f12a089f55139b8edbf5ce5b088"
-  integrity sha512-QH1L5cxhRcXI440ShNCPkxQBkzAqWe4je0FoWvfOB1+LDtWYGCJrbn8jK41qBqGqccFw0Mg8OmhR6cHnr3/rfw==
+sb-scandir@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/sb-scandir/-/sb-scandir-3.1.0.tgz#31c346abb5184b73c5a25b286858f4299aa8756c"
+  integrity sha512-70BVm2xz9jn94zSQdpvYrEG101/UV9TVGcfWr9T5iob3QhCK4lYXeculfBqPGFv3XTeKgx4dpWyYIDeZUqo4kg==
   dependencies:
-    sb-promise-queue "^2.0.0"
+    sb-promise-queue "^2.1.0"
 
 semver-diff@^3.1.1:
   version "3.1.1"
