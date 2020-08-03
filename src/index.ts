@@ -9,7 +9,7 @@ import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from '
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
-type Config = ConnectConfig & {
+export type Config = ConnectConfig & {
   password?: string
   privateKey?: string
   tryKeyboard?: boolean
@@ -22,7 +22,7 @@ type Config = ConnectConfig & {
   ) => void
 }
 
-interface SSHExecCommandOptions {
+export interface SSHExecCommandOptions {
   cwd?: string
   stdin?: string
   execOptions?: ExecOptions
@@ -32,30 +32,30 @@ interface SSHExecCommandOptions {
   onStderr?: (chunk: Buffer) => void
 }
 
-interface SSHExecCommandResponse {
+export interface SSHExecCommandResponse {
   stdout: string
   stderr: string
   code: number | null
   signal: string | null
 }
 
-interface SSHExecOptions extends SSHExecCommandOptions {
+export interface SSHExecOptions extends SSHExecCommandOptions {
   stream?: 'stdout' | 'stderr' | 'both'
 }
 
-interface SSHPutFilesOptions {
+export interface SSHPutFilesOptions {
   sftp?: SFTPWrapper | null
   concurrency?: number
   transferOptions?: TransferOptions
 }
 
-interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
+export interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
   tick?: (localFile: string, remoteFile: string, error: Error | null) => void
   validate?: (path: string) => boolean
   recursive?: boolean
 }
 
-type SSHMkdirMethod = 'sftp' | 'exec'
+export type SSHMkdirMethod = 'sftp' | 'exec'
 
 const DEFAULT_CONCURRENCY = 5
 const DEFAULT_VALIDATE = (path: string) => !fsPath.basename(path).startsWith('.')
@@ -63,7 +63,7 @@ const DEFAULT_TICK = () => {
   /* No Op */
 }
 
-class SSHError extends Error {
+export class SSHError extends Error {
   constructor(message: string, public code: string | null = null) {
     super(message)
   }
@@ -132,7 +132,7 @@ async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
   }
 }
 
-class NodeSSH {
+export default class NodeSSH {
   connection: Client | null = null
 
   private getConnection(): Client {
@@ -679,6 +679,7 @@ class NodeSSH {
               if (err) {
                 reject(err)
               } else {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 resolve(res as any)
               }
             })
@@ -748,5 +749,3 @@ class NodeSSH {
     }
   }
 }
-
-export = NodeSSH

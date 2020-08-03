@@ -6,7 +6,7 @@ import test, { ExecutionContext } from 'ava'
 import { PRIVATE_KEY_PATH, PRIVATE_KEY_PPK_PATH } from './helpers'
 import NodeSSH from '../src'
 
-async function normalizeConfig(config: any) {
+async function normalizeConfig(config) {
   return new NodeSSH().connect(config)
 }
 

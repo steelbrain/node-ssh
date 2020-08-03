@@ -155,6 +155,7 @@ function handleSFTP(accept) {
 
 function handleSession(acceptSession) {
   const session = acceptSession()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let ptyInfo: Record<string, any> | null = null
   session.on('pty', function(accept, _, info) {
     accept()
@@ -172,9 +173,9 @@ function handleSession(acceptSession) {
       return
     }
     const request = accept()
-    const spawnedProcess = ptySpawn(process.env.SHELL || 'bash', [], ptyInfo)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const spawnedProcess: any = ptySpawn(process.env.SHELL || 'bash', [], ptyInfo)
     request.pipe(spawnedProcess)
-    // @ts-ignore
     spawnedProcess.pipe(request)
   })
   session.on('exec', function(accept, reject, info) {
