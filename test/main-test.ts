@@ -5,7 +5,7 @@ import ChildProcess from 'child_process'
 import test, { ExecutionContext } from 'ava'
 import { Server } from 'ssh2'
 
-import NodeSSH from '../src'
+import { NodeSSH } from '../src'
 import createServer from './ssh-server'
 import { PRIVATE_KEY_PATH, wait, exists } from './helpers'
 
