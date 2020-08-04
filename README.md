@@ -10,7 +10,7 @@ var path, NodeSSH, ssh, fs
 
 fs = require('fs')
 path = require('path')
-NodeSSH = require('node-ssh')
+NodeSSH = require('node-ssh').NodeSSH
 ssh = new NodeSSH()
 
 ssh.connect({
