@@ -11,7 +11,7 @@
 
 #### 10.0.1
 
-* Fix unixification of paths (Thanks @mbr4477)
+* Fix unixification of paths in more places (Thanks @mbr4477)
 
 #### 10.0.0
 
@@ -65,7 +65,7 @@
 * Change signature of `put{Files,Directory}` methods
 * Create empty directories remotely in `putDirectory`
 
-#### 4.3.3
+#### 4.2.3
 
 * Fix passing options in `execCommand`
 
@@ -105,8 +105,6 @@
 * Fix a bug for windows users where `.putDirectory()` wouldn't convert paths properly ( Thanks @lanxenet )
 
 #### 3.0.0
-
-Confidently, this is the most stable version of this module to date :tada:
 
 * Rename `.end` to `.dispose`
 * Rename `.get` to `.getFile`
