@@ -1,3 +1,7 @@
+#### 11.1.0
+
+- Add support for `options` in `withShell` and `requestShell`
+
 #### 11.0.0
 
 * Add ESM module exports for upcoming Node.js versions

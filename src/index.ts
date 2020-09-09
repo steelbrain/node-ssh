@@ -5,7 +5,7 @@ import shellEscape from 'shell-escape'
 import scanDirectory from 'sb-scandir'
 import { PromiseQueue } from 'sb-promise-queue'
 import invariant, { AssertionError } from 'assert'
-import SSH2, { ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2'
+import SSH2, { ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions, PseudoTtyOptions, ShellOptions, Client } from 'ssh2'
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
@@ -238,24 +238,32 @@ export class NodeSSH {
     return this.connection != null
   }
 
-  async requestShell(): Promise<ClientChannel> {
+  async requestShell(options?: PseudoTtyOptions | ShellOptions | false): Promise<ClientChannel> {
     const connection = this.getConnection()
 
     return new Promise((resolve, reject) => {
-      connection.shell((err, res) => {
+      const callback = (err: Error | undefined, res: ClientChannel) => {
         if (err) {
           reject(err)
         } else {
           resolve(res)
         }
-      })
+      }
+      if (options == null) {
+        connection.shell(callback)
+      } else {
+        connection.shell(options as any, callback)
+      }
     })
   }
 
-  async withShell(callback: (channel: ClientChannel) => Promise<void>): Promise<void> {
+  async withShell(
+    callback: (channel: ClientChannel) => Promise<void>,
+    options?: PseudoTtyOptions | ShellOptions | false,
+  ): Promise<void> {
     invariant(typeof callback === 'function', 'callback must be a valid function')
 
-    const shell = await this.requestShell()
+    const shell = await this.requestShell(options)
     try {
       await callback(shell)
     } finally {

@@ -6,12 +6,11 @@ Node-SSH is an extremely lightweight Promise wrapper for [ssh2][ssh2].
 #### Example
 
 ```js
-var path, NodeSSH, ssh, fs
+const fs = require('fs')
+const path = require('path')
+const {NodeSSH} = require('node-ssh')
 
-fs = require('fs')
-path = require('path')
-NodeSSH = require('node-ssh').NodeSSH
-ssh = new NodeSSH()
+const ssh = new NodeSSH()
 
 ssh.connect({
   host: 'localhost',
@@ -100,7 +99,7 @@ ssh.connect({
 
 ```ts
 // API reference in Typescript typing format:
-import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2';
+import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions, PseudoTtyOptions | ShellOptions } from 'ssh2';
 import { Prompt, TransferOptions } from 'ssh2-streams';
 // ^ You do NOT need to import these package, these are here for reference of where the
 // types are coming from.
@@ -162,10 +161,13 @@ class NodeSSH {
 
     isConnected(): boolean;
 
-    requestShell(): Promise<ClientChannel>;
+    requestShell(
+      options?: PseudoTtyOptions | ShellOptions | false
+    ): Promise<ClientChannel>;
 
     withShell(
-      callback: (channel: ClientChannel) => Promise<void>
+      callback: (channel: ClientChannel) => Promise<void>,
+      options?: PseudoTtyOptions | ShellOptions | false
     ): Promise<void>;
 
     requestSFTP(): Promise<SFTPWrapper>;
@@ -253,15 +255,22 @@ ssh.connect({
   port: 22,
   password,
   tryKeyboard: true,
-  onKeyboardInteractive: (name, instructions, instructionsLang, prompts, finish) => {
-      if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
-        finish([password])
-      }
+})
+
+// Or if you want to add some custom keyboard-interactive logic:
+
+ssh.connect({
+  host: 'localhost',
+  username: 'steel',
+  port: 22,
+  tryKeyboard: true,
+  onKeyboardInteractive(name, instructions, instructionsLang, prompts, finish) {
+    if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
+      finish([password])
     }
+  }
 })
 ```
-
-
 
 For further information see: https://github.com/mscdex/ssh2/issues/604
 
