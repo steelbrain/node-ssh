@@ -100,7 +100,7 @@ ssh.connect({
 
 ```ts
 // API reference in Typescript typing format:
-import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions } from 'ssh2';
+import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions, PseudoTtyOptions | ShellOptions } from 'ssh2';
 import { Prompt, TransferOptions } from 'ssh2-streams';
 // ^ You do NOT need to import these package, these are here for reference of where the
 // types are coming from.
@@ -162,10 +162,13 @@ class NodeSSH {
 
     isConnected(): boolean;
 
-    requestShell(): Promise<ClientChannel>;
+    requestShell(
+      options?: PseudoTtyOptions | ShellOptions | false
+    ): Promise<ClientChannel>;
 
     withShell(
-      callback: (channel: ClientChannel) => Promise<void>
+      callback: (channel: ClientChannel) => Promise<void>,
+      options?: PseudoTtyOptions | ShellOptions | false
     ): Promise<void>;
 
     requestSFTP(): Promise<SFTPWrapper>;
