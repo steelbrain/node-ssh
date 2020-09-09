@@ -6,12 +6,11 @@ Node-SSH is an extremely lightweight Promise wrapper for [ssh2][ssh2].
 #### Example
 
 ```js
-var path, NodeSSH, ssh, fs
+const fs = require('fs')
+const path = require('path')
+const {NodeSSH} = require('node-ssh')
 
-fs = require('fs')
-path = require('path')
-NodeSSH = require('node-ssh').NodeSSH
-ssh = new NodeSSH()
+const ssh = new NodeSSH()
 
 ssh.connect({
   host: 'localhost',
@@ -256,15 +255,22 @@ ssh.connect({
   port: 22,
   password,
   tryKeyboard: true,
-  onKeyboardInteractive: (name, instructions, instructionsLang, prompts, finish) => {
-      if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
-        finish([password])
-      }
+})
+
+// Or if you want to add some custom keyboard-interactive logic:
+
+ssh.connect({
+  host: 'localhost',
+  username: 'steel',
+  port: 22,
+  tryKeyboard: true,
+  onKeyboardInteractive(name, instructions, instructionsLang, prompts, finish) {
+    if (prompts.length > 0 && prompts[0].prompt.toLowerCase().includes('password')) {
+      finish([password])
     }
+  }
 })
 ```
-
-
 
 For further information see: https://github.com/mscdex/ssh2/issues/604
 
