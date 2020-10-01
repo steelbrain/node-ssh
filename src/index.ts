@@ -5,7 +5,7 @@ import shellEscape from 'shell-escape'
 import scanDirectory from 'sb-scandir'
 import { PromiseQueue } from 'sb-promise-queue'
 import invariant, { AssertionError } from 'assert'
-import SSH2, { ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions, PseudoTtyOptions, ShellOptions, Client } from 'ssh2'
+import SSH2, { ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions, PseudoTtyOptions, ShellOptions } from 'ssh2'
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
@@ -352,7 +352,9 @@ export class NodeSSH {
         if (options.stdin) {
           channel.write(options.stdin)
         }
+        // Close stdout:
         channel.end()
+
         let code: number | null = null
         let signal: string | null = null
         channel.on('exit', (code_, signal_) => {
