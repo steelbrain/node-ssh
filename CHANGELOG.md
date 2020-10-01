@@ -1,3 +1,8 @@
+#### 11.1.1
+
+- Minor doc fixup. #340 (Thanks @smali-kazmi)
+- Automatically close stdin for executed programs even when no stdin is provided. #341 (Thanks @wmertens)
+
 #### 11.1.0
 
 - Add support for `options` in `withShell` and `requestShell`
