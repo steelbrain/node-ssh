@@ -351,8 +351,8 @@ export class NodeSSH {
         })
         if (options.stdin) {
           channel.write(options.stdin)
-          channel.end()
         }
+        channel.end()
         let code: number | null = null
         let signal: string | null = null
         channel.on('exit', (code_, signal_) => {
