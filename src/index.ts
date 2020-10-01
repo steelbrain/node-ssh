@@ -341,7 +341,7 @@ export class NodeSSH {
         if (options.onChannel) {
           options.onChannel(channel)
         }
-        channel.on('data', (chunk: Buffer) => {
+        channel.stdout.on('data', (chunk: Buffer) => {
           if (options.onStdout) options.onStdout(chunk)
           output.stdout.push(chunk.toString(options.encoding))
         })
@@ -350,10 +350,10 @@ export class NodeSSH {
           output.stderr.push(chunk.toString(options.encoding))
         })
         if (options.stdin) {
-          channel.write(options.stdin)
+          channel.stdin.write(options.stdin)
         }
         // Close stdout:
-        channel.end()
+        channel.stdin.end()
 
         let code: number | null = null
         let signal: string | null = null
