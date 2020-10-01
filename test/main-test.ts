@@ -281,9 +281,7 @@ sshit('allows stream callbacks on exec', async function(t, port, client) {
   })
   t.is(outputFromCallbacks.stdout.join('').trim(), 'STDOUT')
   // STDERR tests are flaky on CI
-  if (!process.env.CI) {
-    t.is(outputFromCallbacks.stderr.join('').trim(), 'STDERR')
-  }
+  t.is(outputFromCallbacks.stderr.join('').trim(), 'STDERR')
 })
 sshit('allows stream callbacks on execCommand', async function(t, port, client) {
   await connectWithPassword(port, client)
