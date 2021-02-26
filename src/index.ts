@@ -358,8 +358,8 @@ export class NodeSSH {
         let code: number | null = null
         let signal: string | null = null
         channel.on('exit', (code_, signal_) => {
-          code = code_ || null
-          signal = signal_ || null
+          code = code_ ?? null
+          signal = signal_ ?? null
         })
         channel.on('close', () => {
           resolve({

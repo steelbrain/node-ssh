@@ -134,6 +134,12 @@ sshit('exec with correct cwd', async function(t, port, client) {
   const result = await client.exec('pwd', [], { cwd: '/etc' })
   t.is(result, '/etc')
 })
+sshit('exec should return correct code', async function (t, port, client) {
+  await connectWithPassword(port, client)
+  const result = await client.exec('echo', ['$some', 'S\\Thing', '"Yo"'], { stream: 'both' })
+  t.is(result.stdout, '$some S\\Thing "Yo"')
+  t.is(result.code, 0)
+})
 sshit('throws if stream is stdout and stuff is written to stderr', async function(t, port, client) {
   await connectWithPassword(port, client)
   try {
