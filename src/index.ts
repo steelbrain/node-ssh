@@ -252,7 +252,7 @@ export class NodeSSH {
       if (options == null) {
         connection.shell(callback)
       } else {
-        connection.shell(options as any, callback)
+        connection.shell(options as PseudoTtyOptions, callback)
       }
     })
   }
