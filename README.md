@@ -251,9 +251,21 @@ yarn add --dev @types/ssh2
 npm install --save-dev @types/ssh2
 ```
 
+If you're still running into issues, try adding these to your `tsconfig.json`
+
+```json
+{
+  "compilerOptions": {
+    "moduleResolution": "node",
+    "allowSyntheticDefaultImports": true
+  }
+}
+```
+
 ### Keyboard-interactive user authentication
 
-In some cases you have to enable keyboard-interactive user authentication. Otherwise you will get an `All configured authentication methods failed` error.
+In some cases you have to enable keyboard-interactive user authentication.
+Otherwise you will get an `All configured authentication methods failed` error.
 
 #### Example:
 
