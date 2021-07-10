@@ -1,5 +1,3 @@
-/* @flow */
-
 import FS from 'fs'
 import { SFTPStream } from 'ssh2-streams'
 import ChildProcess from 'child_process'
