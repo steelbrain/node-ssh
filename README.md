@@ -240,6 +240,16 @@ class NodeSSH {
 module.exports = NodeSSH;
 ```
 
+### Typescript support
+
+`node-ssh` requires extra dependencies while working under Typescript. Please install them as shown below
+
+```
+yarn add --dev @types/ssh2
+# OR
+npm install --save-dev @types/ssh2
+```
+
 ### Keyboard-interactive user authentication
 
 In some cases you have to enable keyboard-interactive user authentication. Otherwise you will get an `All configured authentication methods failed` error.
