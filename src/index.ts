@@ -307,7 +307,7 @@ export class NodeSSH {
     invariant(options != null && typeof options === 'object', 'options must be a valid object')
     invariant(options.cwd == null || typeof options.cwd === 'string', 'options.cwd must be a valid string')
     invariant(
-      options.stdin == null || typeof options.stdin === 'string' || isStream(options.stdin),
+      options.stdin == null || typeof options.stdin === 'string' || isStream.readable(options.stdin),
       'options.stdin must be a valid string or readable stream',
     )
     invariant(
@@ -355,7 +355,7 @@ export class NodeSSH {
           output.stderr.push(chunk.toString(options.encoding))
         })
         if (options.stdin != null) {
-          if (isStream(options.stdin)) {
+          if (isStream.readable(options.stdin)) {
             options.stdin.pipe(channel, {
               end: true,
             })
