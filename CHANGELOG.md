@@ -2,6 +2,7 @@
 
 - Upgrade `ssh2` to `v1.1.0`
 - Upgrade all dev dependencies
+- Minimum required version of Node.js is now v10
 - Add support for Readable stream in `options.stdin` in `exec`
 
 #### 11.1.1
