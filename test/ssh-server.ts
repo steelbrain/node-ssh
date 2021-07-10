@@ -1,5 +1,3 @@
-/* @flow */
-
 import FS from 'fs'
 import { SFTPStream } from 'ssh2-streams'
 import ChildProcess from 'child_process'
@@ -8,7 +6,7 @@ import { spawn as ptySpawn } from 'node-pty'
 import ssh2 from 'ssh2'
 import { PRIVATE_KEY_PATH } from './helpers'
 
-const STATUS_CODE = ssh2.SFTP_STATUS_CODE
+const { STATUS_CODE } = ((ssh2.utils as unknown) as { sftp: { STATUS_CODE: Record<string, string> } }).sftp
 
 function handleSFTP(accept) {
   const sftpStream = accept()
