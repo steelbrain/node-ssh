@@ -1,6 +1,8 @@
 import fs from 'fs'
 import fsPath from 'path'
 import makeDir from 'make-dir'
+import stream from 'stream'
+import isStream from 'is-stream'
 import shellEscape from 'shell-escape'
 import scanDirectory from 'sb-scandir'
 import { PromiseQueue } from 'sb-promise-queue'
@@ -24,7 +26,7 @@ export type Config = ConnectConfig & {
 
 export interface SSHExecCommandOptions {
   cwd?: string
-  stdin?: string
+  stdin?: string | stream.Readable
   execOptions?: ExecOptions
   encoding?: BufferEncoding
   onChannel?: (clientChannel: ClientChannel) => void
@@ -304,7 +306,10 @@ export class NodeSSH {
     invariant(typeof givenCommand === 'string', 'command must be a valid string')
     invariant(options != null && typeof options === 'object', 'options must be a valid object')
     invariant(options.cwd == null || typeof options.cwd === 'string', 'options.cwd must be a valid string')
-    invariant(options.stdin == null || typeof options.stdin === 'string', 'options.stdin must be a valid string')
+    invariant(
+      options.stdin == null || typeof options.stdin === 'string' || isStream(options.stdin),
+      'options.stdin must be a valid string or readable stream',
+    )
     invariant(
       options.execOptions == null || typeof options.execOptions === 'object',
       'options.execOptions must be a valid object',
@@ -349,11 +354,18 @@ export class NodeSSH {
           if (options.onStderr) options.onStderr(chunk)
           output.stderr.push(chunk.toString(options.encoding))
         })
-        if (options.stdin) {
-          channel.write(options.stdin)
+        if (options.stdin != null) {
+          if (isStream(options.stdin)) {
+            options.stdin.pipe(channel, {
+              end: true,
+            })
+          } else {
+            channel.write(options.stdin)
+            channel.end()
+          }
+        } else {
+          channel.end()
         }
-        // Close stdout:
-        channel.end()
 
         let code: number | null = null
         let signal: string | null = null

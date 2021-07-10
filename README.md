@@ -99,6 +99,7 @@ ssh.connect({
 
 ```ts
 // API reference in Typescript typing format:
+import stream from 'stream'
 import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions, PseudoTtyOptions | ShellOptions } from 'ssh2';
 import { Prompt, TransferOptions } from 'ssh2-streams';
 // ^ You do NOT need to import these package, these are here for reference of where the
@@ -123,7 +124,7 @@ declare type Config = ConnectConfig & {
 
 interface SSHExecCommandOptions {
     cwd?: string;
-    stdin?: string;
+    stdin?: string | stream.Readable;
     execOptions?: ExecOptions;
     encoding?: BufferEncoding;
     onChannel?: (clientChannel: ClientChannel) => void;
