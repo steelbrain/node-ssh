@@ -1,3 +1,9 @@
+#### 12.0.0
+
+- Upgrade `ssh2` to `v1.1.0`
+- Upgrade all dev dependencies
+- Add support for Readable stream in `options.stdin` in `exec`
+
 #### 11.1.1
 
 - Minor doc fixup. #340 (Thanks @smali-kazmi)
