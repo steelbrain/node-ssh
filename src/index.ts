@@ -112,8 +112,8 @@ async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
     throw new Error('mkdir() failed, target already exists and is not a directory')
   }
   try {
-    await new Promise((resolve, reject) => {
-      sftp.mkdir(path, err => {
+    await new Promise<void>((resolve, reject) => {
+      sftp.mkdir(path, (err) => {
         if (err) {
           reject(err)
         } else {
@@ -208,7 +208,7 @@ export class NodeSSH {
     const connection = new SSH2.Client()
     this.connection = connection
 
-    await new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       connection.on('error', reject)
       if (config.onKeyboardInteractive) {
         connection.on('keyboard-interactive', config.onKeyboardInteractive)
@@ -252,7 +252,7 @@ export class NodeSSH {
       if (options == null) {
         connection.shell(callback)
       } else {
-        connection.shell(options as any, callback)
+        connection.shell(options as never, callback)
       }
     })
   }
@@ -446,8 +446,8 @@ export class NodeSSH {
     const sftp = givenSftp || (await this.requestSFTP())
 
     try {
-      await new Promise((resolve, reject) => {
-        sftp.fastGet(unixifyPath(remoteFile), localFile, transferOptions || {}, err => {
+      await new Promise<void>((resolve, reject) => {
+        sftp.fastGet(unixifyPath(remoteFile), localFile, transferOptions || {}, (err) => {
           if (err) {
             reject(err)
           } else {
@@ -473,8 +473,8 @@ export class NodeSSH {
     invariant(givenSftp == null || typeof givenSftp === 'object', 'sftp must be a valid object')
     invariant(transferOptions == null || typeof transferOptions === 'object', 'transferOptions must be a valid object')
     invariant(
-      await new Promise(resolve => {
-        fs.access(localFile, fs.constants.R_OK, err => {
+      await new Promise((resolve) => {
+        fs.access(localFile, fs.constants.R_OK, (err) => {
           resolve(err === null)
         })
       }),
@@ -483,8 +483,8 @@ export class NodeSSH {
     const sftp = givenSftp || (await this.requestSFTP())
 
     const putFile = (retry: boolean) => {
-      return new Promise((resolve, reject) => {
-        sftp.fastPut(localFile, unixifyPath(remoteFile), transferOptions || {}, err => {
+      return new Promise<void>((resolve, reject) => {
+        sftp.fastPut(localFile, unixifyPath(remoteFile), transferOptions || {}, (err) => {
           if (err == null) {
             resolve()
             return
@@ -527,7 +527,7 @@ export class NodeSSH {
 
     try {
       await new Promise((resolve, reject) => {
-        files.forEach(file => {
+        files.forEach((file) => {
           queue
             .add(async () => {
               await this.putFile(file.local, file.remote, sftp, transferOptions)
@@ -565,7 +565,7 @@ export class NodeSSH {
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
     invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
 
-    const localDirectoryStat: fs.Stats = await new Promise(resolve => {
+    const localDirectoryStat: fs.Stats = await new Promise((resolve) => {
       fs.stat(localDirectory, (err, stat) => {
         resolve(stat || null)
       })
@@ -580,8 +580,8 @@ export class NodeSSH {
       recursive,
       validate,
     })
-    const files = scanned.files.map(item => fsPath.relative(localDirectory, item))
-    const directories = scanned.directories.map(item => fsPath.relative(localDirectory, item))
+    const files = scanned.files.map((item) => fsPath.relative(localDirectory, item))
+    const directories = scanned.directories.map((item) => fsPath.relative(localDirectory, item))
 
     // Sort shortest to longest
     directories.sort((a, b) => a.length - b.length)
@@ -593,7 +593,7 @@ export class NodeSSH {
       await new Promise((resolve, reject) => {
         const queue = new PromiseQueue({ concurrency })
 
-        directories.forEach(directory => {
+        directories.forEach((directory) => {
           queue
             .add(async () => {
               await this.mkdir(fsPath.join(remoteDirectory, directory), 'sftp', sftp)
@@ -608,7 +608,7 @@ export class NodeSSH {
       await new Promise((resolve, reject) => {
         const queue = new PromiseQueue({ concurrency })
 
-        files.forEach(file => {
+        files.forEach((file) => {
           queue
             .add(async () => {
               const localFile = fsPath.join(localDirectory, file)
@@ -650,7 +650,7 @@ export class NodeSSH {
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
     invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
 
-    const localDirectoryStat: fs.Stats = await new Promise(resolve => {
+    const localDirectoryStat: fs.Stats = await new Promise((resolve) => {
       fs.stat(localDirectory, (err, stat) => {
         resolve(stat || null)
       })
@@ -678,7 +678,7 @@ export class NodeSSH {
               if (err) {
                 reject(err)
               } else {
-                resolve(res.map(item => item.filename))
+                resolve(res.map((item) => item.filename))
               }
             })
           })
@@ -697,8 +697,8 @@ export class NodeSSH {
         },
       },
     })
-    const files = scanned.files.map(item => fsPath.relative(remoteDirectory, item))
-    const directories = scanned.directories.map(item => fsPath.relative(remoteDirectory, item))
+    const files = scanned.files.map((item) => fsPath.relative(remoteDirectory, item))
+    const directories = scanned.directories.map((item) => fsPath.relative(remoteDirectory, item))
 
     // Sort shortest to longest
     directories.sort((a, b) => a.length - b.length)
@@ -710,7 +710,7 @@ export class NodeSSH {
       await new Promise((resolve, reject) => {
         const queue = new PromiseQueue({ concurrency })
 
-        directories.forEach(directory => {
+        directories.forEach((directory) => {
           queue
             .add(async () => {
               await makeDir(fsPath.join(localDirectory, directory))
@@ -725,7 +725,7 @@ export class NodeSSH {
       await new Promise((resolve, reject) => {
         const queue = new PromiseQueue({ concurrency })
 
-        files.forEach(file => {
+        files.forEach((file) => {
           queue
             .add(async () => {
               const localFile = fsPath.join(localDirectory, file)
@@ -752,7 +752,7 @@ export class NodeSSH {
     return !failed
   }
 
-  dispose() {
+  dispose(): void {
     if (this.connection) {
       this.connection.end()
       this.connection = null
