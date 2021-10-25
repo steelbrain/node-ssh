@@ -370,13 +370,13 @@ export class NodeSSH {
         let code: number | null = null
         let signal: string | null = null
         channel.on('exit', (code_, signal_) => {
-          code = code_ || null
+          code = code_
           signal = signal_ || null
         })
         channel.on('close', () => {
           resolve({
-            code: code != null ? code : null,
-            signal: signal != null ? signal : null,
+            code: code !== null ? code : null,
+            signal: signal !== null ? signal : null,
             stdout: output.stdout.join('').trim(),
             stderr: output.stderr.join('').trim(),
           })
