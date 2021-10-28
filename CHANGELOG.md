@@ -1,3 +1,7 @@
+#### 12.0.1
+
+- Fix exit code handling (Thanks @maquak)
+
 #### 12.0.0
 
 - Upgrade `ssh2` to `v1.1.0`
