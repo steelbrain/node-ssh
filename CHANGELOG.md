@@ -1,3 +1,7 @@
+#### 12.0.2
+
+- Bump min semver version of `ssh2` to `v1.5.0`
+
 #### 12.0.1
 
 - Fix exit code handling (Thanks @maquak)
