@@ -244,17 +244,22 @@ export class NodeSSH {
     const connection = this.getConnection()
 
     return new Promise((resolve, reject) => {
-      const callback = (err: Error | undefined, res: ClientChannel) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(res)
+      connection.on('error', reject)
+      try {
+        const callback = (err: Error | undefined, res: ClientChannel) => {
+          if (err) {
+            reject(err)
+          } else {
+            resolve(res)
+          }
         }
-      }
-      if (options == null) {
-        connection.shell(callback)
-      } else {
-        connection.shell(options as never, callback)
+        if (options == null) {
+          connection.shell(callback)
+        } else {
+          connection.shell(options as never, callback)
+        }
+      } finally {
+        connection.removeListener('error', reject)
       }
     })
   }
@@ -281,13 +286,18 @@ export class NodeSSH {
     const connection = this.getConnection()
 
     return new Promise((resolve, reject) => {
-      connection.sftp((err, res) => {
-        if (err) {
-          reject(err)
-        } else {
-          resolve(res)
-        }
-      })
+      connection.on('error', reject)
+      try {
+        connection.sftp((err, res) => {
+          if (err) {
+            reject(err)
+          } else {
+            resolve(res)
+          }
+        })
+      } finally {
+        connection.removeListener('error', reject)
+      }
     })
   }
 
@@ -338,50 +348,55 @@ export class NodeSSH {
     const output: { stdout: string[]; stderr: string[] } = { stdout: [], stderr: [] }
 
     return new Promise((resolve, reject) => {
-      connection.exec(command, options.execOptions != null ? options.execOptions : {}, (err, channel) => {
-        if (err) {
-          reject(err)
-          return
-        }
-        if (options.onChannel) {
-          options.onChannel(channel)
-        }
-        channel.on('data', (chunk: Buffer) => {
-          if (options.onStdout) options.onStdout(chunk)
-          output.stdout.push(chunk.toString(options.encoding))
-        })
-        channel.stderr.on('data', (chunk: Buffer) => {
-          if (options.onStderr) options.onStderr(chunk)
-          output.stderr.push(chunk.toString(options.encoding))
-        })
-        if (options.stdin != null) {
-          if (isStream.readable(options.stdin)) {
-            options.stdin.pipe(channel, {
-              end: true,
-            })
+      try {
+        connection.on('error', reject)
+        connection.exec(command, options.execOptions != null ? options.execOptions : {}, (err, channel) => {
+          if (err) {
+            reject(err)
+            return
+          }
+          if (options.onChannel) {
+            options.onChannel(channel)
+          }
+          channel.on('data', (chunk: Buffer) => {
+            if (options.onStdout) options.onStdout(chunk)
+            output.stdout.push(chunk.toString(options.encoding))
+          })
+          channel.stderr.on('data', (chunk: Buffer) => {
+            if (options.onStderr) options.onStderr(chunk)
+            output.stderr.push(chunk.toString(options.encoding))
+          })
+          if (options.stdin != null) {
+            if (isStream.readable(options.stdin)) {
+              options.stdin.pipe(channel, {
+                end: true,
+              })
+            } else {
+              channel.write(options.stdin)
+              channel.end()
+            }
           } else {
-            channel.write(options.stdin)
             channel.end()
           }
-        } else {
-          channel.end()
-        }
 
-        let code: number | null = null
-        let signal: string | null = null
-        channel.on('exit', (code_, signal_) => {
-          code = code_ ?? null
-          signal = signal_ ?? null
-        })
-        channel.on('close', () => {
-          resolve({
-            code: code != null ? code : null,
-            signal: signal != null ? signal : null,
-            stdout: output.stdout.join('').trim(),
-            stderr: output.stderr.join('').trim(),
+          let code: number | null = null
+          let signal: string | null = null
+          channel.on('exit', (code_, signal_) => {
+            code = code_ ?? null
+            signal = signal_ ?? null
+          })
+          channel.on('close', () => {
+            resolve({
+              code: code != null ? code : null,
+              signal: signal != null ? signal : null,
+              stdout: output.stdout.join('').trim(),
+              stderr: output.stderr.join('').trim(),
+            })
           })
         })
-      })
+      } finally {
+        connection.removeListener('error', reject)
+      }
     })
   }
 
