@@ -258,8 +258,7 @@ export class NodeSSH {
         } else {
           connection.shell(options as never, callback)
         }
-      }
-      finally {
+      } finally {
         connection.removeListener('error', reject)
       }
     })
@@ -296,8 +295,7 @@ export class NodeSSH {
             resolve(res)
           }
         })
-      }
-      finally {
+      } finally {
         connection.removeListener('error', reject)
       }
     })
@@ -396,8 +394,7 @@ export class NodeSSH {
             })
           })
         })
-      }
-      finally {
+      } finally {
         connection.removeListener('error', reject)
       }
     })
