@@ -1,3 +1,7 @@
+#### 12.0.3
+
+- Fix handling of error events in `requestShell`, `requestSFTP` and `execCommand`. #417 (Thanks @jackpap)
+
 #### 12.0.2
 
 - Bump min semver version of `ssh2` to `v1.5.0`
