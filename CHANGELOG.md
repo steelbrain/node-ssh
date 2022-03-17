@@ -1,3 +1,7 @@
+#### 12.0.4-beta1
+
+- Potential fix for unhandled error events
+
 #### 12.0.3
 
 - Fix handling of error events in `requestShell`, `requestSFTP` and `execCommand`. #417 (Thanks @jackpap)
