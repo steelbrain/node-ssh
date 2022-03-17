@@ -1,4 +1,4 @@
-#### 12.0.4-beta1
+#### 12.0.4
 
 - Potential fix for unhandled error events
 
