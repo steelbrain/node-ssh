@@ -1,3 +1,7 @@
+#### 12.0.5
+
+- Fixed manifest config for Typescript typings. #431 (Thanks @Sikarii)
+
 #### 12.0.4
 
 - Potential fix for unhandled error events
