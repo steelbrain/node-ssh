@@ -313,10 +313,24 @@ test('throws if privateKey is a file and does not exist', async function (t) {
       await normalizeConfig({
         username: 'asd',
         host: 'localhost',
-        privateKey: keyPath,
+        privateKeyPath: keyPath,
       })
     },
-    `config.privateKey does not exist at given fs path`,
+    `config.privateKeyPath does not exist at given fs path`,
+  )
+})
+test('throws if privateKey is specified and so is privateKeyPath', async function (t) {
+  await throwsAsync(
+    t,
+    async function () {
+      await normalizeConfig({
+        username: 'asd',
+        host: 'localhost',
+        privateKey: 'x',
+        privateKeyPath: 'y',
+      })
+    },
+    `config.privateKeyPath must not be specified when config.privateKey is specified`,
   )
 })
 test('does not throw if privateKey is valid', async function (t) {
@@ -348,7 +362,7 @@ test('does not throw if privateKey is valid', async function (t) {
       await normalizeConfig({
         username: 'asd',
         host: 'localhost',
-        privateKey: PRIVATE_KEY_PATH,
+        privateKeyPath: PRIVATE_KEY_PATH,
       })
     },
     'connect ECONNREFUSED 127.0.0.1:22',

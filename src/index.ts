@@ -14,6 +14,7 @@ import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 export type Config = ConnectConfig & {
   password?: string
   privateKey?: string
+  privateKeyPath?: string
   tryKeyboard?: boolean
   onKeyboardInteractive?: (
     name: string,
@@ -161,25 +162,33 @@ export class NodeSSH {
       throw new AssertionError({ message: 'Either config.host or config.sock must be provided' })
     }
 
-    if (config.privateKey != null) {
-      invariant(typeof config.privateKey === 'string', 'config.privateKey must be a valid string')
+    if (config.privateKey != null || config.privateKeyPath != null) {
+      if (config.privateKey != null) {
+        invariant(typeof config.privateKey === 'string', 'config.privateKey must be a valid string')
+        invariant(
+          config.privateKeyPath == null,
+          'config.privateKeyPath must not be specified when config.privateKey is specified',
+        )
+      } else if (config.privateKeyPath != null) {
+        invariant(typeof config.privateKeyPath === 'string', 'config.privateKeyPath must be a valid string')
+        invariant(
+          config.privateKey == null,
+          'config.privateKey must not be specified when config.privateKeyPath is specified',
+        )
+      }
+
       invariant(
         config.passphrase == null || typeof config.passphrase === 'string',
-        'config.passphrase must be a valid string',
+        'config.passphrase must be null or a valid string',
       )
 
-      if (
-        !(
-          (config.privateKey.includes('BEGIN') && config.privateKey.includes('KEY')) ||
-          config.privateKey.includes('PuTTY-User-Key-File-2')
-        )
-      ) {
+      if (config.privateKeyPath != null) {
         // Must be an fs path
         try {
-          config.privateKey = await readFile(config.privateKey)
+          config.privateKey = await readFile(config.privateKeyPath)
         } catch (err) {
           if (err != null && err.code === 'ENOENT') {
-            throw new AssertionError({ message: 'config.privateKey does not exist at given fs path' })
+            throw new AssertionError({ message: 'config.privateKeyPath does not exist at given fs path' })
           }
           throw err
         }
