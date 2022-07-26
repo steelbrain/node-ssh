@@ -1,4 +1,4 @@
-#### Upcoming
+#### 13.0.0
 
 - BREAKING: `privateKey` config parameter no longer accepts file system paths. Please use the new `privateKeyPath` parameter instead
 
