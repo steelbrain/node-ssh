@@ -1,3 +1,7 @@
+#### Upcoming
+
+- BREAKING: `privateKey` config parameter no longer accepts file system paths. Please use the new `privateKeyPath` parameter instead
+
 #### 12.0.5
 
 - Fixed manifest config for Typescript typings. #431 (Thanks @Sikarii)
