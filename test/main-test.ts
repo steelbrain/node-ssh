@@ -53,7 +53,7 @@ async function connectWithPrivateKey(port, client) {
     host: '127.0.0.1',
     port,
     username: 'steel',
-    privateKey: PRIVATE_KEY_PATH,
+    privateKeyPath: PRIVATE_KEY_PATH,
   })
 }
 async function connectWithInlinePrivateKey(port, client) {

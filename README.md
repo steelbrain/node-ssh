@@ -15,17 +15,16 @@ const ssh = new NodeSSH()
 ssh.connect({
   host: 'localhost',
   username: 'steel',
-  privateKey: '/home/steel/.ssh/id_rsa'
+  privateKeyPath: '/home/steel/.ssh/id_rsa'
 })
-/*
- Or
- ssh.connect({
-   host: 'localhost',
-   username: 'steel',
-   privateKey: fs.readFileSync('/home/steel/.ssh/id_rsa', 'utf8')
- })
- if you want to use the raw string as private key
- */
+
+// or with inline privateKey
+
+ssh.connect({
+  host: 'localhost',
+  username: 'steel',
+  privateKey: Buffer.from('...')
+})
 .then(function() {
   // Local, Remote
   ssh.putFile('/home/steel/Lab/localPath/fileName', '/home/steel/Lab/remotePath/fileName').then(function() {
@@ -110,6 +109,7 @@ declare type Config = ConnectConfig & {
     port?: number;
     username?: string;
     password?: string;
+    privateKeyPath?: string;
     privateKey?: string;
     passphrase?: string;
     tryKeyboard?: boolean;
