@@ -8,8 +8,7 @@ import scanDirectory from 'sb-scandir'
 import { PromiseQueue } from 'sb-promise-queue'
 import invariant, { AssertionError } from 'assert'
 import SSH2, { ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions, PseudoTtyOptions, ShellOptions } from 'ssh2'
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
+import type { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
 export type Config = ConnectConfig & {
   password?: string
@@ -72,7 +71,7 @@ export class SSHError extends Error {
   }
 }
 
-function unixifyPath(path: string) {
+function normalizePathToNix(path: string) {
   if (path.includes('\\')) {
     return path.split('\\').join('/')
   }
@@ -280,11 +279,7 @@ export class NodeSSH {
     try {
       await callback(shell)
     } finally {
-      // Try to close gracefully
-      if (!shell.close()) {
-        // Destroy local socket if it doesn't work
-        shell.destroy()
-      }
+      shell.end()
     }
   }
 
@@ -436,13 +431,13 @@ export class NodeSSH {
     invariant(givenSftp == null || typeof givenSftp === 'object', 'sftp must be a valid object')
 
     if (method === 'exec') {
-      await this.exec('mkdir', ['-p', unixifyPath(path)])
+      await this.exec('mkdir', ['-p', normalizePathToNix(path)])
       return
     }
     const sftp = givenSftp || (await this.requestSFTP())
 
     const makeSftpDirectory = async (retry: boolean) =>
-      makeDirectoryWithSftp(unixifyPath(path), sftp).catch(async (error: SSHError) => {
+      makeDirectoryWithSftp(normalizePathToNix(path), sftp).catch(async (error: SSHError) => {
         if (!retry || error == null || (error.message !== 'No such file' && error.code !== 'ENOENT')) {
           throw error
         }
@@ -474,7 +469,7 @@ export class NodeSSH {
 
     try {
       await new Promise<void>((resolve, reject) => {
-        sftp.fastGet(unixifyPath(remoteFile), localFile, transferOptions || {}, (err) => {
+        sftp.fastGet(normalizePathToNix(remoteFile), localFile, transferOptions || {}, (err) => {
           if (err) {
             reject(err)
           } else {
@@ -511,7 +506,7 @@ export class NodeSSH {
 
     const putFile = (retry: boolean) => {
       return new Promise<void>((resolve, reject) => {
-        sftp.fastPut(localFile, unixifyPath(remoteFile), transferOptions || {}, (err) => {
+        sftp.fastPut(localFile, normalizePathToNix(remoteFile), transferOptions || {}, (err) => {
           if (err == null) {
             resolve()
             return
