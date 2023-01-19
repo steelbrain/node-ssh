@@ -414,7 +414,7 @@ export class NodeSSH {
       invariant(typeof parameters[i] === 'string', `parameters[${i}] must be a valid string`)
     }
 
-    const completeCommand = `${command} ${shellEscape(parameters)}`
+    const completeCommand = `${command}${parameters.length ? ` ${shellEscape(parameters)}` : ''}`
     const response = await this.execCommand(completeCommand, options)
 
     if (options.stream == null || options.stream === 'stdout') {
