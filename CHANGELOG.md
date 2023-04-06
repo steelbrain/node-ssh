@@ -1,3 +1,7 @@
+#### 13.1.0
+
+- Add new methods around sockets forwarding. #460 (Thanks @mat-sz)
+
 #### 13.0.1
 
 - Fix trailing space in `.exec()` generated command when no parameters are used. #455 (Thanks @Nicram97)
