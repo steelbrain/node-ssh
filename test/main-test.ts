@@ -302,3 +302,191 @@ sshit('allows stream callbacks on execCommand', async function (t, port, client)
     t.is(outputFromCallbacks.stderr.join('').trim(), 'STDERR')
   }
 })
+sshit('forwards an outbound TCP/IP connection from client', async function (t, port, client, server) {
+  const SRC_IP = '127.0.0.1'
+  const SRC_PORT = 1212
+  const DEST_IP = '127.0.0.2'
+  const DEST_PORT = 2424
+
+  await new Promise((resolve) => {
+    server.on('connection', async (connection) => {
+      connection.once('ready', async () => {
+        const channel = await client.forwardOut(SRC_IP, SRC_PORT, DEST_IP, DEST_PORT)
+        t.true(channel.readable)
+        resolve(undefined)
+      })
+
+      // Approve first TCP/IP request.
+      connection.once('tcpip', (accept, reject, info) => {
+        t.is(info.destIP, DEST_IP)
+        t.is(info.destPort, DEST_PORT)
+        t.is(info.srcIP, SRC_IP)
+        t.is(info.srcPort, SRC_PORT)
+        accept()
+      })
+    })
+    connectWithPassword(port, client)
+  })
+})
+sshit('forwards an inbound TCP/IP connection to client', async function (t, port, client, server) {
+  const IP = '127.0.0.1'
+  const PORT = 1212
+  const REMOTE_IP = '127.0.0.2'
+  const REMOTE_PORT = 2424
+
+  await new Promise((resolve) => {
+    server.on('connection', async (connection) => {
+      connection.once('ready', async () => {
+        // Wait for a connection.
+        const { port: forwardPort, unforward } = await client.forwardIn(IP, PORT, (details) => {
+          t.is(details.destIP, IP)
+          t.is(details.destPort, PORT)
+          t.is(details.srcIP, REMOTE_IP)
+          t.is(details.srcPort, REMOTE_PORT)
+
+          // Expect to get an unforward request on server.
+          connection.once('request', (accept, reject, name, info) => {
+            t.is(name, 'cancel-tcpip-forward')
+            t.is(info.bindAddr, IP)
+            t.is(info.bindPort, PORT)
+            accept()
+            resolve(undefined)
+          })
+
+          unforward()
+        })
+
+        t.truthy(unforward)
+        t.is(forwardPort, PORT)
+      })
+
+      // Expect to get a request on server.
+      connection.once('request', (accept, reject, name, info) => {
+        t.is(name, 'tcpip-forward')
+        t.is(info.bindAddr, IP)
+        t.is(info.bindPort, PORT)
+        accept?.(PORT)
+
+        // Simulate a connection
+        connection.forwardOut(info.bindAddr, info.bindPort, REMOTE_IP, REMOTE_PORT, () => {
+          // Nothing more to be done here.
+        })
+      })
+    })
+    connectWithPassword(port, client)
+  })
+})
+sshit('forwards an outbound UNIX socket connection from client', async function (t, port, client, server) {
+  const PATH = '/run/test.sock'
+
+  await new Promise((resolve) => {
+    server.on('connection', async (connection) => {
+      connection.once('ready', async () => {
+        const channel = await client.forwardOutStreamLocal(PATH)
+        t.true(channel.readable)
+        resolve(undefined)
+      })
+
+      // Approve first UNIX socket request.
+      connection.once('openssh.streamlocal', (accept, reject, info) => {
+        t.is(info.socketPath, PATH)
+        accept()
+      })
+    })
+    connectWithPassword(port, client)
+  })
+})
+sshit('forwards an inbound UNIX socket connection to client', async function (t, port, client, server) {
+  const PATH = '/run/test.sock'
+
+  await new Promise((resolve) => {
+    server.on('connection', async (connection) => {
+      connection.once('ready', async () => {
+        // Wait for a connection.
+        const { unforward } = await client.forwardInStreamLocal(PATH, (details) => {
+          t.is(details.socketPath, PATH)
+
+          // Expect to get an unforward request on server.
+          connection.once('request', (accept, reject, name, info) => {
+            t.is(name, 'cancel-streamlocal-forward@openssh.com')
+            t.is(info.socketPath, PATH)
+            accept()
+            resolve(undefined)
+          })
+
+          unforward()
+        })
+
+        t.truthy(unforward)
+      })
+
+      // Expect to get a request on server.
+      connection.once('request', (accept, reject, name, info) => {
+        t.is(name, 'streamlocal-forward@openssh.com')
+        t.is(info.socketPath, PATH)
+        accept?.()
+
+        // Simulate a connection
+        connection.openssh_forwardOutStreamLocal(PATH, () => {
+          // Nothing more to be done here.
+        })
+      })
+    })
+    connectWithPassword(port, client)
+  })
+})
+sshit('forwards an inbound TCP/IP connection to client with automatically assigned port', async function (
+  t,
+  port,
+  client,
+  server,
+) {
+  const IP = '127.0.0.1'
+  const PORT = 1212
+  const REMOTE_IP = '127.0.0.2'
+  const REMOTE_PORT = 2424
+
+  await new Promise((resolve) => {
+    server.on('connection', async (connection) => {
+      connection.once('ready', async () => {
+        // Wait for a connection.
+        const { port: forwardPort, unforward } = await client.forwardIn(IP, 0, (details) => {
+          t.is(details.destIP, IP)
+          t.is(details.destPort, PORT)
+          t.is(details.srcIP, REMOTE_IP)
+          t.is(details.srcPort, REMOTE_PORT)
+
+          // Expect to get an unforward request on server.
+          connection.once('request', (accept, reject, name, info) => {
+            t.is(name, 'cancel-tcpip-forward')
+            t.is(info.bindAddr, IP)
+            t.is(info.bindPort, PORT)
+            accept()
+            resolve(undefined)
+          })
+
+          unforward()
+        })
+
+        t.truthy(unforward)
+        t.is(forwardPort, PORT)
+      })
+
+      // Expect to get a request on server.
+      connection.once('request', (accept, reject, name, info) => {
+        t.is(name, 'tcpip-forward')
+        t.is(info.bindAddr, IP)
+
+        // Port equal to 0 -> server chooses the port dynamically.
+        t.is(info.bindPort, 0)
+        accept?.(PORT)
+
+        // Simulate a connection
+        connection.forwardOut(info.bindAddr, PORT, REMOTE_IP, REMOTE_PORT, () => {
+          // Nothing more to be done here.
+        })
+      })
+    })
+    connectWithPassword(port, client)
+  })
+})
