@@ -338,7 +338,7 @@ sshit('forwards an inbound TCP/IP connection to client', async function (t, port
     server.on('connection', async (connection) => {
       connection.once('ready', async () => {
         // Wait for a connection.
-        const { port: forwardPort, unforward } = await client.forwardIn(IP, PORT, (details) => {
+        const { port: forwardPort, dispose } = await client.forwardIn(IP, PORT, (details) => {
           t.is(details.destIP, IP)
           t.is(details.destPort, PORT)
           t.is(details.srcIP, REMOTE_IP)
@@ -353,10 +353,10 @@ sshit('forwards an inbound TCP/IP connection to client', async function (t, port
             resolve(undefined)
           })
 
-          unforward()
+          dispose()
         })
 
-        t.truthy(unforward)
+        t.truthy(dispose)
         t.is(forwardPort, PORT)
       })
 
@@ -403,7 +403,7 @@ sshit('forwards an inbound UNIX socket connection to client', async function (t,
     server.on('connection', async (connection) => {
       connection.once('ready', async () => {
         // Wait for a connection.
-        const { unforward } = await client.forwardInStreamLocal(PATH, (details) => {
+        const { dispose } = await client.forwardInStreamLocal(PATH, (details) => {
           t.is(details.socketPath, PATH)
 
           // Expect to get an unforward request on server.
@@ -414,10 +414,10 @@ sshit('forwards an inbound UNIX socket connection to client', async function (t,
             resolve(undefined)
           })
 
-          unforward()
+          dispose()
         })
 
-        t.truthy(unforward)
+        t.truthy(dispose)
       })
 
       // Expect to get a request on server.
@@ -450,7 +450,7 @@ sshit('forwards an inbound TCP/IP connection to client with automatically assign
     server.on('connection', async (connection) => {
       connection.once('ready', async () => {
         // Wait for a connection.
-        const { port: forwardPort, unforward } = await client.forwardIn(IP, 0, (details) => {
+        const { port: forwardPort, dispose } = await client.forwardIn(IP, 0, (details) => {
           t.is(details.destIP, IP)
           t.is(details.destPort, PORT)
           t.is(details.srcIP, REMOTE_IP)
@@ -465,10 +465,10 @@ sshit('forwards an inbound TCP/IP connection to client with automatically assign
             resolve(undefined)
           })
 
-          unforward()
+          dispose()
         })
 
-        t.truthy(unforward)
+        t.truthy(dispose)
         t.is(forwardPort, PORT)
       })
 

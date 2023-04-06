@@ -78,7 +78,7 @@ export type SSHForwardInListener = (
   reject: RejectConnection,
 ) => void
 export interface SSHForwardInDetails {
-  unforward(): Promise<void>
+  dispose(): Promise<void>
   port: number
 }
 
@@ -88,7 +88,7 @@ export type SSHForwardInStreamLocalListener = (
   reject: RejectConnection,
 ) => void
 export interface SSHForwardInStreamLocalDetails {
-  unforward(): Promise<void>
+  dispose(): Promise<void>
 }
 
 const DEFAULT_CONCURRENCY = 1
@@ -830,7 +830,7 @@ export class NodeSSH {
           connection.on('tcp connection', handler)
         }
 
-        const unforward = (): Promise<void> => {
+        const dispose = (): Promise<void> => {
           return new Promise((_resolve, _reject) => {
             connection.off('tcp connection', handler)
             connection.unforwardIn(remoteAddr, port, (_error) => {
@@ -843,7 +843,7 @@ export class NodeSSH {
           })
         }
 
-        resolve({ port, unforward })
+        resolve({ port, dispose })
       })
     })
   }
@@ -886,7 +886,7 @@ export class NodeSSH {
           connection.on('unix connection', handler)
         }
 
-        const unforward = (): Promise<void> => {
+        const dispose = (): Promise<void> => {
           return new Promise((_resolve, _reject) => {
             connection.off('unix connection', handler)
             connection.openssh_unforwardInStreamLocal(socketPath, (_error) => {
@@ -899,7 +899,7 @@ export class NodeSSH {
           })
         }
 
-        resolve({ unforward })
+        resolve({ dispose })
       })
     })
   }

@@ -155,6 +155,25 @@ interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
     recursive?: boolean;
 }
 
+type SSHForwardInListener = (
+  details: TcpConnectionDetails,
+  accept: AcceptConnection<ClientChannel>,
+  reject: RejectConnection,
+) => void
+interface SSHForwardInDetails {
+  dispose(): Promise<void>
+  port: number
+}
+
+type SSHForwardInStreamLocalListener = (
+  info: UNIXConnectionDetails,
+  accept: AcceptConnection,
+  reject: RejectConnection,
+) => void
+interface SSHForwardInStreamLocalDetails {
+  dispose(): Promise<void>
+}
+
 class NodeSSH {
     connection: Client | null;
 
@@ -234,6 +253,29 @@ class NodeSSH {
       remoteDirectory: string,
       options?: SSHGetPutDirectoryOptions
     ): Promise<boolean>;
+
+
+    forwardIn(
+      remoteAddr: string,
+      remotePort: number,
+      onConnection?: SSHForwardInListener
+    ): Promise<SSHForwardInDetails>;
+
+    forwardOut(
+      srcIP: string,
+      srcPort: number,
+      dstIP: string,
+      dstPort: number
+    ): Promise<Channel>;
+
+    forwardInStreamLocal(
+      socketPath: string,
+      onConnection?: SSHForwardInStreamLocalListener,
+    ): Promise<SSHForwardInStreamLocalDetails>;
+
+    forwardOutStreamLocal(
+      socketPath: string
+    ): Promise<Channel>;
 
     dispose(): void;
 }
