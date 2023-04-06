@@ -7,7 +7,19 @@ import shellEscape from 'shell-escape'
 import scanDirectory from 'sb-scandir'
 import { PromiseQueue } from 'sb-promise-queue'
 import invariant, { AssertionError } from 'assert'
-import SSH2, { ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions, PseudoTtyOptions, ShellOptions } from 'ssh2'
+import SSH2, {
+  ConnectConfig,
+  ClientChannel,
+  SFTPWrapper,
+  ExecOptions,
+  PseudoTtyOptions,
+  ShellOptions,
+  Channel,
+  TcpConnectionDetails,
+  AcceptConnection,
+  RejectConnection,
+  UNIXConnectionDetails,
+} from 'ssh2'
 // eslint-disable-next-line import/no-extraneous-dependencies
 import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
@@ -59,6 +71,25 @@ export interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
 }
 
 export type SSHMkdirMethod = 'sftp' | 'exec'
+
+export type SSHForwardInListener = (
+  details: TcpConnectionDetails,
+  accept: AcceptConnection<ClientChannel>,
+  reject: RejectConnection
+) => void;
+export interface SSHForwardInDetails {
+  unforward(): Promise<void>;
+  port: number;
+}
+
+export type SSHForwardInStreamLocalListener = (
+  info: UNIXConnectionDetails,
+  accept: AcceptConnection,
+  reject: RejectConnection
+) => void;
+export interface SSHForwardInStreamLocalDetails {
+  unforward(): Promise<void>;
+}
 
 const DEFAULT_CONCURRENCY = 1
 const DEFAULT_VALIDATE = (path: string) => !fsPath.basename(path).startsWith('.')
@@ -777,6 +808,133 @@ export class NodeSSH {
     }
 
     return !failed
+  }
+
+  forwardIn(
+    remoteAddr: string,
+    remotePort: number,
+    onConnection?: SSHForwardInListener
+  ): Promise<SSHForwardInDetails> {
+    const connection = this.getConnection();
+
+    return new Promise((resolve, reject) => {
+      connection.forwardIn(remoteAddr, remotePort, (error, port) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        const handler: SSHForwardInListener = (details, acceptConnection, rejectConnection) => {
+          if (details.destIP === remoteAddr && details.destPort === port) {
+            onConnection?.(details, acceptConnection, rejectConnection);
+          }
+        };
+
+        if (onConnection) {
+          connection.on('tcp connection', handler);
+        }
+
+        const unforward = (): Promise<void> => {
+          return new Promise((_resolve, _reject) => {
+            connection.off('tcp connection', handler);
+            connection.unforwardIn(remoteAddr, port, _error => {
+              if (_error) {
+                _reject(error);
+              }
+
+              _resolve();
+            });
+          });
+        };
+
+        resolve({ port, unforward });
+      });
+    });
+  }
+
+  forwardOut(
+    srcIP: string,
+    srcPort: number,
+    dstIP: string,
+    dstPort: number
+  ): Promise<Channel> {
+    const connection = this.getConnection();
+
+    return new Promise((resolve, reject) => {
+      connection.forwardOut(
+        srcIP,
+        srcPort,
+        dstIP,
+        dstPort,
+        (error, channel) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+
+          resolve(channel);
+        }
+      );
+    });
+  }
+
+  forwardInStreamLocal(
+    socketPath: string,
+    onConnection?: SSHForwardInStreamLocalListener
+  ): Promise<SSHForwardInStreamLocalDetails> {
+    const connection = this.getConnection();
+
+    return new Promise((resolve, reject) => {
+      connection.openssh_forwardInStreamLocal(socketPath, error => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        const handler: SSHForwardInStreamLocalListener = (
+          details,
+          acceptConnection, rejectConnection
+        ) => {
+          if (details.socketPath === socketPath) {
+            onConnection?.(details, acceptConnection, rejectConnection);
+          }
+        };
+
+        if (onConnection) {
+          connection.on('unix connection', handler);
+        }
+
+        const unforward = (): Promise<void> => {
+          return new Promise((_resolve, _reject) => {
+            connection.off('unix connection', handler);
+            connection.openssh_unforwardInStreamLocal(socketPath, _error => {
+              if (_error) {
+                _reject(_error);
+              }
+
+              _resolve();
+            });
+          });
+        };
+
+        resolve({ unforward });
+      });
+    });
+  }
+
+  forwardOutStreamLocal(socketPath: string): Promise<Channel> {
+    const connection = this.getConnection();
+
+    return new Promise((resolve, reject) => {
+      connection.openssh_forwardOutStreamLocal(socketPath, (error, channel) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+
+        resolve(channel);
+      });
+    });
   }
 
   dispose(): void {
