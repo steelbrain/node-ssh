@@ -173,10 +173,10 @@
   resolved "https://registry.yarnpkg.com/@types/shell-escape/-/shell-escape-0.2.0.tgz#cd2f0df814388599dd07196dcc510de2669d1ed2"
   integrity sha512-7kUdtJtUylvyISJbe9FMcvMTjRdP0EvNDO1WbT0lT22k/IPBiPRTpmWaKu5HTWLCGLQRWVHrzVHZktTDvvR23g==
 
-"@types/ssh2@^1.11.9":
-  version "1.11.9"
-  resolved "https://registry.yarnpkg.com/@types/ssh2/-/ssh2-1.11.9.tgz#91985e976d71a4796c42443c0dffbbb665ac6420"
-  integrity sha512-XYMED+cBW11DfMidB/BlCcTzBsSAccaHLvdtdlVWGgDp7TlweGIfb+gHEalKptzVS2qb3jLoR0XrGCWljrIV9A==
+"@types/ssh2@^1.11.10":
+  version "1.11.10"
+  resolved "https://registry.yarnpkg.com/@types/ssh2/-/ssh2-1.11.10.tgz#b38d6814667dab256343aa23179a87514c591465"
+  integrity sha512-b+6fSdTONmCNRDDySZWQPe9f42v09PV2ePuNKMKkDFO4TqQTclX7dI8xISaj9dGckAcVCmaWO/MpoK4IAVfAQA==
   dependencies:
     "@types/node" "^18.11.18"
 

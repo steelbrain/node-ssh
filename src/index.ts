@@ -311,11 +311,7 @@ export class NodeSSH {
     try {
       await callback(shell)
     } finally {
-      // Try to close gracefully
-      if (!shell.close()) {
-        // Destroy local socket if it doesn't work
-        shell.destroy()
-      }
+      shell.destroy()
     }
   }
 
