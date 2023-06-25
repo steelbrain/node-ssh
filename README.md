@@ -3,6 +3,13 @@ Node-SSH - SSH2 with Promises
 
 Node-SSH is an extremely lightweight Promise wrapper for [ssh2][ssh2].
 
+#### Installation
+
+```sh
+$ npm install node-ssh # If you're using npm
+$ yarn add node-ssh # If you're using Yarn
+```
+
 #### Example
 
 ```js
