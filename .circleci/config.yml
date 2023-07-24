@@ -3,7 +3,7 @@ jobs:
   build_and_test:
     working_directory: ~/project
     docker:
-      - image: node:12
+      - image: node:18
     steps:
       - checkout
       - restore_cache:
