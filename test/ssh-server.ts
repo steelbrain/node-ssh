@@ -14,25 +14,25 @@ function handleSFTP(accept) {
   let dirHandle = 105185
   const handles: Set<number> = new Set()
   const dirHandles: Map<number, string[]> = new Map()
-  sftpStream.on('OPEN', function (reqid, filename, flags) {
+  sftpStream.on('OPEN', function (reqId, filename, flags) {
     let handleId
     try {
       handleId = FS.openSync(filename, SFTPStream.flagsToString(flags))
     } catch (error) {
       console.error(error)
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
       return
     }
     handles.add(handleId)
 
     const handle = Buffer.alloc(4)
     handle.write(handleId.toString())
-    sftpStream.handle(reqid, handle)
+    sftpStream.handle(reqId, handle)
   })
-  sftpStream.on('READ', function (reqid, givenHandle, offset, length) {
+  sftpStream.on('READ', function (reqId, givenHandle, offset, length) {
     const handle = parseInt(givenHandle, 10)
     if (!handles.has(handle)) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
       return
     }
 
@@ -40,30 +40,30 @@ function handleSFTP(accept) {
     try {
       FS.readSync(handle, contents, 0, length, offset)
     } catch (error) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
       return
     }
-    sftpStream.data(reqid, contents)
+    sftpStream.data(reqId, contents)
   })
-  sftpStream.on('WRITE', function (reqid, givenHandle, offset, data) {
+  sftpStream.on('WRITE', function (reqId, givenHandle, offset, data) {
     const handle = parseInt(givenHandle, 10)
     if (!handles.has(handle)) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
       return
     }
 
     try {
       FS.writeSync(handle, data, 0, data.length, offset)
-      sftpStream.status(reqid, STATUS_CODE.OK)
+      sftpStream.status(reqId, STATUS_CODE.OK)
     } catch (error) {
       console.error(error)
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
     }
   })
-  sftpStream.on('FSTAT', function (reqid, givenHandle) {
+  sftpStream.on('FSTAT', function (reqId, givenHandle) {
     const handle = parseInt(givenHandle, 10)
     if (!handles.has(handle)) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
       return
     }
 
@@ -72,16 +72,16 @@ function handleSFTP(accept) {
       stats = FS.fstatSync(handle)
     } catch (error) {
       console.error(error)
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
       return
     }
-    sftpStream.attrs(reqid, stats)
+    sftpStream.attrs(reqId, stats)
   })
-  sftpStream.on('CLOSE', function (reqid, givenHandle) {
+  sftpStream.on('CLOSE', function (reqId, givenHandle) {
     const handle = parseInt(givenHandle, 10)
     if (dirHandles.has(handle)) {
       dirHandles.delete(handle)
-      sftpStream.status(reqid, STATUS_CODE.OK)
+      sftpStream.status(reqId, STATUS_CODE.OK)
       return
     }
     if (handles.has(handle)) {
@@ -89,37 +89,37 @@ function handleSFTP(accept) {
       FS.close(handle, function () {
         /* No Op */
       })
-      sftpStream.status(reqid, STATUS_CODE.OK)
+      sftpStream.status(reqId, STATUS_CODE.OK)
     } else {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
     }
   })
-  sftpStream.on('MKDIR', function (reqid, path, attrs) {
+  sftpStream.on('MKDIR', function (reqId, path, attrs) {
     try {
       FS.mkdirSync(path, attrs.mode)
-      sftpStream.status(reqid, STATUS_CODE.OK)
+      sftpStream.status(reqId, STATUS_CODE.OK)
     } catch (error) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE, error.message)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE, error.message)
     }
   })
-  sftpStream.on('STAT', function (reqid, path) {
+  sftpStream.on('STAT', function (reqId, path) {
     try {
       const stats = FS.statSync(path)
-      sftpStream.attrs(reqid, stats)
+      sftpStream.attrs(reqId, stats)
     } catch (error) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE, error.message)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE, error.message)
     }
   })
-  sftpStream.on('OPENDIR', function (reqid, path) {
+  sftpStream.on('OPENDIR', function (reqId, path) {
     let stat
     try {
       stat = FS.statSync(path)
     } catch (error) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
       return
     }
     if (!stat.isDirectory()) {
-      sftpStream.status(reqid, STATUS_CODE.FAILURE)
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
       return
     }
     const contents = FS.readdirSync(path)
@@ -129,19 +129,19 @@ function handleSFTP(accept) {
     dirHandles.set(currentDirHandle, contents)
     const handle = Buffer.alloc(8)
     handle.write(currentDirHandle.toString())
-    sftpStream.handle(reqid, handle)
+    sftpStream.handle(reqId, handle)
   })
-  sftpStream.on('READDIR', function (reqid, givenHandle) {
+  sftpStream.on('READDIR', function (reqId, givenHandle) {
     const handle = parseInt(givenHandle, 10)
     const contents = dirHandles.get(handle)
     if (contents == null || !contents.length) {
-      sftpStream.status(reqid, STATUS_CODE.EOF)
+      sftpStream.status(reqId, STATUS_CODE.EOF)
       return
     }
 
     const item = contents.pop()
 
-    sftpStream.name(reqid, [
+    sftpStream.name(reqId, [
       {
         filename: item,
         longname: item,
@@ -180,8 +180,8 @@ function handleSession(acceptSession) {
     const response = accept()
     const spawnedProcess = ChildProcess.exec(info.command)
     response.pipe(spawnedProcess.stdin)
-    spawnedProcess.stdout.pipe(response.stdout)
-    spawnedProcess.stderr.pipe(response.stderr)
+    spawnedProcess.stdout?.pipe(response.stdout)
+    spawnedProcess.stderr?.pipe(response.stderr)
   })
   session.on('sftp', handleSFTP)
 }

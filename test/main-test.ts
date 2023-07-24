@@ -91,7 +91,7 @@ sshit('connects to a server with an inline private key', async function (t, port
 })
 sshit('requests a shell that works', async function (t, port, client) {
   await connectWithPassword(port, client)
-  const data = []
+  const data: Buffer[] = []
   const shell = await client.requestShell()
   shell.on('data', function (chunk) {
     data.push(chunk)
@@ -218,7 +218,7 @@ sshit('puts entire directories at once', async function (t, port, client) {
     getFixturePath('ignored/really/really/really/really/yes/deep files'),
     getFixturePath('ignored/really/really/really/really/deep'),
   ]
-  const filesReceived = []
+  const filesReceived: string[] = []
   const existsBefore = await Promise.all(remoteFiles.map((file) => exists(file)))
   t.is(existsBefore.every(Boolean), false)
   await client.putDirectory(getFixturePath('multiple'), getFixturePath('ignored'), {
@@ -251,7 +251,7 @@ sshit('gets entire directories at once', async function (t, port, client) {
     getFixturePath('ignored-2/really/really/really/really/yes/deep files'),
     getFixturePath('ignored-2/really/really/really/really/deep'),
   ]
-  const filesReceived = []
+  const filesReceived: string[] = []
   const existsBefore = await Promise.all(localFiles.map((file) => exists(file)))
   t.is(existsBefore.every(Boolean), false)
   await client.getDirectory(getFixturePath('ignored-2'), getFixturePath('multiple'), {
@@ -269,7 +269,7 @@ sshit('gets entire directories at once', async function (t, port, client) {
 })
 sshit('allows stream callbacks on exec', async function (t, port, client) {
   await connectWithPassword(port, client)
-  const outputFromCallbacks = { stdout: [], stderr: [] }
+  const outputFromCallbacks = { stdout: [] as Buffer[], stderr: [] as Buffer[] }
   await client.exec('node', [getFixturePath('test-program')], {
     stream: 'both',
     onStderr(chunk) {
@@ -287,7 +287,7 @@ sshit('allows stream callbacks on exec', async function (t, port, client) {
 })
 sshit('allows stream callbacks on execCommand', async function (t, port, client) {
   await connectWithPassword(port, client)
-  const outputFromCallbacks = { stdout: [], stderr: [] }
+  const outputFromCallbacks = { stdout: [] as Buffer[], stderr: [] as Buffer[] }
   await client.execCommand(`node ${getFixturePath('test-program')}`, {
     onStderr(chunk) {
       outputFromCallbacks.stderr.push(chunk)
