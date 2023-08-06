@@ -111,7 +111,7 @@ test('throws if host is not valid', async function (t) {
       await normalizeConfig({
         username: 'asd',
         host: null,
-      })
+      } as never)
     },
     'Either config.host or config.sock must be provided',
   )
