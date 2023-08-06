@@ -7,6 +7,7 @@ import shellEscape from 'shell-escape'
 import scanDirectory from 'sb-scandir'
 import { PromiseQueue } from 'sb-promise-queue'
 import invariant, { AssertionError } from 'assert'
+
 import SSH2, {
   ConnectConfig,
   ClientChannel,
@@ -19,9 +20,10 @@ import SSH2, {
   AcceptConnection,
   RejectConnection,
   UNIXConnectionDetails,
+  Prompt,
+  Stats,
+  TransferOptions,
 } from 'ssh2'
-// eslint-disable-next-line import/no-extraneous-dependencies
-import { Prompt, Stats, TransferOptions } from 'ssh2-streams'
 
 export type Config = ConnectConfig & {
   password?: string

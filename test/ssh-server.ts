@@ -17,7 +17,7 @@ function handleSFTP(accept) {
   sftpStream.on('OPEN', function (reqId, filename, flags) {
     let handleId
     try {
-      handleId = FS.openSync(filename, SFTPStream.flagsToString(flags))
+      handleId = FS.openSync(filename, SFTPStream.flagsToString(flags) as string)
     } catch (error) {
       console.error(error)
       sftpStream.status(reqId, STATUS_CODE.FAILURE)
