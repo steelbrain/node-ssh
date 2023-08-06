@@ -89,19 +89,23 @@ sshit('connects to a server with an inline private key', async function (t, port
     await connectWithInlinePrivateKey(port, client)
   })
 })
-sshit('requests a shell that works', async function (t, port, client) {
-  await connectWithPassword(port, client)
-  const data: Buffer[] = []
-  const shell = await client.requestShell()
-  shell.on('data', function (chunk) {
-    data.push(chunk)
-  })
-  shell.write('ls /\n')
-  await wait(50)
-  shell.end()
-  const joinedData = data.join('')
-  t.regex(joinedData, /ls \//)
-})
+sshit(
+  'requests a shell that works',
+  async function (t, port, client) {
+    await connectWithPassword(port, client)
+    const data: Buffer[] = []
+    const shell = await client.requestShell()
+    shell.on('data', function (chunk) {
+      data.push(chunk)
+    })
+    shell.write('ls /\n')
+    await wait(50)
+    shell.end()
+    const joinedData = data.join('')
+    t.regex(joinedData, /ls \//)
+  },
+  true,
+)
 
 sshit('creates directories with sftp properly', async function (t, port, client) {
   await connectWithPassword(port, client)
