@@ -353,7 +353,7 @@ sshit('forwards an inbound TCP/IP connection to client', async function (t, port
             resolve(undefined)
           })
 
-          dispose()
+          setTimeout(() => dispose(), 100)
         })
 
         t.truthy(dispose)
@@ -414,7 +414,7 @@ sshit('forwards an inbound UNIX socket connection to client', async function (t,
             resolve(undefined)
           })
 
-          dispose()
+          setTimeout(() => dispose(), 100)
         })
 
         t.truthy(dispose)
@@ -465,7 +465,7 @@ sshit('forwards an inbound TCP/IP connection to client with automatically assign
             resolve(undefined)
           })
 
-          dispose()
+          setTimeout(() => dispose(), 100)
         })
 
         t.truthy(dispose)
