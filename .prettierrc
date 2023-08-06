@@ -3,5 +3,10 @@
   "printWidth": 125,
   "singleQuote": true,
   "trailingComma": "all",
-  "parser": "typescript"
+  "parser": "typescript",
+  "importOrder": [
+    "^[./]"
+  ],
+  "importOrderSeparation": true,
+  "importOrderSortSpecifiers": true
 }

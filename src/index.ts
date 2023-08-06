@@ -1,29 +1,28 @@
-import fs from 'fs'
-import fsPath from 'path'
-import makeDir from 'make-dir'
-import stream from 'stream'
-import isStream from 'is-stream'
-import shellEscape from 'shell-escape'
-import scanDirectory from 'sb-scandir'
-import { PromiseQueue } from 'sb-promise-queue'
 import invariant, { AssertionError } from 'assert'
-
+import fs from 'fs'
+import isStream from 'is-stream'
+import makeDir from 'make-dir'
+import fsPath from 'path'
+import { PromiseQueue } from 'sb-promise-queue'
+import scanDirectory from 'sb-scandir'
+import shellEscape from 'shell-escape'
 import SSH2, {
-  ConnectConfig,
-  ClientChannel,
-  SFTPWrapper,
-  ExecOptions,
-  PseudoTtyOptions,
-  ShellOptions,
-  Channel,
-  TcpConnectionDetails,
   AcceptConnection,
-  RejectConnection,
-  UNIXConnectionDetails,
+  Channel,
+  ClientChannel,
+  ConnectConfig,
+  ExecOptions,
   Prompt,
+  PseudoTtyOptions,
+  RejectConnection,
+  SFTPWrapper,
+  ShellOptions,
   Stats,
+  TcpConnectionDetails,
   TransferOptions,
+  UNIXConnectionDetails,
 } from 'ssh2'
+import stream from 'stream'
 
 export type Config = ConnectConfig & {
   password?: string

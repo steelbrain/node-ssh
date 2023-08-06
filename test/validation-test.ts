@@ -1,10 +1,10 @@
-import fs from 'fs'
-import path from 'path'
-import { Socket } from 'net'
 import test, { ExecutionContext } from 'ava'
+import fs from 'fs'
+import { Socket } from 'net'
+import path from 'path'
 
-import { PRIVATE_KEY_PATH, PRIVATE_KEY_PPK_PATH } from './helpers'
 import { Config, NodeSSH } from '../src'
+import { PRIVATE_KEY_PATH, PRIVATE_KEY_PPK_PATH } from './helpers'
 
 async function normalizeConfig(config: Config) {
   return new NodeSSH().connect(config)

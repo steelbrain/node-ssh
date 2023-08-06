@@ -1,9 +1,9 @@
-import FS from 'fs'
-import { SFTPStream } from 'ssh2-streams'
 import ChildProcess from 'child_process'
-
+import FS from 'fs'
 import { spawn as ptySpawn } from 'node-pty'
 import ssh2 from 'ssh2'
+import { SFTPStream } from 'ssh2-streams'
+
 import { PRIVATE_KEY_PATH } from './helpers'
 
 const { STATUS_CODE } = ((ssh2.utils as unknown) as { sftp: { STATUS_CODE: Record<string, string> } }).sftp

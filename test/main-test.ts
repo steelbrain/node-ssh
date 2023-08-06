@@ -1,13 +1,13 @@
+import invariant from 'assert'
+import test, { ExecutionContext } from 'ava'
+import ChildProcess from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import invariant from 'assert'
-import ChildProcess from 'child_process'
-import test, { ExecutionContext } from 'ava'
 import { Server } from 'ssh2'
 
 import { NodeSSH } from '../src'
+import { PRIVATE_KEY_PATH, exists, wait } from './helpers'
 import createServer from './ssh-server'
-import { PRIVATE_KEY_PATH, wait, exists } from './helpers'
 
 let ports = 8876
 
