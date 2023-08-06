@@ -1,0 +1,34 @@
+name: build_and_test
+
+on: [push, pull_request]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    container:
+      image: node:18
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Cache Yarn packages
+        uses: actions/cache@v3
+        with:
+          path: '**/node_modules'
+          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-yarn-
+
+      - name: Packager Version
+        run: yarn --version
+
+      - name: Install Dependencies
+        run: yarn
+
+      - name: Lint sources
+        run: yarn lint
+
+      - name: Test
+        run: yarn test
