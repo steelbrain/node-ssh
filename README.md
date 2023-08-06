@@ -105,189 +105,156 @@ ssh.connect({
 
 ```ts
 // API reference in Typescript typing format:
+import SSH2, {
+  AcceptConnection,
+  Channel,
+  ClientChannel,
+  ConnectConfig,
+  ExecOptions,
+  Prompt,
+  PseudoTtyOptions,
+  RejectConnection,
+  SFTPWrapper,
+  ShellOptions,
+  TcpConnectionDetails,
+  TransferOptions,
+  UNIXConnectionDetails,
+} from 'ssh2'
 import stream from 'stream'
-import { Client, ConnectConfig, ClientChannel, SFTPWrapper, ExecOptions, PseudoTtyOptions | ShellOptions } from 'ssh2';
-import { Prompt, TransferOptions } from 'ssh2-streams';
+
 // ^ You do NOT need to import these package, these are here for reference of where the
 // types are coming from.
 
-declare type Config = ConnectConfig & {
-    host?: string;
-    port?: number;
-    username?: string;
-    password?: string;
-    privateKeyPath?: string;
-    privateKey?: string;
-    passphrase?: string;
-    tryKeyboard?: boolean;
-    onKeyboardInteractive?: (
-      name: string,
-      instructions: string,
-      lang: string,
-      prompts: Prompt[],
-      finish: (responses: string[]) => void
-    ) => void;
-};
-
-interface SSHExecCommandOptions {
-    cwd?: string;
-    stdin?: string | stream.Readable;
-    execOptions?: ExecOptions;
-    encoding?: BufferEncoding;
-    onChannel?: (clientChannel: ClientChannel) => void;
-    onStdout?: (chunk: Buffer) => void;
-    onStderr?: (chunk: Buffer) => void;
+export type Config = ConnectConfig & {
+  password?: string
+  privateKey?: string
+  privateKeyPath?: string
+  tryKeyboard?: boolean
+  onKeyboardInteractive?: (
+    name: string,
+    instructions: string,
+    lang: string,
+    prompts: Prompt[],
+    finish: (responses: string[]) => void,
+  ) => void
 }
-
-interface SSHExecCommandResponse {
-    stdout: string;
-    stderr: string;
-    code: number | null;
-    signal: string | null;
+export interface SSHExecCommandOptions {
+  cwd?: string
+  stdin?: string | stream.Readable
+  execOptions?: ExecOptions
+  encoding?: BufferEncoding
+  onChannel?: (clientChannel: ClientChannel) => void
+  onStdout?: (chunk: Buffer) => void
+  onStderr?: (chunk: Buffer) => void
 }
-
-interface SSHExecOptions extends SSHExecCommandOptions {
-    stream?: 'stdout' | 'stderr' | 'both';
+export interface SSHExecCommandResponse {
+  stdout: string
+  stderr: string
+  code: number | null
+  signal: string | null
 }
-
-interface SSHPutFilesOptions {
-    sftp?: SFTPWrapper | null;
-    concurrency?: number;
-    transferOptions?: TransferOptions;
+export interface SSHExecOptions extends SSHExecCommandOptions {
+  stream?: 'stdout' | 'stderr' | 'both'
 }
-
-interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
-    tick?: (localFile: string, remoteFile: string, error: Error | null) => void;
-    validate?: (path: string) => boolean;
-    recursive?: boolean;
+export interface SSHPutFilesOptions {
+  sftp?: SFTPWrapper | null
+  concurrency?: number
+  transferOptions?: TransferOptions
 }
-
-type SSHForwardInListener = (
+export interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
+  tick?: (localFile: string, remoteFile: string, error: Error | null) => void
+  validate?: (path: string) => boolean
+  recursive?: boolean
+}
+export type SSHMkdirMethod = 'sftp' | 'exec'
+export type SSHForwardInListener = (
   details: TcpConnectionDetails,
   accept: AcceptConnection<ClientChannel>,
   reject: RejectConnection,
 ) => void
-interface SSHForwardInDetails {
+export interface SSHForwardInDetails {
   dispose(): Promise<void>
   port: number
 }
-
-type SSHForwardInStreamLocalListener = (
+export type SSHForwardInStreamLocalListener = (
   info: UNIXConnectionDetails,
   accept: AcceptConnection,
   reject: RejectConnection,
 ) => void
-interface SSHForwardInStreamLocalDetails {
+export interface SSHForwardInStreamLocalDetails {
   dispose(): Promise<void>
 }
-
-class NodeSSH {
-    connection: Client | null;
-
-    connect(config: Config): Promise<this>;
-
-    isConnected(): boolean;
-
-    requestShell(
-      options?: PseudoTtyOptions | ShellOptions | false
-    ): Promise<ClientChannel>;
-
-    withShell(
-      callback: (channel: ClientChannel) => Promise<void>,
-      options?: PseudoTtyOptions | ShellOptions | false
-    ): Promise<void>;
-
-    requestSFTP(): Promise<SFTPWrapper>;
-
-    withSFTP(
-      callback: (sftp: SFTPWrapper) => Promise<void>
-    ): Promise<void>;
-
-    execCommand(
-      command: string,
-      options?: SSHExecCommandOptions
-    ): Promise<SSHExecCommandResponse>;
-
-    exec(
-      command: string,
-      parameters: string[],
-      options?: SSHExecOptions & {
-          stream?: 'stdout' | 'stderr';
-      }
-    ): Promise<string>;
-
-    exec(
-      command: string,
-      parameters: string[],
-      options?: SSHExecOptions & {
-          stream: 'both';
-      }
-    ): Promise<SSHExecCommandResponse>;
-
-    mkdir(
-      path: string,
-      method?: 'sftp' | 'exec',
-      sftp?: SFTPWrapper | null
-    ): Promise<void>;
-
-    getFile(
-      localFile: string,
-      remoteFile: string,
-      sftp?: SFTPWrapper | null,
-      transferOptions?: TransferOptions | null
-    ): Promise<void>;
-
-    putFile(
-      localFile: string,
-      remoteFile: string,
-      sftp?: SFTPWrapper | null,
-      transferOptions?: TransferOptions | null
-    ): Promise<void>;
-
-    putFiles(files: Array<{
-        local: string;
-        remote: string;
-    }>, options?: SSHPutFilesOptions): Promise<void>;
-
-    putDirectory(
-      localDirectory: string,
-      remoteDirectory: string,
-      options?: SSHGetPutDirectoryOptions
-    ): Promise<boolean>;
-
-    getDirectory(
-      localDirectory: string,
-      remoteDirectory: string,
-      options?: SSHGetPutDirectoryOptions
-    ): Promise<boolean>;
-
-
-    forwardIn(
-      remoteAddr: string,
-      remotePort: number,
-      onConnection?: SSHForwardInListener
-    ): Promise<SSHForwardInDetails>;
-
-    forwardOut(
-      srcIP: string,
-      srcPort: number,
-      dstIP: string,
-      dstPort: number
-    ): Promise<Channel>;
-
-    forwardInStreamLocal(
-      socketPath: string,
-      onConnection?: SSHForwardInStreamLocalListener,
-    ): Promise<SSHForwardInStreamLocalDetails>;
-
-    forwardOutStreamLocal(
-      socketPath: string
-    ): Promise<Channel>;
-
-    dispose(): void;
+export class SSHError extends Error {
+  code: string | null
+  constructor(message: string, code?: string | null)
 }
 
-module.exports = NodeSSH;
+export class NodeSSH {
+  connection: SSH2.Client | null
+
+  connect(config: Config): Promise<this>
+  isConnected(): boolean
+  requestShell(options?: PseudoTtyOptions | ShellOptions | false): Promise<ClientChannel>
+  withShell(
+    callback: (channel: ClientChannel) => Promise<void>,
+    options?: PseudoTtyOptions | ShellOptions | false,
+  ): Promise<void>
+  requestSFTP(): Promise<SFTPWrapper>
+  withSFTP(callback: (sftp: SFTPWrapper) => Promise<void>): Promise<void>
+  execCommand(givenCommand: string, options?: SSHExecCommandOptions): Promise<SSHExecCommandResponse>
+  exec(
+    command: string,
+    parameters: string[],
+    options?: SSHExecOptions & {
+      stream?: 'stdout' | 'stderr'
+    },
+  ): Promise<string>
+  exec(
+    command: string,
+    parameters: string[],
+    options?: SSHExecOptions & {
+      stream: 'both'
+    },
+  ): Promise<SSHExecCommandResponse>
+  mkdir(path: string, method?: SSHMkdirMethod, givenSftp?: SFTPWrapper | null): Promise<void>
+  getFile(
+    localFile: string,
+    remoteFile: string,
+    givenSftp?: SFTPWrapper | null,
+    transferOptions?: TransferOptions | null,
+  ): Promise<void>
+  putFile(
+    localFile: string,
+    remoteFile: string,
+    givenSftp?: SFTPWrapper | null,
+    transferOptions?: TransferOptions | null,
+  ): Promise<void>
+  putFiles(
+    files: {
+      local: string
+      remote: string
+    }[],
+    { concurrency, sftp: givenSftp, transferOptions }?: SSHPutFilesOptions,
+  ): Promise<void>
+  putDirectory(
+    localDirectory: string,
+    remoteDirectory: string,
+    { concurrency, sftp: givenSftp, transferOptions, recursive, tick, validate }?: SSHGetPutDirectoryOptions,
+  ): Promise<boolean>
+  getDirectory(
+    localDirectory: string,
+    remoteDirectory: string,
+    { concurrency, sftp: givenSftp, transferOptions, recursive, tick, validate }?: SSHGetPutDirectoryOptions,
+  ): Promise<boolean>
+  forwardIn(remoteAddr: string, remotePort: number, onConnection?: SSHForwardInListener): Promise<SSHForwardInDetails>
+  forwardOut(srcIP: string, srcPort: number, dstIP: string, dstPort: number): Promise<Channel>
+  forwardInStreamLocal(
+    socketPath: string,
+    onConnection?: SSHForwardInStreamLocalListener,
+  ): Promise<SSHForwardInStreamLocalDetails>
+  forwardOutStreamLocal(socketPath: string): Promise<Channel>
+  dispose(): void
+}
 ```
 
 ### Typescript support

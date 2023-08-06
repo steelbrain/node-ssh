@@ -1,9 +1,9 @@
-import FS from 'fs'
-import { SFTPStream } from 'ssh2-streams'
 import ChildProcess from 'child_process'
-
+import FS from 'fs'
 import { spawn as ptySpawn } from 'node-pty'
 import ssh2 from 'ssh2'
+import { SFTPStream } from 'ssh2-streams'
+
 import { PRIVATE_KEY_PATH } from './helpers'
 
 const { STATUS_CODE } = ((ssh2.utils as unknown) as { sftp: { STATUS_CODE: Record<string, string> } }).sftp
@@ -17,7 +17,7 @@ function handleSFTP(accept) {
   sftpStream.on('OPEN', function (reqId, filename, flags) {
     let handleId
     try {
-      handleId = FS.openSync(filename, SFTPStream.flagsToString(flags))
+      handleId = FS.openSync(filename, SFTPStream.flagsToString(flags) as string)
     } catch (error) {
       console.error(error)
       sftpStream.status(reqId, STATUS_CODE.FAILURE)
