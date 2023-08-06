@@ -59,9 +59,7 @@
     "make-dir": "^3.1.0",
     "sb-promise-queue": "^2.1.0",
     "sb-scandir": "^3.1.0",
-    "shell-escape": "^0.2.0"
-  },
-  "peerDependencies": {
+    "shell-escape": "^0.2.0",
     "ssh2": "^1.14.0"
   },
   "ava": {
