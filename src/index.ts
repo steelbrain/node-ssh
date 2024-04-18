@@ -43,6 +43,7 @@ export interface SSHExecCommandOptions {
   stdin?: string | stream.Readable
   execOptions?: ExecOptions
   encoding?: BufferEncoding
+  noTrim?: boolean
   onChannel?: (clientChannel: ClientChannel) => void
   onStdout?: (chunk: Buffer) => void
   onStderr?: (chunk: Buffer) => void
@@ -417,11 +418,18 @@ export class NodeSSH {
           signal = signal_ ?? null
         })
         channel.on('close', () => {
+          let stdout = output.stdout.join('')
+          let stderr = output.stderr.join('')
+          if (options.noTrim === false) {
+            stdout = stdout.trim()
+            stderr = stderr.trim()
+          }
+
           resolve({
             code: code != null ? code : null,
             signal: signal != null ? signal : null,
-            stdout: output.stdout.join('').trim(),
-            stderr: output.stderr.join('').trim(),
+            stdout: stdout,
+            stderr: stderr,
           })
         })
       })
