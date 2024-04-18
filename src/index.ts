@@ -420,7 +420,7 @@ export class NodeSSH {
         channel.on('close', () => {
           let stdout = output.stdout.join('')
           let stderr = output.stderr.join('')
-          if (options.noTrim === false) {
+          if (options.noTrim !== true) {
             stdout = stdout.trim()
             stderr = stderr.trim()
           }
