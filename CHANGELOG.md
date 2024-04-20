@@ -1,4 +1,4 @@
-#### Upcoming
+#### 13.2.0
 
 - Add `noTrim` option to exec methods. #475 (Thanks @kimbob13)
 
