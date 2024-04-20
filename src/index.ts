@@ -429,8 +429,8 @@ export class NodeSSH {
           resolve({
             code: code != null ? code : null,
             signal: signal != null ? signal : null,
-            stdout: stdout,
-            stderr: stderr,
+            stdout,
+            stderr,
           })
         })
       })
