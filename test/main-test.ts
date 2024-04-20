@@ -494,3 +494,11 @@ sshit('forwards an inbound TCP/IP connection to client with automatically assign
     connectWithPassword(port, client)
   })
 })
+sshit('has a working noTrim option', async function (t, port, client) {
+  await connectWithPassword(port, client)
+  const resultWithTrim = await client.exec('printf', ["\n", "hello", "\n\n\n\n"], {stream: 'stdout'})
+  t.is(resultWithTrim, 'hello')
+
+  const resultWithoutTrim = await client.exec('printf', ['\n\n\nhi\n\n\n'], {stream: 'stdout', noTrim: true})
+  t.is(resultWithoutTrim, '\n\n\nhi\n\n\n')
+})
