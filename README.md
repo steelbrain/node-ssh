@@ -143,6 +143,7 @@ export interface SSHExecCommandOptions {
   stdin?: string | stream.Readable
   execOptions?: ExecOptions
   encoding?: BufferEncoding
+  noTrim?: boolean
   onChannel?: (clientChannel: ClientChannel) => void
   onStdout?: (chunk: Buffer) => void
   onStderr?: (chunk: Buffer) => void

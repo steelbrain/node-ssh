@@ -1,3 +1,7 @@
+#### Upcoming
+
+- Add `noTrim` option to exec methods for cases where you do not want node-ssh to automatically trim the outputs.
+
 #### 13.1.0
 
 - Add new methods around sockets forwarding. #460 (Thanks @mat-sz)
