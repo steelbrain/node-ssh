@@ -1,6 +1,6 @@
 #### Upcoming
 
-- Add `noTrim` option to exec methods for cases where you do not want node-ssh to automatically trim the outputs.
+- Add `noTrim` option to exec methods. #475 (Thanks @kimbob13)
 
 #### 13.1.0
 
