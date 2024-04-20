@@ -369,6 +369,7 @@ export class NodeSSH {
       options.onStderr == null || typeof options.onStderr === 'function',
       'options.onStderr must be a valid function',
     )
+    invariant(options.noTrim == null || typeof options.noTrim === 'boolean', 'options.noTrim must be a boolean')
 
     let command = givenCommand
 
@@ -428,8 +429,8 @@ export class NodeSSH {
           resolve({
             code: code != null ? code : null,
             signal: signal != null ? signal : null,
-            stdout: stdout,
-            stderr: stderr,
+            stdout,
+            stderr,
           })
         })
       })
