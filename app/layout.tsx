@@ -15,6 +15,11 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "node-ssh by @steelbrain",
   description: "Simple, powerful SSH client for Node.js",
+  icons: {
+    icon: [
+      { url: "/icon.svg", type: "image/svg+xml" }
+    ]
+  }
 };
 
 export default function RootLayout({

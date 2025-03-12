@@ -249,7 +249,7 @@ const result = await ssh.exec('git', ['pull'], {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>Made with ❤️ by <a href="https://github.com/steelbrain" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">@steelbrain</a></p>
+          <p>Made with ❤️ by <a href="https://aneesiqbal.ai/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Anees Iqbal (@steelbrain)</a></p>
         </div>
       </footer>
     </div>
