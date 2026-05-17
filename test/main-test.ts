@@ -502,3 +502,19 @@ sshit('has a working noTrim option', async function (t, port, client) {
   const resultWithoutTrim = await client.exec('echo', ['\n\n\nhi\n\n\n'], {stream: 'stdout', noTrim: true})
   t.is(resultWithoutTrim, '\n\n\nhi\n\n\n\n')
 })
+
+sshit('preserves whitespace when noTrim is true', async function (t, port, client) {
+  await connectWithPassword(port, client)
+  // Test that noTrim preserves leading/trailing whitespace
+  const result = await client.execCommand('echo "  hello world  "', {
+    noTrim: true,
+  })
+  t.is(result.stdout, '  hello world  ')
+})
+
+sshit('trims whitespace by default', async function (t, port, client) {
+  await connectWithPassword(port, client)
+  // Test that default behavior trims whitespace
+  const result = await client.execCommand('echo "  hello world  "')
+  t.is(result.stdout, 'hello world')
+})
