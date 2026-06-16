@@ -84,6 +84,11 @@ ssh.connect({
     console.log('STDOUT: ' + result.stdout)
     console.log('STDERR: ' + result.stderr)
   })
+  // Command output is trimmed by default. Pass noTrim when leading or trailing
+  // whitespace is meaningful, such as reading exact file contents.
+  ssh.execCommand('git show --textconv HEAD:README.md', { noTrim: true }).then(function(result) {
+    console.log('STDOUT: ' + result.stdout)
+  })
   // Command with escaped params
   ssh.exec('hh_client', ['--json'], { cwd: '/var/www', stream: 'stdout', options: { pty: true } }).then(function(result) {
     console.log('STDOUT: ' + result)
