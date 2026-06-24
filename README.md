@@ -101,6 +101,20 @@ ssh.connect({
 })
 ```
 
+#### Pseudo-TTY commands
+
+Some terminal programs, such as `screen` or `tmux`, require a pseudo-TTY. Pass
+`pty: true` through `execOptions` when running those commands:
+
+```js
+const result = await ssh.execCommand('screen -r', {
+  execOptions: { pty: true }
+})
+
+console.log('STDOUT: ' + result.stdout)
+console.log('STDERR: ' + result.stderr)
+```
+
 #### API
 
 ```ts
