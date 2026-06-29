@@ -501,4 +501,11 @@ sshit('has a working noTrim option', async function (t, port, client) {
 
   const resultWithoutTrim = await client.exec('echo', ['\n\n\nhi\n\n\n'], {stream: 'stdout', noTrim: true})
   t.is(resultWithoutTrim, '\n\n\nhi\n\n\n\n')
+
+  const commandResult = await client.execCommand(
+    'node -e "process.stdout.write(\'\\nstdout\\n\\n\'); process.stderr.write(\'\\nstderr\\n\\n\')"',
+    { noTrim: true },
+  )
+  t.is(commandResult.stdout, '\nstdout\n\n')
+  t.is(commandResult.stderr, '\nstderr\n\n')
 })
