@@ -28,6 +28,8 @@ export type Config = ConnectConfig & {
   password?: string
   privateKey?: string
   privateKeyPath?: string
+  certificate?: string
+  certificatePath?: string
   tryKeyboard?: boolean
   onKeyboardInteractive?: (
     name: string,
@@ -228,6 +230,36 @@ export class NodeSSH {
       }
     } else if (config.password != null) {
       invariant(typeof config.password === 'string', 'config.password must be a valid string')
+    }
+
+    // SSH certificate authentication (OpenSSH PROTOCOL.certkeys)
+    // Certificates are used with a private key for CA-signed authentication
+    if (config.certificate != null || config.certificatePath != null) {
+      if (config.certificate != null) {
+        invariant(typeof config.certificate === 'string', 'config.certificate must be a valid string')
+        invariant(
+          config.certificatePath == null,
+          'config.certificatePath must not be specified when config.certificate is specified',
+        )
+      } else if (config.certificatePath != null) {
+        invariant(typeof config.certificatePath === 'string', 'config.certificatePath must be a valid string')
+        invariant(
+          config.certificate == null,
+          'config.certificate must not be specified when config.certificatePath is specified',
+        )
+      }
+
+      if (config.certificatePath != null) {
+        // Must be an fs path
+        try {
+          config.certificate = await readFile(config.certificatePath)
+        } catch (err) {
+          if (err != null && err.code === 'ENOENT') {
+            throw new AssertionError({ message: 'config.certificatePath does not exist at given fs path' })
+          }
+          throw err
+        }
+      }
     }
 
     if (config.tryKeyboard != null) {
