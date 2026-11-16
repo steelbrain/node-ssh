@@ -6,6 +6,7 @@
 - Add `noBuffer` option to `exec` and `execCommand`. With `noBuffer: true`, output only goes to `onStdout` and `onStderr`, and the returned `stdout` and `stderr` are empty strings. #474
 - `exec` and `execCommand` reject with an `SSHError` (code `ERR_OUTPUT_TOO_LARGE`) when the output is too large to return as a string, instead of crashing the process with an uncaught `RangeError`. #474
 - `dispose()` waits up to 2 seconds for replies to SFTP close requests that were already sent before it disconnects. SFTP read streams close their file handle only after `end`, so disposing on `end` made the stream emit `No response from server`. #471
+- An error on an idle connection (for example `ECONNRESET` or a keepalive timeout) no longer crashes the process as an unhandled `error` event. The connection is marked as disconnected; to see the error, add a listener with `ssh.connection.on('error', ...)`. #132
 - Set `TCP_NODELAY` on the connection's socket. Without it, every request round trip took about 40ms longer on Node.js 26
 - Upgrade `ssh2` to `v1.17.0`, `sb-promise-queue` to `v2.1.1` and `sb-scandir` to `v3.1.1`
 - Build with `zshy`. Output files are now `lib/index.js` (CommonJS), `lib/index.mjs` (ESM), `lib/index.d.ts` and `lib/index.d.mts`, and the `main`, `module`, `types` and `exports` fields point to them

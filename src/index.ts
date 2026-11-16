@@ -292,6 +292,10 @@ export class NodeSSH {
 
     const connection = new SSH2.Client()
     this.connection = connection
+    // Keep a listener for the connection's whole life: without one, an 'error' on an idle connection
+    // (for example ECONNRESET or a keepalive timeout) is an uncaught exception that crashes the process.
+    // The connection emits 'close' afterwards, which marks this NodeSSH as disconnected. (#132)
+    connection.on('error', DEFAULT_TICK)
 
     await new Promise<void>((resolve, reject) => {
       connection.on('error', reject)

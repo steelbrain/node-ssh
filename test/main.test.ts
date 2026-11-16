@@ -1,6 +1,7 @@
 import invariant from 'assert'
 import ChildProcess from 'child_process'
 import fs from 'fs'
+import net from 'net'
 import path from 'path'
 import { Client, Server } from 'ssh2'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
@@ -643,4 +644,41 @@ test('streams output too large for a string with noBuffer', async function () {
     expect(result.code).toBe(0)
   })
 }, 60000)
+function DEFAULT_IGNORE() {
+  /* No Op */
+}
+test('survives the connection being reset while idle', async function () {
+  // A TCP proxy in front of the test server, so the test can reset the client's socket (#132)
+  ports += 1
+  const serverPort = ports
+  ports += 1
+  const proxyPort = ports
+  const server = createServer()
+  await new Promise<void>((resolve) => server.listen(serverPort, '127.0.0.1', resolve))
+  let clientSocket: net.Socket | null = null
+  const proxy = net.createServer((socket) => {
+    clientSocket = socket
+    const upstream = net.connect(serverPort, '127.0.0.1')
+    socket.pipe(upstream).pipe(socket)
+    socket.on('error', DEFAULT_IGNORE)
+    upstream.on('error', DEFAULT_IGNORE)
+    socket.on('close', () => upstream.destroy())
+    upstream.on('close', () => socket.destroy())
+  })
+  await new Promise<void>((resolve) => proxy.listen(proxyPort, '127.0.0.1', resolve))
+  const client = new NodeSSH()
+  try {
+    await connectWithPassword(proxyPort, client)
+    const { connection } = client
+    invariant(connection && clientSocket)
+    const closed = new Promise((resolve) => connection.once('close', resolve))
+    ;(clientSocket as net.Socket).resetAndDestroy()
+    await closed
+    expect(client.isConnected()).toBe(false)
+  } finally {
+    client.dispose()
+    await new Promise((resolve) => proxy.close(resolve))
+    await new Promise((resolve) => server.close(resolve))
+  }
+})
 
