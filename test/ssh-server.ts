@@ -1,5 +1,6 @@
 import ChildProcess from 'child_process'
 import FS from 'fs'
+import Path from 'path'
 import { spawn as ptySpawn } from 'node-pty'
 import ssh2 from 'ssh2'
 import { SFTPStream } from 'ssh2-streams'
@@ -13,6 +14,9 @@ export interface ServerOptions {
   sftpCloseDelay?: number
   // Answer SFTP WRITE requests with a failure, like a server whose disk is full
   sftpFailWrites?: boolean
+  // Answer SFTP OPEN requests for files in this directory with "Permission denied", like a directory the user
+  // can't write to
+  sftpReadOnlyDirectory?: string
   // Called with the request name and paths of each SFTP OPEN, STAT, SETSTAT, RENAME, REMOVE and posix-rename request
   onSftpRequest?: (name: string, paths: string[]) => void
   // Called with the child process of each exec request
@@ -39,6 +43,10 @@ function handleSFTP(accept, options: ServerOptions) {
   const dirHandles: Map<number, string[]> = new Map()
   sftpStream.on('OPEN', function (reqId, filename, flags) {
     options.onSftpRequest?.('OPEN', [filename])
+    if (options.sftpReadOnlyDirectory != null && Path.dirname(filename) === options.sftpReadOnlyDirectory) {
+      sftpStream.status(reqId, STATUS_CODE.PERMISSION_DENIED)
+      return
+    }
     let handleId
     try {
       handleId = FS.openSync(filename, SFTPStream.flagsToString(flags) as string)

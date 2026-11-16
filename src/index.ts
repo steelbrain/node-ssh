@@ -333,14 +333,20 @@ function sftpRequest<T = void>(
   })
 }
 
-// SFTP servers answer an upload onto a directory with a bare "Failure" (SSH_FX_FAILURE, code 4), so say why (#312)
+// SFTP servers answer an upload onto a directory with a bare "Failure" (SSH_FX_FAILURE, code 4), so say why (#312).
+// With atomic, the temporary file goes in the directory's parent, and when the user can't write there the answer
+// is "Permission denied" (SSH_FX_PERMISSION_DENIED, code 3).
 async function explainPutFileError(
   error: unknown,
   localFile: string,
   remoteFile: string,
   sftp: SFTPWrapper,
 ): Promise<unknown> {
-  if (!(error instanceof Error) || (error as Error & { code?: unknown }).code !== 4) {
+  if (!(error instanceof Error)) {
+    return error
+  }
+  const { code } = error as Error & { code?: unknown }
+  if (code !== 3 && code !== 4) {
     return error
   }
   try {

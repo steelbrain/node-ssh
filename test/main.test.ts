@@ -952,6 +952,21 @@ sshitRecording(
   },
   { sftpFailWrites: true },
 )
+sshitRecording(
+  'explains an atomic putFile onto a directory in a directory the user cannot write to',
+  async function (client, requests) {
+    const parent = makeIgnoredDirectory('atomic-read-only')
+    const targetFile = path.join(parent, 'target')
+    fs.mkdirSync(targetFile)
+    // The temporary file goes next to the target directory, in its parent
+    await expect(client.putFile(__filename, targetFile, null, null, { atomic: true })).rejects.toThrow(
+      `Permission denied: ${targetFile} is a directory, pass the path of the file to write (such as ${targetFile}/main.test.ts)`,
+    )
+    expect(requests.map((request) => request.name)).toStrictEqual(['OPEN', 'REMOVE', 'STAT'])
+    expect(isTemporaryFile(requests[0].paths[0], targetFile)).toBe(true)
+  },
+  { sftpReadOnlyDirectory: getFixturePath('ignored/atomic-read-only') },
+)
 sshitRecording('removes the temporary file and keeps the target when an atomic rename fails', async function (client) {
   // A file can't replace a directory
   const targetFile = path.join(makeIgnoredDirectory('atomic-rename-fails'), 'target')
