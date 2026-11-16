@@ -171,7 +171,7 @@ function getSshSignalName(name: unknown): string | null {
 // ClientChannel.signal() sends nothing once the channel's stdin has ended, and execCommand ends stdin right away
 // when there is nothing to write (#422). SSH allows channel requests after EOF, and OpenSSH acts on them, so send
 // the request through ssh2's protocol object, an internal API.
-function stopRemoteCommand(connection: SSH2.Client, channel: ClientChannel, signalName: string): void {
+function stopRemoteCommand(connection: Client, channel: ClientChannel, signalName: string): void {
   const { outgoing } = channel as unknown as { outgoing: { id: number; state: string } }
   const protocol = (connection as unknown as { _protocol?: { signal(channelId: number, signalName: string): void } })
     ._protocol
@@ -187,7 +187,6 @@ function stopRemoteCommand(connection: SSH2.Client, channel: ClientChannel, sign
   channel.close()
 }
 
-// How long dispose() waits for SFTP close replies before disconnecting anyway.
 // Adds the likely cause to ssh2's errors for an SFTP session that failed to start (#414, #440)
 function explainSftpStartError(error: Error): Error {
   // ssh2 reads the first 4 bytes from the server as a packet length. When the server prints text instead of
@@ -218,6 +217,7 @@ function escapeCwd(cwd: string): string {
   return shellEscape([cwd])
 }
 
+// How long dispose() waits for SFTP close replies before disconnecting anyway.
 const DISPOSE_SFTP_CLOSE_TIMEOUT = 2000
 
 // Track SFTP close requests that are still waiting for the server's reply, so dispose() can wait for
