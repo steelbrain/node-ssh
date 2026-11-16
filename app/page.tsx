@@ -5,9 +5,7 @@ export default function Home() {
       <div className="container mx-auto px-4 py-16 sm:py-24">
         <div className="text-center">
           <h1 className="text-4xl sm:text-6xl font-bold mb-6">Node-SSH</h1>
-          <p className="text-xl sm:text-2xl text-muted-foreground mb-8">
-            Simple, powerful SSH client for Node.js
-          </p>
+          <p className="text-xl sm:text-2xl text-muted-foreground mb-8">Simple, powerful SSH client for Node.js</p>
           <div className="flex justify-center gap-4 mb-12">
             <a
               href="https://www.npmjs.com/package/node-ssh"
@@ -16,9 +14,20 @@ export default function Home() {
               className="inline-flex items-center gap-2 rounded-lg bg-primary text-primary-foreground px-6 py-3 font-medium hover:bg-primary/90 transition-colors"
             >
               <span>Latest Release</span>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-4 h-4"
+              >
                 <title>External link to npm package</title>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                />
               </svg>
             </a>
             <a
@@ -28,9 +37,20 @@ export default function Home() {
               className="inline-flex items-center gap-2 rounded-lg border border-border hover:bg-accent hover:text-accent-foreground px-6 py-3 font-medium transition-colors"
             >
               <span>View on GitHub</span>
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-4 h-4"
+              >
                 <title>External link to GitHub repository</title>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                />
               </svg>
             </a>
           </div>
@@ -42,19 +62,27 @@ export default function Home() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-card rounded-lg p-6 border border-border">
               <h3 className="text-lg font-semibold mb-3">Promise-Based API</h3>
-              <p className="text-muted-foreground">Modern, clean API with full Promise support for all SSH operations. No callback hell!</p>
+              <p className="text-muted-foreground">
+                Modern, clean API with full Promise support for all SSH operations. No callback hell!
+              </p>
             </div>
             <div className="bg-card rounded-lg p-6 border border-border">
               <h3 className="text-lg font-semibold mb-3">Flexible Authentication</h3>
-              <p className="text-muted-foreground">Support for private keys (path/buffer), password, and keyboard interactive authentication methods.</p>
+              <p className="text-muted-foreground">
+                Support for private keys (path/buffer), password, and keyboard interactive authentication methods.
+              </p>
             </div>
             <div className="bg-card rounded-lg p-6 border border-border">
               <h3 className="text-lg font-semibold mb-3">File Operations</h3>
-              <p className="text-muted-foreground">Robust file transfer capabilities including single file transfers and recursive directory operations.</p>
+              <p className="text-muted-foreground">
+                Robust file transfer capabilities including single file transfers and recursive directory operations.
+              </p>
             </div>
             <div className="bg-card rounded-lg p-6 border border-border">
               <h3 className="text-lg font-semibold mb-3">Command Execution</h3>
-              <p className="text-muted-foreground">Execute remote commands with full control over stdin/stdout and support for PTY options.</p>
+              <p className="text-muted-foreground">
+                Execute remote commands with full control over stdin/stdout and support for PTY options.
+              </p>
             </div>
           </div>
         </div>
@@ -101,7 +129,10 @@ ssh.connect({
 })`}</code>
             </pre>
             <div className="mt-8 text-center">
-              <p className="text-muted-foreground mb-4">Ready to explore more? Check out our complete API documentation for detailed information about all available methods and options.</p>
+              <p className="text-muted-foreground mb-4">
+                Ready to explore more? Check out our complete API documentation for detailed information about all available
+                methods and options.
+              </p>
               <a
                 href="https://github.com/steelbrain/node-ssh?tab=readme-ov-file#api"
                 target="_blank"
@@ -109,9 +140,20 @@ ssh.connect({
                 className="inline-flex items-center gap-2 bg-card hover:bg-card/90 rounded-lg px-6 py-3 border border-border transition-colors"
               >
                 <span className="font-semibold">View Complete API Reference</span>
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  strokeWidth={1.5}
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
                   <title>External link icon</title>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                  />
                 </svg>
               </a>
             </div>
@@ -207,8 +249,6 @@ const result = await ssh.exec('git', ['pull'], {
             </pre>
           </div>
         </div>
-
-
       </div>
 
       {/* Acknowledgements */}
@@ -224,12 +264,23 @@ const result = await ssh.exec('git', ['pull'], {
               className="font-medium text-foreground hover:underline inline-flex items-center gap-1"
             >
               ssh2
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-4 h-4"
+              >
                 <title>External link to ssh2 repository</title>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                />
               </svg>
-            </a>
-            {' '}by{' '}
+            </a>{' '}
+            by{' '}
             <a
               href="https://github.com/mscdex"
               target="_blank"
@@ -237,9 +288,20 @@ const result = await ssh.exec('git', ['pull'], {
               className="font-medium text-foreground hover:underline inline-flex items-center gap-1"
             >
               @mscdex
-              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-4 h-4">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                fill="none"
+                viewBox="0 0 24 24"
+                strokeWidth={1.5}
+                stroke="currentColor"
+                className="w-4 h-4"
+              >
                 <title>External link to mscdex&apos;s GitHub profile</title>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"
+                />
               </svg>
             </a>
           </p>
@@ -249,9 +311,19 @@ const result = await ssh.exec('git', ['pull'], {
       {/* Footer */}
       <footer className="border-t border-border py-8">
         <div className="container mx-auto px-4 text-center text-muted-foreground">
-          <p>Made with ❤️ by <a href="https://aneesiqbal.ai/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Anees Iqbal (@steelbrain)</a></p>
+          <p>
+            Made with ❤️ by{' '}
+            <a
+              href="https://aneesiqbal.ai/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline"
+            >
+              Anees Iqbal (@steelbrain)
+            </a>
+          </p>
         </div>
       </footer>
     </div>
-  );
+  )
 }
