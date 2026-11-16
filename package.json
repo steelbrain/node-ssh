@@ -1,7 +1,7 @@
 {
   "name": "node-ssh",
   "version": "13.2.1",
-  "description": "SSH2 with Promises",
+  "description": "SSH client for Node.js with a Promise-based API",
   "zshy": {
     "noEdit": true,
     "exports": {
