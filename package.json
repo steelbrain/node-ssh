@@ -45,16 +45,17 @@
   ],
   "homepage": "https://node-ssh.com",
   "devDependencies": {
-    "@types/node": "24",
+    "@types/node": "22",
     "@types/shell-escape": "^0.2.3",
     "@types/ssh2": "^1.15.6",
     "ava": "^8.4.0",
+    "esbuild": "^0.28.2",
+    "esbuild-register": "^3.6.0",
     "node-pty": "^1.1.0",
     "oxfmt": "^0.78.0",
     "oxlint": "^1.93.0",
     "ssh2": "^1.17.0",
     "ssh2-streams": "^0.4.10",
-    "ts-node": "^10.9.2",
     "typescript": "^6.0.3",
     "zshy": "^0.8.1"
   },
@@ -74,10 +75,11 @@
       "ts"
     ],
     "require": [
-      "ts-node/register/transpile-only"
+      "./test/register-ts.mjs",
+      "esbuild-register"
     ]
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": ">=22.12.0"
   }
 }

@@ -179,7 +179,7 @@ sshit('gets files properly', async function (t, port, client) {
 sshit('puts files properly', async function (t, port, client) {
   await connectWithPassword(port, client)
   const sourceFile = __filename
-  const targetFile = getFixturePath('ignored/test-get')
+  const targetFile = getFixturePath('ignored/test-put')
   t.is(await exists(targetFile), false)
   await client.putFile(sourceFile, targetFile)
   t.is(await exists(targetFile), true)
