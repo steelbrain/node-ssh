@@ -29,6 +29,7 @@
   "scripts": {
     "test": "vitest run",
     "lint": "(tsc -p . --noEmit) && (oxlint) && (oxfmt --check src/*.ts)",
+    "lint:types": "attw --pack .",
     "prepare": "yarn build",
     "build": "zshy"
   },
@@ -51,6 +52,7 @@
   ],
   "homepage": "https://node-ssh.com",
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.5",
     "@types/node": "22",
     "@types/shell-escape": "^0.2.3",
     "@types/ssh2": "^1.15.6",

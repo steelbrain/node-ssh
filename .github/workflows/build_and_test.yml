@@ -44,5 +44,10 @@ jobs:
       - name: Lint sources
         run: yarn lint
 
+      # arethetypeswrong: packs the package and checks that every module resolution mode finds
+      # the right type declarations
+      - name: Check package types
+        run: yarn lint:types
+
       - name: Test
         run: yarn test
