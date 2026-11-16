@@ -688,7 +688,9 @@ export class NodeSSH {
     let command = givenCommand
 
     if (options.cwd) {
-      command = `cd ${escapeCwd(options.cwd)} ; ${command}`
+      // When cd fails, exit with its status rather than run the command elsewhere. Not `&&`: in a command like
+      // `a; b` or `a || b`, the part after the `;` or `||` would still run.
+      command = `cd ${escapeCwd(options.cwd)} || exit; ${command}`
     }
     const connection = this.getConnection()
 

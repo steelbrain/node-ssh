@@ -192,6 +192,15 @@ sshit('exec with correct cwd', async function (port, client) {
   const result = await client.exec('pwd', [], { cwd: '/etc' })
   expect(result).toBe('/etc')
 })
+sshit('runs nothing when cwd does not exist', async function (port, client) {
+  await connectWithPassword(port, client)
+  const result = await client.execCommand('echo first; echo second || echo third', {
+    cwd: getFixturePath('ignored/missing-directory'),
+  })
+  expect(result.stdout).toBe('')
+  expect(result.stderr).toMatch(/missing-directory/)
+  expect(result.code).toBeGreaterThan(0)
+})
 sshit('expands ~ at the start of cwd to the home directory', async function (port, client) {
   await connectWithPassword(port, client)
   // The test server runs commands with the local shell, so ~ is this process's home directory

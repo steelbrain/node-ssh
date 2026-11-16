@@ -18,6 +18,7 @@
 - `isConnected()` is `false` until the connection is ready, and `false` right after `connect()` fails (it used to stay `true` until the socket closed). #459
 - `config.privateKey` accepts a `Buffer`, like ssh2 does and like the README example shows. #446
 - A `cwd` that starts with `~/` (or is `~`) is now relative to the remote user's home directory; the `~` used to be quoted, so the shell looked for a directory named `~`. #443
+- When `cd` to `cwd` fails (for example because the directory does not exist), the command no longer runs. node-ssh used to run `cd <cwd> ; <command>`, so the command ran in the remote user's home directory; it now runs `cd <cwd> || exit; <command>`, and the result has the `cd` error in `stderr` and a non-zero `code`
 - Type declarations import from `ssh2` and `stream` with named imports only, so consumers no longer need `esModuleInterop` or `allowSyntheticDefaultImports`. #444
 - `@types/ssh2` is listed as an optional peer dependency (`^1.11.2`, the oldest version the declarations work with). TypeScript projects still install it themselves. #380
 - Set `TCP_NODELAY` on the connection's socket. Without it, every request round trip took about 40ms longer on Node.js 26
