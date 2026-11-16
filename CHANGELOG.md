@@ -1,30 +1,30 @@
-#### Unreleased
+#### 14.0.0
 
 - BREAKING: Minimum required version of Node.js is now v22
-- Remove the `is-stream` and `make-dir` dependencies in favor of Node.js built-ins
-- Fix `exec` and `execCommand` output when a data chunk from the server ends in the middle of a multi-byte UTF-8 character (it became U+FFFD) or, with `encoding: 'base64'`, in the middle of a base64 group. #487
+- BREAKING: `exec` and `execCommand` reject with the connection's error when the connection fails while the command runs, instead of resolving with `code: null`. #132
+- BREAKING: When `cd` to `cwd` fails (for example because the directory does not exist), the command no longer runs. node-ssh used to run `cd <cwd> ; <command>`, so the command ran in the remote user's home directory; it now runs `cd <cwd> || exit; <command>`, and the result has the `cd` error in `stderr` and a non-zero `code`
 - Add `timeout`, `signal` and `killSignal` options to `exec` and `execCommand`. When `timeout` (in milliseconds) passes or the `AbortSignal` given as `signal` aborts, node-ssh asks the server to send `killSignal` (default `TERM`) to the command, closes the command's channel and rejects, with an `SSHError` whose code is `ETIMEDOUT` or with `signal.reason`. OpenSSH sends the signal to the command's process group. Unlike `channel.signal()` on the channel from `onChannel`, this works after the command's stdin has ended (#422). #465
 - Add `noBuffer` option to `exec` and `execCommand`. With `noBuffer: true`, output only goes to `onStdout` and `onStderr`, and the returned `stdout` and `stderr` are empty strings. #474
 - Add `atomic` option to `putFile` (new fifth parameter, `{ atomic: true }`), `putFiles` and `putDirectory`. Each file is uploaded to a hidden temporary file in the same remote directory and renamed to the remote path once complete, so readers never see a partial file. The rename replaces an existing file atomically on servers with the `posix-rename@openssh.com` extension (OpenSSH); on other servers the existing file is deleted first. #349
 - Add `skipUnchanged` option to `putFile`, `putFiles` and `putDirectory`. A file is not uploaded when the remote path is a regular file with the same size and modification time (in whole seconds); an uploaded file gets the local file's access and modification times, so the next upload can skip it. `putDirectory` passes `skipped` to `tick` as a fourth argument. #466
+- Fix `exec` and `execCommand` output when a data chunk from the server ends in the middle of a multi-byte UTF-8 character (it became U+FFFD) or, with `encoding: 'base64'`, in the middle of a base64 group. #487
 - `exec` and `execCommand` reject with an `SSHError` (code `ERR_OUTPUT_TOO_LARGE`) when the output is too large to return as a string, instead of crashing the process with an uncaught `RangeError`. #474
-- `dispose()` waits up to 2 seconds for replies to SFTP close requests that were already sent before it disconnects. SFTP read streams close their file handle only after `end`, so disposing on `end` made the stream emit `No response from server`. #471
-- An error on an idle connection (for example `ECONNRESET` or a keepalive timeout) no longer crashes the process as an unhandled `error` event. The connection is marked as disconnected; to see the error, add a listener with `ssh.connection.on('error', ...)`. #132
-- `exec` and `execCommand` reject with the connection's error when the connection fails while the command runs, instead of resolving with `code: null`. #132
 - `exec` and `execCommand` reject when `onStdout`, `onStderr` or `onChannel` throws, and close only that command's channel. Before, ssh2 reported the exception as an error on the connection and closed the connection. #257
+- An error on an idle connection (for example `ECONNRESET` or a keepalive timeout) no longer crashes the process as an unhandled `error` event. The connection is marked as disconnected; to see the error, add a listener with `ssh.connection.on('error', ...)`. #132
+- `dispose()` waits up to 2 seconds for replies to SFTP close requests that were already sent before it disconnects. SFTP read streams close their file handle only after `end`, so disposing on `end` made the stream emit `No response from server`. #471
 - Starting more than 10 `execCommand`, `requestShell` or `requestSFTP` calls at once on one connection (this includes `putFile` and `getFile`) no longer prints Node's `MaxListenersExceededWarning`
 - `putFile` onto a directory now says so: the server's bare `Failure` error gets `: <path> is a directory, pass the path of the file to write (such as <path>/<file name>)`. With `atomic`, the same goes for the `Permission denied` error a server sends when the directory's parent is not writable (the temporary file goes there). #312
 - When an SFTP session fails to start, the error says why it usually happens: `Packet length 1349281121 exceeds max length` means the server sent text (here `"Plea"`, from "Please login as the user ...") instead of SFTP data, and `Received exit code 127 while establishing SFTP session` points to the server's `Subsystem sftp` setting. #414 #440
 - `isConnected()` is `false` until the connection is ready, and `false` right after `connect()` fails (it used to stay `true` until the socket closed). #459
 - `config.privateKey` accepts a `Buffer`, like ssh2 does and like the README example shows. #446
 - A `cwd` that starts with `~/` (or is `~`) is now relative to the remote user's home directory; the `~` used to be quoted, so the shell looked for a directory named `~`. #443
-- When `cd` to `cwd` fails (for example because the directory does not exist), the command no longer runs. node-ssh used to run `cd <cwd> ; <command>`, so the command ran in the remote user's home directory; it now runs `cd <cwd> || exit; <command>`, and the result has the `cd` error in `stderr` and a non-zero `code`
+- Set `TCP_NODELAY` on the connection's socket. Without it, every request round trip took about 40ms longer on Node.js 26
 - Type declarations import from `ssh2` and `stream` with named imports only, so consumers no longer need `esModuleInterop` or `allowSyntheticDefaultImports`. #444
 - TypeScript reports `import NodeSSH from 'node-ssh'` as an error (`has no default export`) in CommonJS projects too. It used to compile there, but the import is `undefined` at runtime, so `import ssh from 'node-ssh'; new ssh.NodeSSH()` crashed. Use `import { NodeSSH } from 'node-ssh'`
 - `@types/ssh2` is listed as an optional peer dependency (`^1.11.2`, the oldest version the declarations work with). TypeScript projects still install it themselves. #380
-- Set `TCP_NODELAY` on the connection's socket. Without it, every request round trip took about 40ms longer on Node.js 26
-- Upgrade `ssh2` to `v1.17.0`, `sb-promise-queue` to `v2.1.1` and `sb-scandir` to `v3.1.1`
 - Build with `zshy`. Output files are now `lib/index.js` (CommonJS), `lib/index.mjs` (ESM), `lib/index.d.ts` and `lib/index.d.mts`, and the `main`, `module`, `types` and `exports` fields point to them. In `exports`, `import` gets the ESM declarations (`lib/index.d.mts`) and `require` the CommonJS ones (`lib/index.d.ts`), so TypeScript sees the same module format as Node.js
+- Remove the `is-stream` and `make-dir` dependencies in favor of Node.js built-ins
+- Upgrade `ssh2` to `v1.17.0`, `sb-promise-queue` to `v2.1.1` and `sb-scandir` to `v3.1.1`
 - Upgrade all dev dependencies (including TypeScript `v6`)
 - Lint with `oxlint` and format with `oxfmt` instead of ESLint and Prettier
 - Run tests with `vitest` instead of `ava`
