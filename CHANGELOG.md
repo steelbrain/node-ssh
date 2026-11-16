@@ -1,13 +1,14 @@
 #### Unreleased
 
-- BREAKING: Minimum required version of Node.js is now v22.12.0. `is-stream` and `make-dir` are now ESM-only, and the CommonJS build loads them with `require()`, which Node.js 22 supports from v22.12.0. On v22.12.0, `require('node-ssh')` prints an `ExperimentalWarning`; v22.13.0 and later load without it
-- BREAKING: `options.stdin` in `exec` and `execCommand` no longer accepts streams created with `readable-stream` v2 or v3 (for example from `through2` v4 and older), and throws `options.stdin must be a valid string or readable stream`. Node.js core streams and `readable-stream` v4 work as before
-- Upgrade `ssh2` to `v1.17.0`, `is-stream` to `v4`, `make-dir` to `v5`, `sb-promise-queue` to `v2.1.1` and `sb-scandir` to `v3.1.1`
+- BREAKING: Minimum required version of Node.js is now v22
+- Remove the `is-stream` and `make-dir` dependencies in favor of Node.js built-ins
+- Upgrade `ssh2` to `v1.17.0`, `sb-promise-queue` to `v2.1.1` and `sb-scandir` to `v3.1.1`
 - Build with `zshy`. Output files are now `lib/index.js` (CommonJS), `lib/index.mjs` (ESM), `lib/index.d.ts` and `lib/index.d.mts`, and the `main`, `module`, `types` and `exports` fields point to them
 - Type declarations no longer contain `/// <reference types="node" />`
-- Upgrade all dev dependencies (including TypeScript `v6` and `ava` `v8`)
-- Lint with `oxlint` and format with `oxfmt` instead of ESLint and Prettier, and run tests with `esbuild-register` instead of `ts-node`
-- CI runs on Node.js 22
+- Upgrade all dev dependencies (including TypeScript `v6`)
+- Lint with `oxlint` and format with `oxfmt` instead of ESLint and Prettier
+- Run tests with `vitest` instead of `ava`
+- CI runs on Node.js 22, 24 and 26 (the current LTS lines)
 
 #### 13.2.1
 
