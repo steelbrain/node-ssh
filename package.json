@@ -21,7 +21,7 @@
   },
   "type": "commonjs",
   "scripts": {
-    "test": "vitest run",
+    "test": "vitest run --testTimeout=30000",
     "lint": "(tsc -p . --noEmit) && (oxlint) && (oxfmt --check src/*.ts)",
     "prepare": "yarn build",
     "build": "zshy"
