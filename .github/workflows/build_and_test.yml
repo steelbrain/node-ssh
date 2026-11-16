@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: node:22
+      image: node:24
 
     steps:
       - name: Checkout code

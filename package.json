@@ -42,7 +42,7 @@
   ],
   "homepage": "https://node-ssh.com",
   "devDependencies": {
-    "@types/node": "22",
+    "@types/node": "24",
     "@types/shell-escape": "^0.2.3",
     "@types/ssh2": "^1.15.6",
     "ava": "^8.4.0",
