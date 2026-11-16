@@ -1,0 +1,155 @@
+{
+  "recordedAt": "2026-11-16T10:44:36.650Z",
+  "nodeSsh": "d335322 (development, released as 14.0.0)",
+  "node": "v24.18.0",
+  "server": "OpenSSH_9.2p1 Debian-2+deb12u10, OpenSSL 3.0.22 25 Aug 2026, Debian 12.15",
+  "sessions": [
+    {
+      "id": "run-command",
+      "code": "const deployed = await ssh.execCommand('git log -1 --oneline', { cwd: '~/site' })\nconsole.log(deployed)\n\nconst missing = await ssh.execCommand('ls /srv/backups')\nconsole.log(missing)",
+      "events": [
+        {
+          "t": 12,
+          "stream": "stdout",
+          "text": "{\n  code: 0,\n  signal: null,\n  stdout: '2c6d3ce Update pricing page',\n  stderr: ''\n}\n"
+        },
+        {
+          "t": 14,
+          "stream": "stdout",
+          "text": "{\n  code: 2,\n  signal: null,\n  stdout: '',\n  stderr: \"ls: cannot access '/srv/backups': No such file or directory\"\n}\n"
+        }
+      ],
+      "durationMs": 14
+    },
+    {
+      "id": "stream-abort",
+      "code": "const controller = new AbortController()\nsetTimeout(() => controller.abort(), 3000)\n\ntry {\n  await ssh.execCommand('tail -n 0 -f /var/log/app/access.log', {\n    signal: controller.signal,\n    onStdout(chunk) {\n      process.stdout.write(chunk)\n    },\n  })\n} catch (error) {\n  console.log(error.name)\n}",
+      "events": [
+        {
+          "t": 315,
+          "stream": "stdout",
+          "text": "10:44:39 198.51.100.142 GET /assets/app.css 304 0\n"
+        },
+        {
+          "t": 716,
+          "stream": "stdout",
+          "text": "10:44:39 203.0.113.9 GET /pricing/ 200 2310\n"
+        },
+        {
+          "t": 1117,
+          "stream": "stdout",
+          "text": "10:44:40 203.0.113.9 GET /assets/app.css 200 2941\n"
+        },
+        {
+          "t": 1523,
+          "stream": "stdout",
+          "text": "10:44:40 203.0.113.81 GET /assets/app.css 200 2941\n"
+        },
+        {
+          "t": 2125,
+          "stream": "stdout",
+          "text": "10:44:41 198.51.100.7 GET /assets/app.js 304 0\n"
+        },
+        {
+          "t": 2426,
+          "stream": "stdout",
+          "text": "10:44:41 198.51.100.7 GET /assets/logo.svg 304 0\n"
+        },
+        {
+          "t": 2933,
+          "stream": "stdout",
+          "text": "10:44:41 198.51.100.7 GET /assets/logo.svg 304 0\n"
+        },
+        {
+          "t": 3001,
+          "stream": "stdout",
+          "text": "AbortError\n"
+        }
+      ],
+      "durationMs": 3001
+    },
+    {
+      "id": "timeout",
+      "code": "const started = Date.now()\ntry {\n  await ssh.execCommand('sleep 60', { timeout: 2000 })\n} catch (error) {\n  console.log(error.code, error.message)\n  console.log(`rejected after ${Date.now() - started}ms`)\n}\n\nconst { code } = await ssh.execCommand('pgrep -x sleep')\nconsole.log(code === 1 ? 'sleep is no longer running' : 'sleep is still running')",
+      "events": [
+        {
+          "t": 2002,
+          "stream": "stdout",
+          "text": "ETIMEDOUT Command timed out after 2000ms\n"
+        },
+        {
+          "t": 2002,
+          "stream": "stdout",
+          "text": "rejected after 2001ms\n"
+        },
+        {
+          "t": 2004,
+          "stream": "stdout",
+          "text": "sleep is no longer running\n"
+        }
+      ],
+      "durationMs": 2004
+    },
+    {
+      "id": "upload",
+      "code": "// /var/www/site holds the previous upload of ./dist. Since then, only assets/app.js changed.\nawait ssh.putDirectory('./dist', '/var/www/site', {\n  atomic: true,\n  skipUnchanged: true,\n  tick(localFile, remoteFile, error, skipped) {\n    console.log(error ? 'failed' : skipped ? 'unchanged' : 'uploaded', remoteFile)\n  },\n})",
+      "events": [
+        {
+          "t": 11,
+          "stream": "stdout",
+          "text": "unchanged /var/www/site/index.html\n"
+        },
+        {
+          "t": 12,
+          "stream": "stdout",
+          "text": "unchanged /var/www/site/assets/app.css\n"
+        },
+        {
+          "t": 15,
+          "stream": "stdout",
+          "text": "uploaded /var/www/site/assets/app.js\n"
+        },
+        {
+          "t": 15,
+          "stream": "stdout",
+          "text": "unchanged /var/www/site/assets/logo.svg\n"
+        },
+        {
+          "t": 16,
+          "stream": "stdout",
+          "text": "unchanged /var/www/site/about/index.html\n"
+        }
+      ],
+      "durationMs": 16
+    },
+    {
+      "id": "escaping",
+      "code": "const text = '$HOME; echo injected'\n\nconsole.log(await ssh.exec('echo', [text]))\nconsole.log((await ssh.execCommand(`echo ${text}`)).stdout)",
+      "events": [
+        {
+          "t": 8,
+          "stream": "stdout",
+          "text": "$HOME; echo injected\n"
+        },
+        {
+          "t": 10,
+          "stream": "stdout",
+          "text": "/home/deploy\ninjected\n"
+        }
+      ],
+      "durationMs": 10
+    },
+    {
+      "id": "error-message",
+      "code": "try {\n  await ssh.putFile('./dist/index.html', '/var/www/site')\n} catch (error) {\n  console.log(error.message)\n}",
+      "events": [
+        {
+          "t": 9,
+          "stream": "stdout",
+          "text": "Failure: /var/www/site is a directory, pass the path of the file to write (such as /var/www/site/index.html)\n"
+        }
+      ],
+      "durationMs": 9
+    }
+  ]
+}
