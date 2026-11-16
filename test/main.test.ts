@@ -666,8 +666,8 @@ test('streams output too large for a string with noBuffer', async function () {
 function DEFAULT_IGNORE() {
   /* No Op */
 }
-test('survives the connection being reset while idle', async function () {
-  // A TCP proxy in front of the test server, so the test can reset the client's socket (#132)
+// Connects a client through a TCP proxy in front of the test server, so the test can reset the client's socket
+async function withResettableConnection(callback: (client: NodeSSH, reset: () => void) => Promise<void>): Promise<void> {
   ports += 1
   const serverPort = ports
   ports += 1
@@ -688,16 +688,59 @@ test('survives the connection being reset while idle', async function () {
   const client = new NodeSSH()
   try {
     await connectWithPassword(proxyPort, client)
-    const { connection } = client
-    invariant(connection && clientSocket)
-    const closed = new Promise((resolve) => connection.once('close', resolve))
-    ;(clientSocket as net.Socket).resetAndDestroy()
-    await closed
-    expect(client.isConnected()).toBe(false)
+    invariant(clientSocket)
+    const socket: net.Socket = clientSocket
+    await callback(client, () => socket.resetAndDestroy())
   } finally {
     client.dispose()
     await new Promise((resolve) => proxy.close(resolve))
     await new Promise((resolve) => server.close(resolve))
   }
+}
+test('survives the connection being reset while idle', async function () {
+  await withResettableConnection(async (client, reset) => {
+    const { connection } = client
+    invariant(connection)
+    const closed = new Promise((resolve) => connection.once('close', resolve))
+    reset()
+    await closed
+    expect(client.isConnected()).toBe(false)
+  })
+})
+test('rejects a running command when the connection is reset', async function () {
+  await withResettableConnection(async (client, reset) => {
+    let channelOpened = DEFAULT_IGNORE
+    const opened = new Promise<void>((resolve) => {
+      channelOpened = resolve
+    })
+    const result = client.execCommand('sleep 2', { onChannel: () => channelOpened() })
+    await opened
+    reset()
+    await expect(result).rejects.toMatchObject({ code: 'ECONNRESET' })
+  })
+})
+sshit('runs many requests at once without a listener leak warning', async function (port, client) {
+  await connectWithPassword(port, client)
+  const warnings: Error[] = []
+  const onWarning = (warning: Error) => warnings.push(warning)
+  process.on('warning', onWarning)
+  try {
+    await Promise.all(Array.from({ length: 12 }, () => client.execCommand('echo 1')))
+    await Promise.all(Array.from({ length: 12 }, () => client.requestSFTP().then((sftp) => sftp.end())))
+  } finally {
+    process.off('warning', onWarning)
+  }
+  expect(warnings.map((warning) => warning.name)).not.toContain('MaxListenersExceededWarning')
+})
+sshit('rejects when an output callback throws, and keeps the connection', async function (port, client) {
+  await connectWithPassword(port, client)
+  const throwing = () => {
+    throw new Error('thrown in a callback')
+  }
+  await expect(client.execCommand('echo 1', { onStdout: throwing })).rejects.toThrow('thrown in a callback')
+  await expect(client.execCommand('echo 1 >&2', { onStderr: throwing })).rejects.toThrow('thrown in a callback')
+  await expect(client.execCommand('echo 1', { onChannel: throwing })).rejects.toThrow('thrown in a callback')
+  expect(client.isConnected()).toBe(true)
+  expect((await client.execCommand('echo still connected')).stdout).toBe('still connected')
 })
 

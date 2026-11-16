@@ -211,6 +211,30 @@ async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
 export class NodeSSH {
   connection: SSH2.Client | null = null
   private sftpCloses: WeakMap<SSH2.Client, Set<Promise<void>>> = new WeakMap()
+  private connectionErrorHandlers: WeakMap<SSH2.Client, Set<(error: Error) => void>> = new WeakMap()
+
+  // Keep one 'error' listener for the connection's whole life: without one, an 'error' on an idle connection
+  // (for example ECONNRESET or a keepalive timeout) is an uncaught exception that crashes the process.
+  // The connection emits 'close' afterwards, which marks this NodeSSH as disconnected. (#132)
+  // The listener passes the error on to requests still waiting on the connection. One shared listener
+  // instead of one per request keeps Node's MaxListenersExceededWarning away when many run at once.
+  private listenForErrors(connection: SSH2.Client): Set<(error: Error) => void> {
+    const handlers = new Set<(error: Error) => void>()
+    this.connectionErrorHandlers.set(connection, handlers)
+    connection.on('error', (error) => {
+      handlers.forEach((handler) => handler(error))
+    })
+    return handlers
+  }
+
+  // Calls onError if the connection emits 'error' before the returned function is called
+  private onConnectionError(connection: SSH2.Client, onError: (error: Error) => void): () => void {
+    const handlers = this.connectionErrorHandlers.get(connection) ?? this.listenForErrors(connection)
+    handlers.add(onError)
+    return () => {
+      handlers.delete(onError)
+    }
+  }
 
   private getConnection(): SSH2.Client {
     const { connection } = this
@@ -292,10 +316,7 @@ export class NodeSSH {
 
     const connection = new SSH2.Client()
     this.connection = connection
-    // Keep a listener for the connection's whole life: without one, an 'error' on an idle connection
-    // (for example ECONNRESET or a keepalive timeout) is an uncaught exception that crashes the process.
-    // The connection emits 'close' afterwards, which marks this NodeSSH as disconnected. (#132)
-    connection.on('error', DEFAULT_TICK)
+    this.listenForErrors(connection)
 
     await new Promise<void>((resolve, reject) => {
       connection.on('error', reject)
@@ -334,9 +355,9 @@ export class NodeSSH {
     const connection = this.getConnection()
 
     return new Promise((resolve, reject) => {
-      connection.on('error', reject)
+      const stopWatching = this.onConnectionError(connection, reject)
       const callback = (err: Error | undefined, res: ClientChannel) => {
-        connection.removeListener('error', reject)
+        stopWatching()
         if (err) {
           reject(err)
         } else {
@@ -369,9 +390,9 @@ export class NodeSSH {
     const connection = this.getConnection()
 
     return new Promise((resolve, reject) => {
-      connection.on('error', reject)
+      const stopWatching = this.onConnectionError(connection, reject)
       connection.sftp((err, res) => {
-        connection.removeListener('error', reject)
+        stopWatching()
         if (err) {
           reject(err)
         } else {
@@ -440,23 +461,41 @@ export class NodeSSH {
     const stderrDecoder = new StringDecoder(options.encoding)
 
     return new Promise((resolve, reject) => {
-      connection.on('error', reject)
+      // Watch until the channel closes. If the connection fails while the command runs, the channel closes
+      // without an exit status, and resolving would make it look like the command finished. (#132)
+      const stopWatching = this.onConnectionError(connection, reject)
       connection.exec(command, options.execOptions != null ? options.execOptions : {}, (err, channel) => {
-        connection.removeListener('error', reject)
         if (err) {
+          stopWatching()
           reject(err)
           return
         }
-        if (options.onChannel) {
-          options.onChannel(channel)
+        // ssh2 calls these callbacks while it parses data from the server. An exception thrown there
+        // would become an 'error' on the connection and close it, so reject and close only the channel.
+        let failed = false
+        const callUserCallback = (callback: () => void): void => {
+          if (failed) return
+          try {
+            callback()
+          } catch (error) {
+            failed = true
+            stopWatching()
+            reject(error)
+            channel.close()
+          }
+        }
+        const { onChannel, onStdout, onStderr } = options
+        if (onChannel) {
+          callUserCallback(() => onChannel(channel))
+          if (failed) return
         }
         channel.on('data', (chunk: Buffer) => {
-          if (options.onStdout) options.onStdout(chunk)
-          if (options.noBuffer !== true) output.stdout.push(stdoutDecoder.write(chunk))
+          if (onStdout) callUserCallback(() => onStdout(chunk))
+          if (options.noBuffer !== true && !failed) output.stdout.push(stdoutDecoder.write(chunk))
         })
         channel.stderr.on('data', (chunk: Buffer) => {
-          if (options.onStderr) options.onStderr(chunk)
-          if (options.noBuffer !== true) output.stderr.push(stderrDecoder.write(chunk))
+          if (onStderr) callUserCallback(() => onStderr(chunk))
+          if (options.noBuffer !== true && !failed) output.stderr.push(stderrDecoder.write(chunk))
         })
         if (options.stdin != null) {
           if (isReadableStream(options.stdin)) {
@@ -478,6 +517,8 @@ export class NodeSSH {
           signal = signal_ ?? null
         })
         channel.on('close', () => {
+          stopWatching()
+          if (failed) return
           let stdout = ''
           let stderr = ''
           if (options.noBuffer !== true) {
