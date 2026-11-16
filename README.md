@@ -90,7 +90,7 @@ ssh.connect({
     console.log('STDOUT: ' + result.stdout)
   })
   // Command with escaped params
-  ssh.exec('hh_client', ['--json'], { cwd: '/var/www', stream: 'stdout', options: { pty: true } }).then(function(result) {
+  ssh.exec('hh_client', ['--json'], { cwd: '/var/www', stream: 'stdout', execOptions: { pty: true } }).then(function(result) {
     console.log('STDOUT: ' + result)
   })
   // With streaming stdout/stderr callbacks
@@ -127,6 +127,10 @@ const result = await ssh.execCommand('screen -r', {
 console.log('STDOUT: ' + result.stdout)
 console.log('STDERR: ' + result.stderr)
 ```
+
+A pseudo-TTY gives the remote program one terminal for both of its output streams, so with
+`pty: true` everything it writes arrives in `stdout` (and `onStdout`) and `stderr` stays empty.
+The terminal also echoes `stdin` into `stdout`, and line endings in the output are `\r\n`.
 
 #### API
 
