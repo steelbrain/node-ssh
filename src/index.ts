@@ -21,6 +21,7 @@ import SSH2, {
   UNIXConnectionDetails,
 } from 'ssh2'
 import stream from 'stream'
+import { StringDecoder } from 'string_decoder'
 
 export type Config = ConnectConfig & {
   password?: string
@@ -396,6 +397,10 @@ export class NodeSSH {
     const connection = this.getConnection()
 
     const output: { stdout: string[]; stderr: string[] } = { stdout: [], stderr: [] }
+    // A chunk can end in the middle of a multi-byte character (or a base64 group); the decoders hold
+    // those bytes until the next chunk arrives.
+    const stdoutDecoder = new StringDecoder(options.encoding)
+    const stderrDecoder = new StringDecoder(options.encoding)
 
     return new Promise((resolve, reject) => {
       connection.on('error', reject)
@@ -410,11 +415,11 @@ export class NodeSSH {
         }
         channel.on('data', (chunk: Buffer) => {
           if (options.onStdout) options.onStdout(chunk)
-          output.stdout.push(chunk.toString(options.encoding))
+          output.stdout.push(stdoutDecoder.write(chunk))
         })
         channel.stderr.on('data', (chunk: Buffer) => {
           if (options.onStderr) options.onStderr(chunk)
-          output.stderr.push(chunk.toString(options.encoding))
+          output.stderr.push(stderrDecoder.write(chunk))
         })
         if (options.stdin != null) {
           if (isReadableStream(options.stdin)) {
@@ -436,6 +441,8 @@ export class NodeSSH {
           signal = signal_ ?? null
         })
         channel.on('close', () => {
+          output.stdout.push(stdoutDecoder.end())
+          output.stderr.push(stderrDecoder.end())
           let stdout = output.stdout.join('')
           let stderr = output.stderr.join('')
           if (options.noTrim !== true) {

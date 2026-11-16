@@ -503,3 +503,23 @@ sshit('has a working noTrim option', async function (port, client) {
   expect(commandResult.stdout).toBe('\nstdout\n\n')
   expect(commandResult.stderr).toBe('\nstderr\n\n')
 })
+sshit('decodes multi-byte characters split across data chunks', async function (port, client) {
+  await connectWithPassword(port, client)
+  // 36,000 bytes of 3-byte characters: larger than one 32 KiB SSH packet, so a chunk ends mid-character
+  const expected = '\u65e5'.repeat(12000)
+  const script = "process.stdout.write('\\u65e5'.repeat(12000)); process.stderr.write('\\u65e5'.repeat(12000))"
+  const result = await client.exec('node', ['-e', script], { stream: 'both' })
+  expect(result.stdout).toBe(expected)
+  // STDERR tests are flaky on CI
+  if (!process.env.CI) {
+    expect(result.stderr).toBe(expected)
+  }
+})
+sshit('decodes base64 output split across data chunks', async function (port, client) {
+  await connectWithPassword(port, client)
+  // Bytes below 0x80: the test server decodes command output as UTF-8, which would mangle higher bytes
+  const expected = Buffer.from(Array.from({ length: 100000 }, (_, i) => (i * 7) % 128)).toString('base64')
+  const script = 'process.stdout.write(Buffer.from(Array.from({ length: 100000 }, (_, i) => (i * 7) % 128)))'
+  const result = await client.exec('node', ['-e', script], { stream: 'stdout', encoding: 'base64' })
+  expect(result).toBe(expected)
+})
