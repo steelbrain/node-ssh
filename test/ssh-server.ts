@@ -1,13 +1,13 @@
 import ChildProcess from 'child_process'
 import FS from 'fs'
-import Path from 'path'
 import { spawn as ptySpawn } from 'node-pty'
+import Path from 'path'
 import ssh2 from 'ssh2'
 import { SFTPStream } from 'ssh2-streams'
 
 import { PRIVATE_KEY_PATH } from './helpers'
 
-const { STATUS_CODE } = ((ssh2.utils as unknown) as { sftp: { STATUS_CODE: Record<string, string> } }).sftp
+const { STATUS_CODE } = (ssh2.utils as unknown as { sftp: { STATUS_CODE: Record<string, string> } }).sftp
 
 export interface ServerOptions {
   // Answer SFTP CLOSE requests after this many milliseconds, like a remote server would

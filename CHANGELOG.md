@@ -30,7 +30,7 @@
 - Run tests with `vitest` instead of `ava`
 - CI runs on Node.js 22, 24 and 26 (the current LTS lines)
 - CI checks the packed package with `arethetypeswrong` (`yarn lint:types`)
-- `yarn lint` also type-checks the tests and checks the formatting of `README.md`
+- `yarn lint` also type-checks the tests, and checks the formatting of every file oxfmt handles instead of only `src` (the tests, `README.md`, `CHANGELOG.md` and the JSON and YAML files)
 
 #### 13.2.1
 
@@ -90,164 +90,164 @@
 
 #### 11.0.0
 
-* Add ESM module exports for upcoming Node.js versions
-* BREAKING: Changed export to named, so it becomes `const {NodeSSH} = require('node-ssh')` and `import {NodeSSH} from 'node-ssh'`
-* Export Typescript types from package
-* Set default concurrency to `1` to ensure compatibility with wider array of servers
+- Add ESM module exports for upcoming Node.js versions
+- BREAKING: Changed export to named, so it becomes `const {NodeSSH} = require('node-ssh')` and `import {NodeSSH} from 'node-ssh'`
+- Export Typescript types from package
+- Set default concurrency to `1` to ensure compatibility with wider array of servers
 
 #### 10.0.2
 
-* Prefer arrow callbacks - Fixes #304 (Thanks @ururk)
+- Prefer arrow callbacks - Fixes #304 (Thanks @ururk)
 
 #### 10.0.1
 
-* Fix unixification of paths in more places (Thanks @mbr4477)
+- Fix unixification of paths in more places (Thanks @mbr4477)
 
 #### 10.0.0
 
-* Unixy all paths before passing onwards
-* Add `isConnected` method
+- Unixy all paths before passing onwards
+- Add `isConnected` method
 
 #### 9.0.0
 
-* Add support for Putty private key files
-* Add `getDirectory` method
-* Add `onChannel` support to `execCommand`
-* Rename `options.options` in `execCommand` to be `options.execOptions`
-* Rename `options.sftpOptions` to `options.transferOptions` in `putFiles`
-* Add `withSFTP` and `withShell` methods
-* Connection timed out error is now an instance of `SSHError`
-* Invalid argument errors are now `AssertionError` instances
-* `onKeyboardInteractive` default will only be set if a `config.password` is provided
+- Add support for Putty private key files
+- Add `getDirectory` method
+- Add `onChannel` support to `execCommand`
+- Rename `options.options` in `execCommand` to be `options.execOptions`
+- Rename `options.sftpOptions` to `options.transferOptions` in `putFiles`
+- Add `withSFTP` and `withShell` methods
+- Connection timed out error is now an instance of `SSHError`
+- Invalid argument errors are now `AssertionError` instances
+- `onKeyboardInteractive` default will only be set if a `config.password` is provided
 
 #### 8.0.0
 
-* Stop swallowing non-existent cwd errors in `execCommand` #272 (Thanks @dadamssg)
+- Stop swallowing non-existent cwd errors in `execCommand` #272 (Thanks @dadamssg)
 
 #### 7.0.1
 
-* Do not include privateKey path in error message
+- Do not include privateKey path in error message
 
 #### 7.0.0
 
-* Potential breaking upgrade to `ssh2` dependency
+- Potential breaking upgrade to `ssh2` dependency
 
 #### 6.0.0
 
-* Breaking upgrade to `ssh2` dependency
-* Internal cleanup / testing system overhaul
+- Breaking upgrade to `ssh2` dependency
+- Internal cleanup / testing system overhaul
 
 #### 5.1.2
 
-* Fix timeout issue with authentication
+- Fix timeout issue with authentication
 
 #### 5.1.1
 
-* Fixed an issue with keyboard authentication validation
+- Fixed an issue with keyboard authentication validation
 
 #### 5.1.0
 
-* Add keyboard authentication support (Thanks @dominiklessel)
+- Add keyboard authentication support (Thanks @dominiklessel)
 
 #### 5.0.0
 
-* Add `onStdout`, `onStderr` to `exec{,Command}`
-* Change signature of `put{Files,Directory}` methods
-* Create empty directories remotely in `putDirectory`
+- Add `onStdout`, `onStderr` to `exec{,Command}`
+- Change signature of `put{Files,Directory}` methods
+- Create empty directories remotely in `putDirectory`
 
 #### 4.2.3
 
-* Fix passing options in `execCommand`
+- Fix passing options in `execCommand`
 
 #### 4.2.2
 
-* Fix put directory for long paths
-* Add tests for long paths in test suite
+- Fix put directory for long paths
+- Add tests for long paths in test suite
 
 #### 4.2.1
 
-* Remove `mkdirp` in favor of homegrown solution to fix compatibility with SSH servers running on Windows
+- Remove `mkdirp` in favor of homegrown solution to fix compatibility with SSH servers running on Windows
 
 #### 4.2.0
 
-* Fix a typo in README
-* Add support for passing direct options to `ssh2.exec`
+- Fix a typo in README
+- Add support for passing direct options to `ssh2.exec`
 
 #### 4.1.0
 
-* Add sftp `opts` support in `getFile`, `putFile`, `putFiles` and `putDirectory`
+- Add sftp `opts` support in `getFile`, `putFile`, `putFiles` and `putDirectory`
 
 #### 4.0.1
 
-* Fix support for `config.sock`
+- Fix support for `config.sock`
 
 #### 4.0.0
 
-* Fix a bug where `.getFile` parameters were reversed. Published as a major change because it is API breaking
+- Fix a bug where `.getFile` parameters were reversed. Published as a major change because it is API breaking
 
 #### 3.1.0
 
-* Implement sftp-backed `mkdir`
-* Implement `maxAtOnce` in `putFiles()`
+- Implement sftp-backed `mkdir`
+- Implement `maxAtOnce` in `putFiles()`
 
 #### 3.0.1
 
-* Fix a bug for windows users where `.putDirectory()` wouldn't convert paths properly ( Thanks @lanxenet )
+- Fix a bug for windows users where `.putDirectory()` wouldn't convert paths properly ( Thanks @lanxenet )
 
 #### 3.0.0
 
-* Rename `.end` to `.dispose`
-* Rename `.get` to `.getFile`
-* Rename `.put` to `.putFile`
-* Rename `.putMulti` to `.putFiles`
-* Add `.putDirectory` function to copy entire directories
-* Change order of `.getFile` parameters
-* Extended parameter validation in `.putFiles`
-* Close SFTP connections after they are used
-* Hide errors from `cd` when `cwd` is supplied but it does not exist
-* Do not throw sync errors in async functions, return a rejected promise instead
-* Propagate the private key read error if it's not ENOENT (ie. permissions issue)
-* Changed the signature of input in `.putFiles` (ie. lowercase the props, from Local to local and from Remote to remote)
+- Rename `.end` to `.dispose`
+- Rename `.get` to `.getFile`
+- Rename `.put` to `.putFile`
+- Rename `.putMulti` to `.putFiles`
+- Add `.putDirectory` function to copy entire directories
+- Change order of `.getFile` parameters
+- Extended parameter validation in `.putFiles`
+- Close SFTP connections after they are used
+- Hide errors from `cd` when `cwd` is supplied but it does not exist
+- Do not throw sync errors in async functions, return a rejected promise instead
+- Propagate the private key read error if it's not ENOENT (ie. permissions issue)
+- Changed the signature of input in `.putFiles` (ie. lowercase the props, from Local to local and from Remote to remote)
 
 #### 2.0.7
 
-* Escape `cwd` parameter
-* Escape shell parameters
+- Escape `cwd` parameter
+- Escape shell parameters
 
 #### 2.0.6
 
-* Fix more typos
-* Fix `.get`'s promise never resolving
+- Fix more typos
+- Fix `.get`'s promise never resolving
 
 #### 2.0.5
 
-* Fix some typos
+- Fix some typos
 
 #### 2.0.4
 
-* Fix `stdin` support in `.exec` and `.execCommand`
+- Fix `stdin` support in `.exec` and `.execCommand`
 
 #### 2.0.3
 
-* Return `code` and `signal` in `.execCommand` if `stream` is set to `both` and in `.exec`
+- Return `code` and `signal` in `.execCommand` if `stream` is set to `both` and in `.exec`
 
 #### 2.0.2
 
-* Fix a publishing issue
+- Fix a publishing issue
 
 #### 2.0.1
 
-* Fix method name in README
-* Stricter validation of config
+- Fix method name in README
+- Stricter validation of config
 
 #### 2.0.0
 
-* Rewrite from CoffeeScript to JS
-* Rename `.exec` to `.execCommand`
-* Accept config in `.connect` instead of constructor
-* Add new `.exec` method that formats given parameters automatically
-* Do not return file contents in `.get` because we already write it to a file
+- Rewrite from CoffeeScript to JS
+- Rename `.exec` to `.execCommand`
+- Accept config in `.connect` instead of constructor
+- Add new `.exec` method that formats given parameters automatically
+- Do not return file contents in `.get` because we already write it to a file
 
 #### 1.0.0
 
-* Initial release
+- Initial release

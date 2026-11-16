@@ -16,7 +16,5 @@
     "lib": ["es2015", "es2016", "es2017", "es2018", "esnext"]
   },
   "include": ["src"],
-  "exclude": [
-    "node_modules", "public"
-  ]
+  "exclude": ["node_modules", "public"]
 }

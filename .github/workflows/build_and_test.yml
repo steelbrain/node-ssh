@@ -2,7 +2,7 @@ name: build_and_test
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
 
 jobs:
@@ -13,7 +13,7 @@ jobs:
       fail-fast: false
       matrix:
         # Node.js LTS lines
-        node: [ 22, 24, 26 ]
+        node: [22, 24, 26]
 
     container:
       image: node:${{ matrix.node }}

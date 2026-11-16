@@ -155,7 +155,7 @@ sshit(
   true,
 )
 
-sshit('disables Nagle\'s algorithm on the connection', async function (port, client) {
+sshit("disables Nagle's algorithm on the connection", async function (port, client) {
   const setNoDelay = vi.spyOn(Client.prototype, 'setNoDelay')
   try {
     await connectWithPassword(port, client)
@@ -267,12 +267,10 @@ sshit('explains a putFile onto a directory', async function (port, client) {
   const message = (remote: string) =>
     `Failure: ${remote} is a directory, pass the path of the file to write (such as ${directory}/test-program.js)`
   await expect(client.putFile(getFixturePath('test-program.js'), directory)).rejects.toThrow(message(directory))
-  await expect(client.putFile(getFixturePath('test-program.js'), `${directory}/`)).rejects.toThrow(
-    message(`${directory}/`),
+  await expect(client.putFile(getFixturePath('test-program.js'), `${directory}/`)).rejects.toThrow(message(`${directory}/`))
+  await expect(client.putFile(getFixturePath('test-program.js'), directory, null, null, { atomic: true })).rejects.toThrow(
+    message(directory),
   )
-  await expect(
-    client.putFile(getFixturePath('test-program.js'), directory, null, null, { atomic: true }),
-  ).rejects.toThrow(message(directory))
 })
 sshit('puts multiple files properly', async function (port, client) {
   await connectWithPassword(port, client)
@@ -522,70 +520,69 @@ sshit('forwards an inbound UNIX socket connection to client', async function (po
     connectWithPassword(port, client)
   })
 })
-sshit('forwards an inbound TCP/IP connection to client with automatically assigned port', async function (
-  port,
-  client,
-  server,
-) {
-  const IP = '127.0.0.1'
-  const PORT = 1212
-  const REMOTE_IP = '127.0.0.2'
-  const REMOTE_PORT = 2424
+sshit(
+  'forwards an inbound TCP/IP connection to client with automatically assigned port',
+  async function (port, client, server) {
+    const IP = '127.0.0.1'
+    const PORT = 1212
+    const REMOTE_IP = '127.0.0.2'
+    const REMOTE_PORT = 2424
 
-  await new Promise((resolve) => {
-    server.on('connection', async (connection) => {
-      connection.once('ready', async () => {
-        // Wait for a connection.
-        const { port: forwardPort, dispose } = await client.forwardIn(IP, 0, (details) => {
-          expect(details.destIP).toBe(IP)
-          expect(details.destPort).toBe(PORT)
-          expect(details.srcIP).toBe(REMOTE_IP)
-          expect(details.srcPort).toBe(REMOTE_PORT)
+    await new Promise((resolve) => {
+      server.on('connection', async (connection) => {
+        connection.once('ready', async () => {
+          // Wait for a connection.
+          const { port: forwardPort, dispose } = await client.forwardIn(IP, 0, (details) => {
+            expect(details.destIP).toBe(IP)
+            expect(details.destPort).toBe(PORT)
+            expect(details.srcIP).toBe(REMOTE_IP)
+            expect(details.srcPort).toBe(REMOTE_PORT)
 
-          // Expect to get an unforward request on server.
-          connection.once('request', (accept, reject, name, info) => {
-            expect(name).toBe('cancel-tcpip-forward')
-            expect(info.bindAddr).toBe(IP)
-            expect(info.bindPort).toBe(PORT)
-            accept?.()
-            resolve(undefined)
+            // Expect to get an unforward request on server.
+            connection.once('request', (accept, reject, name, info) => {
+              expect(name).toBe('cancel-tcpip-forward')
+              expect(info.bindAddr).toBe(IP)
+              expect(info.bindPort).toBe(PORT)
+              accept?.()
+              resolve(undefined)
+            })
+
+            setTimeout(() => dispose(), 100)
           })
 
-          setTimeout(() => dispose(), 100)
+          expect(dispose).toBeTruthy()
+          expect(forwardPort).toBe(PORT)
         })
 
-        expect(dispose).toBeTruthy()
-        expect(forwardPort).toBe(PORT)
-      })
+        // Expect to get a request on server.
+        connection.once('request', (accept, reject, name, info) => {
+          expect(name).toBe('tcpip-forward')
+          expect(info.bindAddr).toBe(IP)
 
-      // Expect to get a request on server.
-      connection.once('request', (accept, reject, name, info) => {
-        expect(name).toBe('tcpip-forward')
-        expect(info.bindAddr).toBe(IP)
+          // Port equal to 0 -> server chooses the port dynamically.
+          expect(info.bindPort).toBe(0)
+          accept?.(PORT)
 
-        // Port equal to 0 -> server chooses the port dynamically.
-        expect(info.bindPort).toBe(0)
-        accept?.(PORT)
-
-        // Simulate a connection
-        connection.forwardOut(info.bindAddr, PORT, REMOTE_IP, REMOTE_PORT, () => {
-          // Nothing more to be done here.
+          // Simulate a connection
+          connection.forwardOut(info.bindAddr, PORT, REMOTE_IP, REMOTE_PORT, () => {
+            // Nothing more to be done here.
+          })
         })
       })
+      connectWithPassword(port, client)
     })
-    connectWithPassword(port, client)
-  })
-})
+  },
+)
 sshit('has a working noTrim option', async function (port, client) {
   await connectWithPassword(port, client)
-  const resultWithTrim = await client.exec('echo', ["\nhello\n\n\n\n"], {stream: 'stdout'})
+  const resultWithTrim = await client.exec('echo', ['\nhello\n\n\n\n'], { stream: 'stdout' })
   expect(resultWithTrim).toBe('hello')
 
-  const resultWithoutTrim = await client.exec('echo', ['\n\n\nhi\n\n\n'], {stream: 'stdout', noTrim: true})
+  const resultWithoutTrim = await client.exec('echo', ['\n\n\nhi\n\n\n'], { stream: 'stdout', noTrim: true })
   expect(resultWithoutTrim).toBe('\n\n\nhi\n\n\n\n')
 
   const commandResult = await client.execCommand(
-    'node -e "process.stdout.write(\'\\nstdout\\n\\n\'); process.stderr.write(\'\\nstderr\\n\\n\')"',
+    "node -e \"process.stdout.write('\\nstdout\\n\\n'); process.stderr.write('\\nstderr\\n\\n')\"",
     { noTrim: true },
   )
   expect(commandResult.stdout).toBe('\nstdout\n\n')
@@ -711,7 +708,7 @@ test('explains an SFTP subsystem that exits right away', async function () {
     },
     async (client) => {
       await expect(client.requestSFTP()).rejects.toThrow(
-          'Received exit code 127 while establishing SFTP session. The SFTP server program exited before SFTP started; check the "Subsystem sftp" line in the server\'s sshd_config',
+        'Received exit code 127 while establishing SFTP session. The SFTP server program exited before SFTP started; check the "Subsystem sftp" line in the server\'s sshd_config',
       )
     },
   )
@@ -1105,9 +1102,9 @@ sshitRecording(
     const sameAsDirectory = path.join(directory, 'same-as-directory')
     writeFileWithTimes(sameAsDirectory, 'x'.repeat(fs.statSync(remoteDirectory).size))
     fs.utimesSync(remoteDirectory, LOCAL_ATIME, LOCAL_MTIME)
-    await expect(
-      client.putFile(sameAsDirectory, remoteDirectory, null, null, { skipUnchanged: true }),
-    ).rejects.toThrow('Failure')
+    await expect(client.putFile(sameAsDirectory, remoteDirectory, null, null, { skipUnchanged: true })).rejects.toThrow(
+      'Failure',
+    )
   },
 )
 sshitRecording('sets the remote times after an upload with skipUnchanged', async function (client, requests) {
@@ -1320,58 +1317,58 @@ sshitWithCommands('sends killSignal to the remote command when it times out', as
   })
   expect(await exited(commands[2])).toBe('SIGINT')
 })
-sshitWithCommands('stops the remote command and rejects with the reason when the signal aborts', async function (
-  client,
-  commands,
-) {
-  const controller = new AbortController()
-  const first = waitForChannel()
-  const result = client.execCommand('sleep 10; echo done', { signal: controller.signal, onChannel: first.onChannel })
-  await first.opened
-  controller.abort()
-  await expect(result).rejects.toMatchObject({ name: 'AbortError' })
-  expect(await exited(commands[0])).toBe('SIGTERM')
-  await vi.waitFor(() => expect(processGroupExists(commands[0])).toBe(false))
+sshitWithCommands(
+  'stops the remote command and rejects with the reason when the signal aborts',
+  async function (client, commands) {
+    const controller = new AbortController()
+    const first = waitForChannel()
+    const result = client.execCommand('sleep 10; echo done', { signal: controller.signal, onChannel: first.onChannel })
+    await first.opened
+    controller.abort()
+    await expect(result).rejects.toMatchObject({ name: 'AbortError' })
+    expect(await exited(commands[0])).toBe('SIGTERM')
+    await vi.waitFor(() => expect(processGroupExists(commands[0])).toBe(false))
 
-  const reason = new Error('stopped by the test')
-  const secondController = new AbortController()
-  const second = waitForChannel()
-  const secondResult = client.exec('sleep', ['10'], {
-    signal: secondController.signal,
-    killSignal: 'KILL',
-    onChannel: second.onChannel,
-  })
-  await second.opened
-  secondController.abort(reason)
-  await expect(secondResult).rejects.toBe(reason)
-  expect(await exited(commands[1])).toBe('SIGKILL')
-})
-sshitWithCommands('stops the remote command when the signal aborts while its channel opens', async function (
-  client,
-  commands,
-) {
-  const controller = new AbortController()
-  const result = client.execCommand('sleep 10', { signal: controller.signal })
-  controller.abort()
-  await expect(result).rejects.toMatchObject({ name: 'AbortError' })
-  // The command starts once the channel is open, and node-ssh stops it right away
-  await vi.waitFor(() => expect(commands).toHaveLength(1))
-  expect(await exited(commands[0])).toBe('SIGTERM')
-})
-sshitWithCommands('rejects without starting the command when the signal is already aborted', async function (
-  client,
-  commands,
-) {
-  const { connection } = client
-  invariant(connection)
-  const exec = vi.spyOn(connection, 'exec')
-  const reason = new Error('aborted before the call')
-  await expect(client.execCommand('echo 1', { signal: AbortSignal.abort(reason) })).rejects.toBe(reason)
-  await expect(client.exec('echo', ['1'], { signal: AbortSignal.abort() })).rejects.toMatchObject({ name: 'AbortError' })
-  expect(exec).not.toHaveBeenCalled()
-  await wait(100)
-  expect(commands).toHaveLength(0)
-})
+    const reason = new Error('stopped by the test')
+    const secondController = new AbortController()
+    const second = waitForChannel()
+    const secondResult = client.exec('sleep', ['10'], {
+      signal: secondController.signal,
+      killSignal: 'KILL',
+      onChannel: second.onChannel,
+    })
+    await second.opened
+    secondController.abort(reason)
+    await expect(secondResult).rejects.toBe(reason)
+    expect(await exited(commands[1])).toBe('SIGKILL')
+  },
+)
+sshitWithCommands(
+  'stops the remote command when the signal aborts while its channel opens',
+  async function (client, commands) {
+    const controller = new AbortController()
+    const result = client.execCommand('sleep 10', { signal: controller.signal })
+    controller.abort()
+    await expect(result).rejects.toMatchObject({ name: 'AbortError' })
+    // The command starts once the channel is open, and node-ssh stops it right away
+    await vi.waitFor(() => expect(commands).toHaveLength(1))
+    expect(await exited(commands[0])).toBe('SIGTERM')
+  },
+)
+sshitWithCommands(
+  'rejects without starting the command when the signal is already aborted',
+  async function (client, commands) {
+    const { connection } = client
+    invariant(connection)
+    const exec = vi.spyOn(connection, 'exec')
+    const reason = new Error('aborted before the call')
+    await expect(client.execCommand('echo 1', { signal: AbortSignal.abort(reason) })).rejects.toBe(reason)
+    await expect(client.exec('echo', ['1'], { signal: AbortSignal.abort() })).rejects.toMatchObject({ name: 'AbortError' })
+    expect(exec).not.toHaveBeenCalled()
+    await wait(100)
+    expect(commands).toHaveLength(0)
+  },
+)
 sshitWithCommands('stops the timeout and the abort listener when a command finishes', async function (client, commands) {
   const unhandled: unknown[] = []
   const onUnhandled = (reason: unknown) => unhandled.push(reason)
@@ -1437,4 +1434,3 @@ sshit('validates the timeout, signal and killSignal options', async function (po
     expect((await client.execCommand('echo 1', { timeout: 2 ** 31 - 1, signal, killSignal })).stdout).toBe('1')
   }
 })
-
