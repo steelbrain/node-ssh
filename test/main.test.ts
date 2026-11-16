@@ -7,7 +7,7 @@ import { Client, Server } from 'ssh2'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 
 import { NodeSSH } from '../src'
-import { PRIVATE_KEY_PATH, exists, wait } from './helpers'
+import { PRIVATE_KEY_ENCRYPTED_PPK_PATH, PRIVATE_KEY_PATH, exists, wait } from './helpers'
 import createServer from './ssh-server'
 
 let ports = 8876
@@ -83,6 +83,14 @@ sshit('connects to a server with a private key', async function (port, client) {
 })
 sshit('connects to a server with an inline private key', async function (port, client) {
   await expect(connectWithInlinePrivateKey(port, client)).resolves.not.toThrow()
+})
+sshit('connects to a server with an encrypted PuTTY private key', async function (port, client) {
+  const config = { host: '127.0.0.1', port, username: 'steel', privateKeyPath: PRIVATE_KEY_ENCRYPTED_PPK_PATH }
+  await expect(client.connect({ ...config, passphrase: 'wrong' })).rejects.toThrow(
+    'Cannot parse privateKey: PPK private key integrity check failed -- bad passphrase?',
+  )
+  await client.connect({ ...config, passphrase: 'node-ssh test' })
+  expect(client.isConnected()).toBe(true)
 })
 sshit(
   'requests a shell that works',
