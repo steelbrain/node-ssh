@@ -132,6 +132,127 @@ A pseudo-TTY gives the remote program one terminal for both of its output stream
 `pty: true` everything it writes arrives in `stdout` (and `onStdout`) and `stderr` stays empty.
 The terminal also echoes `stdin` into `stdout`, and line endings in the output are `\r\n`.
 
+#### Interactive programs
+
+To use an interactive program such as `vim` or `nano` from a script, give it a pseudo-TTY the
+size of your terminal and connect it to your terminal. Raw mode sends each key as you type it,
+including Esc and Ctrl keys:
+
+```js
+process.stdin.setRawMode(true)
+let onResize = () => {}
+try {
+  const result = await ssh.execCommand('vim /tmp/notes.txt', {
+    execOptions: {
+      pty: { term: process.env.TERM || 'xterm-256color', rows: process.stdout.rows, cols: process.stdout.columns },
+    },
+    stdin: process.stdin,
+    // The output is the program's screen: show it, but don't keep it in result.stdout
+    noBuffer: true,
+    onStdout: (chunk) => process.stdout.write(chunk),
+    // Pass local terminal resizes on to the remote terminal
+    onChannel: (channel) => {
+      onResize = () => channel.setWindow(process.stdout.rows, process.stdout.columns, 0, 0)
+      process.stdout.on('resize', onResize)
+    },
+  })
+  console.log('exit code', result.code)
+} finally {
+  process.stdout.off('resize', onResize)
+  process.stdin.setRawMode(false)
+  process.stdin.unpipe()
+  process.stdin.pause()
+}
+```
+
+For an interactive shell, pass the same terminal settings to `requestShell`:
+
+```js
+const shell = await ssh.requestShell({
+  term: process.env.TERM || 'xterm-256color',
+  rows: process.stdout.rows,
+  cols: process.stdout.columns,
+})
+const onResize = () => shell.setWindow(process.stdout.rows, process.stdout.columns, 0, 0)
+process.stdout.on('resize', onResize)
+process.stdin.setRawMode(true)
+process.stdin.pipe(shell)
+shell.pipe(process.stdout)
+// Typing `exit` closes the shell
+shell.on('close', () => {
+  process.stdout.off('resize', onResize)
+  process.stdin.setRawMode(false)
+  process.stdin.unpipe(shell)
+  process.stdin.pause()
+  ssh.dispose()
+})
+```
+
+OpenSSH runs the user's login shell (from `/etc/passwd` on most systems) for `requestShell` and
+for every command; a `SHELL` variable in `env` does not change that. To use another shell, run it
+as the command, such as `'ksh -l'` instead of `'vim /tmp/notes.txt'` in the first example. To run
+commands in it without a terminal, pass them as `stdin`; the shell exits at the end of its stdin:
+
+```js
+const result = await ssh.execCommand('ksh -l', { stdin: 'echo $0\necho $KSH_VERSION\n' })
+```
+
+#### Answering prompts
+
+A program that asks questions reads the answers from its stdin. If it reads them without a
+terminal, pass all of them as `stdin`:
+
+```js
+const result = await ssh.execCommand('./setup.sh', { stdin: 'alice\nsecret\n' })
+```
+
+Without a terminal, a program may not print its prompts (bash's `read -p` doesn't) or may not ask
+at all. For example, `git clone` of an HTTPS repository that needs a login then fails with
+`fatal: could not read Username for '<url>': No such device or address`. For those programs, add a
+pseudo-TTY and write each answer once its prompt appears. The terminal echoes what you write into
+`stdout` until the program turns echo off, so a password written before its prompt shows up in
+`stdout`:
+
+```js
+const { PassThrough } = require('stream')
+
+const answers = [['Username:', 'alice\n'], ['Password:', 'secret\n']]
+const stdin = new PassThrough()
+let output = ''
+const result = await ssh.execCommand('./setup.sh', {
+  execOptions: { pty: true },
+  stdin,
+  onStdout(chunk) {
+    output += chunk
+    while (answers.length > 0 && output.includes(answers[0][0])) {
+      stdin.write(answers.shift()[1])
+      if (answers.length === 0) stdin.end()
+    }
+  },
+})
+```
+
+With a pseudo-TTY, the end of `stdin` does not end the remote program, so an interactive shell
+started this way keeps running until it gets `exit`.
+
+In a `requestShell` session, the commands written after one that starts another shell go to that
+shell, until `exit` returns to the first one:
+
+```js
+const shell = await ssh.requestShell()
+let output = ''
+shell.on('data', (chunk) => {
+  output += chunk
+})
+shell.write('bash\n')
+shell.write('echo "inside: SHLVL=$SHLVL"\n')
+shell.write('exit\n') // leaves the inner shell
+shell.write('echo "outside: SHLVL=$SHLVL"\n')
+shell.write('exit\n') // leaves the login shell
+await new Promise((resolve) => shell.on('close', resolve))
+console.log(output.match(/(inside|outside): SHLVL=\d/g)) // [ 'inside: SHLVL=2', 'outside: SHLVL=1' ]
+```
+
 #### Timeouts and stopping commands
 
 `exec` and `execCommand` take a `timeout` in milliseconds, counted from the call. When it passes,
@@ -203,8 +324,10 @@ a plain SFTP rename, and if that fails, deletes the existing file and renames
 again; the remote path is missing for a moment, so this fallback is not atomic.
 
 The renamed file is a new file, so it does not keep the mode or owner of the file
-it replaces; pass `transferOptions: { mode }` to set its mode. If the upload or
-the rename fails, node-ssh deletes the temporary file before rejecting. If the
+it replaces; pass `transferOptions: { mode }` to set its mode. Creating the
+temporary file needs write permission on the remote directory, not only on the
+file. If the upload or the rename fails, node-ssh deletes the temporary file
+before rejecting. If the
 connection drops, the temporary file can stay behind. `getDirectory` ignores
 `atomic`.
 
@@ -470,6 +593,23 @@ ssh.connect({
     }
   }
 })
+```
+
+`onKeyboardInteractive` is called only when the server offers keyboard-interactive
+authentication. OpenSSH offers it when `KbdInteractiveAuthentication` is `yes` in `sshd_config`;
+Debian and Ubuntu set it to `no`. Their servers still accept a `password`.
+
+To choose how to log in while connecting, for example asking for a password only after the server
+refused the key, pass ssh2's [`authHandler`][ssh2] option, which node-ssh passes on to ssh2. Or
+catch the error and connect again:
+
+```js
+try {
+  await ssh.connect({ host: 'localhost', username: 'steel', privateKeyPath: '/home/steel/.ssh/id_rsa' })
+} catch (error) {
+  if (error.level !== 'client-authentication') throw error
+  await ssh.connect({ host: 'localhost', username: 'steel', password: await askForPassword() })
+}
 ```
 
 For further information see: https://github.com/mscdex/ssh2/issues/604
