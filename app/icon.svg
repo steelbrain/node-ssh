@@ -1,15 +1,5 @@
-<?xml version="1.0" encoding="UTF-8"?>
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background -->
-  <rect width="512" height="512" rx="128" fill="#0A0A0A"/>
-  
-  <!-- Terminal-like frame -->
-  <rect x="96" y="96" width="320" height="320" rx="24" stroke="#22C55E" stroke-width="24"/>
-  
-  <!-- SSH key-like symbol -->
-  <path d="M192 256C192 229.49 213.49 208 240 208C266.51 208 288 229.49 288 256C288 282.51 266.51 304 240 304M240 304H352M240 304C213.49 304 192 282.51 192 256" 
-        stroke="#22C55E" 
-        stroke-width="24" 
-        stroke-linecap="round" 
-        stroke-linejoin="round"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect x="8" y="8" width="496" height="496" rx="112" fill="#0c0e0d" stroke="#2a302b" stroke-width="16"/>
+  <path d="M149 152 265 256 149 360" fill="none" stroke="#5fdc8a" stroke-width="60" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="317" y="146" width="76" height="220" rx="10" fill="#5fdc8a"/>
 </svg>

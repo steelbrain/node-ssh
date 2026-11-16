@@ -16,7 +16,8 @@
     "react/jsx-no-comment-textnodes": "error",
     "react/no-unescaped-entities": "error",
     "react/rules-of-hooks": "error",
-    "react/unsupported-syntax": "warn"
+    "react/unsupported-syntax": "warn",
+    "jsx-a11y/no-noninteractive-tabindex": ["error", { "tags": [], "roles": ["tabpanel", "log"] }]
   },
   "ignorePatterns": [".next", "out", "build", "next-env.d.ts"]
 }
