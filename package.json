@@ -2,14 +2,20 @@
   "name": "node-ssh",
   "version": "13.2.1",
   "description": "SSH2 with Promises",
-  "main": "lib/cjs/index.js",
-  "typings": "lib/typings/index.d.ts",
-  "module": "lib/esm/index.mjs",
+  "zshy": {
+    "exports": {
+      ".": "./src/index.ts",
+      "./package.json": "./package.json"
+    }
+  },
+  "main": "./lib/index.js",
+  "types": "./lib/index.d.ts",
+  "module": "./lib/index.mjs",
   "exports": {
     ".": {
-      "types": "./lib/typings/index.d.ts",
-      "import": "./lib/esm/index.mjs",
-      "require": "./lib/cjs/index.js"
+      "types": "./lib/index.d.ts",
+      "import": "./lib/index.mjs",
+      "require": "./lib/index.js"
     },
     "./package.json": "./package.json"
   },
@@ -17,11 +23,8 @@
   "scripts": {
     "test": "ava",
     "lint": "(tsc -p . --noEmit) && (oxlint) && (oxfmt --check src/*.ts)",
-    "prepare": "yarn build:clean ; yarn build:cjs ; yarn build:esm ; yarn build:typings",
-    "build:clean": "rm -rf lib",
-    "build:esm": "tsc --module es2015 --target es2018 --outDir lib/esm && mv lib/esm/index.js lib/esm/index.mjs",
-    "build:cjs": "tsc --module commonjs --target es2018 --outDir lib/cjs",
-    "build:typings": "tsc --declaration --outDir lib/typings --emitDeclarationOnly"
+    "prepare": "yarn build",
+    "build": "zshy"
   },
   "repository": {
     "type": "git",
@@ -52,7 +55,8 @@
     "ssh2": "^1.17.0",
     "ssh2-streams": "^0.4.10",
     "ts-node": "^10.9.2",
-    "typescript": "^6.0.3"
+    "typescript": "^6.0.3",
+    "zshy": "^0.8.1"
   },
   "dependencies": {
     "is-stream": "^2.0.1",

@@ -1,6 +1,7 @@
 {
   "compilerOptions": {
     "rootDir": "./src",
+    "outDir": "./lib",
     "jsx": "preserve",
     "target": "es2018",
     "module": "CommonJS",
