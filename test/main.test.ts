@@ -158,6 +158,17 @@ sshit('returns both streams if asked to', async function (port, client) {
     expect(result.stderr).toBe('STDERR')
   }
 })
+sshit('returns the exit code and signal', async function (port, client) {
+  await connectWithPassword(port, client)
+  expect(await client.execCommand('true')).toMatchObject({ code: 0, signal: null })
+  expect(await client.execCommand('exit 3')).toMatchObject({ code: 3, signal: null })
+  expect(await client.execCommand('kill -TERM $$')).toMatchObject({ code: null, signal: 'SIGTERM' })
+  expect(await client.exec('echo', ['$some', 'S\\Thing', '"Yo"'], { stream: 'both' })).toMatchObject({
+    stdout: '$some S\\Thing "Yo"',
+    code: 0,
+    signal: null,
+  })
+})
 sshit('writes to stdin properly', async function (port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('node', ['-e', 'process.stdin.pipe(process.stdout)'], { stdin: 'Twinkle!\nStars!' })

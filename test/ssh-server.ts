@@ -189,8 +189,14 @@ function handleSession(acceptSession, options: ServerOptions) {
     const response = accept()
     const spawnedProcess = ChildProcess.exec(info.command)
     response.pipe(spawnedProcess.stdin)
-    spawnedProcess.stdout?.pipe(response.stdout)
-    spawnedProcess.stderr?.pipe(response.stderr)
+    spawnedProcess.stdout?.pipe(response.stdout, { end: false })
+    spawnedProcess.stderr?.pipe(response.stderr, { end: false })
+    // Like sshd: send the exit status, then close the channel. 'close' fires after the process exited and
+    // both of its output streams ended, so the output is written before the status.
+    spawnedProcess.on('close', (code, signal) => {
+      response.exit(signal ?? code ?? 0)
+      response.end()
+    })
   })
   session.on('sftp', (accept) => handleSFTP(accept, options))
 }
