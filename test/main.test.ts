@@ -559,4 +559,88 @@ test('dispose waits for SFTP close replies still in flight', async function () {
     await new Promise((resolve) => server.close(resolve))
   }
 })
+sshit('passes output only to the callbacks with noBuffer', async function (port, client) {
+  await connectWithPassword(port, client)
+  const outputFromCallbacks = { stdout: [] as Buffer[], stderr: [] as Buffer[] }
+  const result = await client.execCommand(`node ${getFixturePath('test-program')}`, {
+    noBuffer: true,
+    onStdout(chunk) {
+      outputFromCallbacks.stdout.push(chunk)
+    },
+    onStderr(chunk) {
+      outputFromCallbacks.stderr.push(chunk)
+    },
+  })
+  expect(result.stdout).toBe('')
+  expect(result.stderr).toBe('')
+  expect(Buffer.concat(outputFromCallbacks.stdout).toString().trim()).toBe('STDOUT')
+  // STDERR tests are flaky on CI
+  if (!process.env.CI) {
+    expect(Buffer.concat(outputFromCallbacks.stderr).toString().trim()).toBe('STDERR')
+  }
+  await expect(client.execCommand('ls', { noBuffer: 'yes' } as never)).rejects.toThrow('options.noBuffer must be a boolean')
+})
+
+// A server whose exec writes `mebibytes` MiB to stdout. The usual test server can't: it runs commands
+// with child_process.exec, which stops at 1 MiB.
+async function withLargeOutputServer(mebibytes: number, callback: (client: NodeSSH) => Promise<void>): Promise<void> {
+  ports += 1
+  const port = ports
+  const block = Buffer.alloc(1024 * 1024, 0xab)
+  const server = new Server({ hostKeys: [fs.readFileSync(PRIVATE_KEY_PATH)] }, (connection) => {
+    connection.on('authentication', (ctx) => ctx.accept())
+    connection.on('session', (accept) => {
+      accept().on('exec', (acceptExec) => {
+        const channel = acceptExec()
+        let sent = 0
+        const pump = () => {
+          while (sent < mebibytes) {
+            sent += 1
+            if (!channel.write(block)) {
+              channel.once('drain', pump)
+              return
+            }
+          }
+          channel.exit(0)
+          channel.end()
+        }
+        pump()
+      })
+    })
+  })
+  await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
+  const client = new NodeSSH()
+  try {
+    await connectWithPassword(port, client)
+    await callback(client)
+  } finally {
+    client.dispose()
+    await new Promise((resolve) => server.close(resolve))
+  }
+}
+
+// 270 MiB as hex is about 566 million characters, more than the longest string V8 allows (about 537 million)
+test('rejects instead of crashing when output is too large for a string', async function () {
+  await withLargeOutputServer(270, async (client) => {
+    await expect(client.execCommand('large', { encoding: 'hex' })).rejects.toMatchObject({
+      name: 'Error',
+      code: 'ERR_OUTPUT_TOO_LARGE',
+    })
+  })
+}, 60000)
+test('streams output too large for a string with noBuffer', async function () {
+  await withLargeOutputServer(270, async (client) => {
+    let received = 0
+    const result = await client.execCommand('large', {
+      encoding: 'hex',
+      noBuffer: true,
+      onStdout(chunk) {
+        received += chunk.length
+      },
+    })
+    expect(received).toBe(270 * 1024 * 1024)
+    expect(result.stdout).toBe('')
+    expect(result.code).toBe(0)
+  })
+}, 60000)
 

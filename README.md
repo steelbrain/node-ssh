@@ -103,6 +103,14 @@ ssh.connect({
       console.log('stderrChunk', chunk.toString('utf8'))
     },
   })
+  // Large output: noBuffer passes output only to the callbacks, so result.stdout and
+  // result.stderr are empty strings. With exec(), stderr output then no longer throws.
+  ssh.execCommand('cat /var/log/syslog', {
+    noBuffer: true,
+    onStdout(chunk) {
+      process.stdout.write(chunk)
+    },
+  })
 })
 ```
 
@@ -163,6 +171,7 @@ export interface SSHExecCommandOptions {
   execOptions?: ExecOptions
   encoding?: BufferEncoding
   noTrim?: boolean
+  noBuffer?: boolean
   onChannel?: (clientChannel: ClientChannel) => void
   onStdout?: (chunk: Buffer) => void
   onStderr?: (chunk: Buffer) => void

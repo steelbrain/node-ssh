@@ -43,6 +43,8 @@ export interface SSHExecCommandOptions {
   execOptions?: ExecOptions
   encoding?: BufferEncoding
   noTrim?: boolean
+  // Only pass output to onStdout/onStderr; the returned stdout and stderr are empty strings
+  noBuffer?: boolean
   onChannel?: (clientChannel: ClientChannel) => void
   onStdout?: (chunk: Buffer) => void
   onStderr?: (chunk: Buffer) => void
@@ -418,6 +420,7 @@ export class NodeSSH {
       'options.onStderr must be a valid function',
     )
     invariant(options.noTrim == null || typeof options.noTrim === 'boolean', 'options.noTrim must be a boolean')
+    invariant(options.noBuffer == null || typeof options.noBuffer === 'boolean', 'options.noBuffer must be a boolean')
 
     let command = givenCommand
 
@@ -445,11 +448,11 @@ export class NodeSSH {
         }
         channel.on('data', (chunk: Buffer) => {
           if (options.onStdout) options.onStdout(chunk)
-          output.stdout.push(stdoutDecoder.write(chunk))
+          if (options.noBuffer !== true) output.stdout.push(stdoutDecoder.write(chunk))
         })
         channel.stderr.on('data', (chunk: Buffer) => {
           if (options.onStderr) options.onStderr(chunk)
-          output.stderr.push(stderrDecoder.write(chunk))
+          if (options.noBuffer !== true) output.stderr.push(stderrDecoder.write(chunk))
         })
         if (options.stdin != null) {
           if (isReadableStream(options.stdin)) {
@@ -471,10 +474,27 @@ export class NodeSSH {
           signal = signal_ ?? null
         })
         channel.on('close', () => {
-          output.stdout.push(stdoutDecoder.end())
-          output.stderr.push(stderrDecoder.end())
-          let stdout = output.stdout.join('')
-          let stderr = output.stderr.join('')
+          let stdout = ''
+          let stderr = ''
+          if (options.noBuffer !== true) {
+            try {
+              output.stdout.push(stdoutDecoder.end())
+              output.stderr.push(stderrDecoder.end())
+              stdout = output.stdout.join('')
+              stderr = output.stderr.join('')
+            } catch (error) {
+              // Throwing here would be an uncaught exception, so reject instead (#474)
+              reject(
+                error instanceof RangeError
+                  ? new SSHError(
+                      'Command output is too large to return as a string, use noBuffer with onStdout/onStderr instead',
+                      'ERR_OUTPUT_TOO_LARGE',
+                    )
+                  : error,
+              )
+              return
+            }
+          }
           if (options.noTrim !== true) {
             stdout = stdout.trim()
             stderr = stderr.trim()
