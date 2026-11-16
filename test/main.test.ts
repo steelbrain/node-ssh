@@ -10,7 +10,9 @@ import { NodeSSH } from '../src'
 import { PRIVATE_KEY_ENCRYPTED_PPK_PATH, PRIVATE_KEY_PATH, exists, wait } from './helpers'
 import createServer, { ServerOptions } from './ssh-server'
 
-let ports = 8876
+// Each test listens on its own port, counting up from here. Set NODE_SSH_TEST_PORT to run two copies of the
+// suite at once.
+let ports = Number(process.env.NODE_SSH_TEST_PORT || 8876)
 
 function getFixturePath(fixturePath: string): string {
   return path.join(__dirname, 'fixtures', fixturePath)
