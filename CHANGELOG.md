@@ -11,6 +11,11 @@
 - `exec` and `execCommand` reject with the connection's error when the connection fails while the command runs, instead of resolving with `code: null`. #132
 - `exec` and `execCommand` reject when `onStdout`, `onStderr` or `onChannel` throws, and close only that command's channel. Before, ssh2 reported the exception as an error on the connection and closed the connection. #257
 - Starting more than 10 `execCommand`, `requestShell` or `requestSFTP` calls at once on one connection (this includes `putFile` and `getFile`) no longer prints Node's `MaxListenersExceededWarning`
+- `isConnected()` is `false` until the connection is ready, and `false` right after `connect()` fails (it used to stay `true` until the socket closed). #459
+- `config.privateKey` accepts a `Buffer`, like ssh2 does and like the README example shows. #446
+- A `cwd` that starts with `~/` (or is `~`) is now relative to the remote user's home directory; the `~` used to be quoted, so the shell looked for a directory named `~`. #443
+- Type declarations import from `ssh2` and `stream` with named imports only, so consumers no longer need `esModuleInterop` or `allowSyntheticDefaultImports`. #444
+- `@types/ssh2` is listed as an optional peer dependency (`^1.11.2`, the oldest version the declarations work with). TypeScript projects still install it themselves. #380
 - Set `TCP_NODELAY` on the connection's socket. Without it, every request round trip took about 40ms longer on Node.js 26
 - Upgrade `ssh2` to `v1.17.0`, `sb-promise-queue` to `v2.1.1` and `sb-scandir` to `v3.1.1`
 - Build with `zshy`. Output files are now `lib/index.js` (CommonJS), `lib/index.mjs` (ESM), `lib/index.d.ts` and `lib/index.d.mts`, and the `main`, `module`, `types` and `exports` fields point to them. In `exports`, `import` gets the ESM declarations (`lib/index.d.mts`) and `require` the CommonJS ones (`lib/index.d.ts`), so TypeScript sees the same module format as Node.js

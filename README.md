@@ -160,9 +160,10 @@ connection drops, the temporary file can stay behind. `getDirectory` ignores
 
 ```ts
 // API reference in Typescript typing format:
-import SSH2, {
+import {
   AcceptConnection,
   Channel,
+  Client,
   ClientChannel,
   ConnectConfig,
   ExecOptions,
@@ -175,14 +176,14 @@ import SSH2, {
   TransferOptions,
   UNIXConnectionDetails,
 } from 'ssh2'
-import stream from 'stream'
+import { Readable } from 'stream'
 
 // ^ You do NOT need to import these package, these are here for reference of where the
 // types are coming from.
 
 export type Config = ConnectConfig & {
   password?: string
-  privateKey?: string
+  privateKey?: string | Buffer
   privateKeyPath?: string
   tryKeyboard?: boolean
   onKeyboardInteractive?: (
@@ -194,8 +195,9 @@ export type Config = ConnectConfig & {
   ) => void
 }
 export interface SSHExecCommandOptions {
+  // A leading ~ is the remote user's home directory
   cwd?: string
-  stdin?: string | stream.Readable
+  stdin?: string | Readable
   execOptions?: ExecOptions
   encoding?: BufferEncoding
   noTrim?: boolean
@@ -250,7 +252,7 @@ export class SSHError extends Error {
 }
 
 export class NodeSSH {
-  connection: SSH2.Client | null
+  connection: Client | null
 
   connect(config: Config): Promise<this>
   isConnected(): boolean
@@ -320,24 +322,17 @@ export class NodeSSH {
 
 ### Typescript support
 
-`node-ssh` requires extra dependencies while working under Typescript. Please install them as shown below
+`node-ssh` includes its type declarations. They use types from `ssh2`, so TypeScript projects
+also need `@types/ssh2` (`node-ssh` lists it as an optional peer dependency, which package
+managers don't install for you):
 
 ```
-yarn add --dev @types/ssh2
-# OR
 npm install --save-dev @types/ssh2
+# OR
+yarn add --dev @types/ssh2
 ```
 
-If you're still running into issues, try adding these to your `tsconfig.json`
-
-```json
-{
-  "compilerOptions": {
-    "moduleResolution": "node",
-    "allowSyntheticDefaultImports": true
-  }
-}
-```
+No other compiler options are needed.
 
 ### Keyboard-interactive user authentication
 

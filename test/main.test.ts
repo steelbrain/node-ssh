@@ -2,6 +2,7 @@ import invariant from 'assert'
 import ChildProcess from 'child_process'
 import fs from 'fs'
 import net from 'net'
+import os from 'os'
 import path from 'path'
 import { Client, Connection, Server, SFTPWrapper } from 'ssh2'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
@@ -86,6 +87,29 @@ sshit('connects to a server with a private key', async function (port, client) {
 sshit('connects to a server with an inline private key', async function (port, client) {
   await expect(connectWithInlinePrivateKey(port, client)).resolves.not.toThrow()
 })
+sshit('connects to a server with a private key Buffer', async function (port, client) {
+  await client.connect({ host: '127.0.0.1', port, username: 'steel', privateKey: fs.readFileSync(PRIVATE_KEY_PATH) })
+  expect(client.isConnected()).toBe(true)
+})
+sshit('is connected only once the connection is ready', async function (port, client) {
+  const connecting = connectWithPassword(port, client)
+  expect(client.isConnected()).toBe(false)
+  await connecting
+  expect(client.isConnected()).toBe(true)
+  client.dispose()
+  // A failed connect leaves it disconnected right away, without waiting for the socket to close (#459)
+  ports += 1
+  const refused = ports
+  const failed = client.connect({ host: '127.0.0.1', port: refused, username: 'steel', password: 'password' })
+  await expect(failed).rejects.toMatchObject({ code: 'ECONNREFUSED' })
+  expect(client.isConnected()).toBe(false)
+  expect(client.connection).toBe(null)
+  // dispose() still stops a connect() that is in progress
+  const disposed = connectWithPassword(port, client)
+  client.dispose()
+  await expect(disposed).rejects.toThrow()
+  expect(client.isConnected()).toBe(false)
+})
 sshit('connects to a server with an encrypted PuTTY private key', async function (port, client) {
   const config = { host: '127.0.0.1', port, username: 'steel', privateKeyPath: PRIVATE_KEY_ENCRYPTED_PPK_PATH }
   await expect(client.connect({ ...config, passphrase: 'wrong' })).rejects.toThrow(
@@ -149,6 +173,16 @@ sshit('exec with correct cwd', async function (port, client) {
   const result = await client.exec('pwd', [], { cwd: '/etc' })
   expect(result).toBe('/etc')
 })
+sshit('expands ~ at the start of cwd to the home directory', async function (port, client) {
+  await connectWithPassword(port, client)
+  // The test server runs commands with the local shell, so ~ is this process's home directory
+  const home = fs.realpathSync(os.homedir())
+  expect(await client.exec('pwd', ['-P'], { cwd: '~' })).toBe(home)
+  expect(await client.exec('pwd', ['-P'], { cwd: '~/' })).toBe(home)
+  expect(await client.exec('pwd', ['-P'], { cwd: '~/..' })).toBe(path.dirname(home))
+  // Only a leading ~ is special
+  expect((await client.execCommand('pwd', { cwd: '/tmp/~' })).stderr).toMatch(/\/tmp\/~/)
+})
 sshit('throws if stream is stdout and stuff is written to stderr', async function (port, client) {
   await connectWithPassword(port, client)
   await expect(client.exec('node', ['-e', 'console.error("Test")'])).rejects.toHaveProperty('message', 'Test')
@@ -163,10 +197,7 @@ sshit('returns both streams if asked to', async function (port, client) {
   const result = await client.exec('node', ['-e', 'console.log("STDOUT"); console.error("STDERR")'], { stream: 'both' })
   invariant(typeof result === 'object' && result)
   expect(result.stdout).toBe('STDOUT')
-  // STDERR tests are flaky on CI
-  if (!process.env.CI) {
-    expect(result.stderr).toBe('STDERR')
-  }
+  expect(result.stderr).toBe('STDERR')
 })
 sshit('returns the exit code and signal', async function (port, client) {
   await connectWithPassword(port, client)
@@ -301,10 +332,7 @@ sshit('allows stream callbacks on exec', async function (port, client) {
     },
   })
   expect(outputFromCallbacks.stdout.join('').trim()).toBe('STDOUT')
-  // STDERR tests are flaky on CI
-  if (!process.env.CI) {
-    expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
-  }
+  expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
 })
 sshit('allows stream callbacks on execCommand', async function (port, client) {
   await connectWithPassword(port, client)
@@ -318,10 +346,7 @@ sshit('allows stream callbacks on execCommand', async function (port, client) {
     },
   })
   expect(outputFromCallbacks.stdout.join('').trim()).toBe('STDOUT')
-  // STDERR tests are flaky on CI
-  if (!process.env.CI) {
-    expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
-  }
+  expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
 })
 sshit('forwards an outbound TCP/IP connection from client', async function (port, client, server) {
   const SRC_IP = '127.0.0.1'
@@ -532,10 +557,7 @@ sshit('decodes multi-byte characters split across data chunks', async function (
   const script = "process.stdout.write('\\u65e5'.repeat(12000)); process.stderr.write('\\u65e5'.repeat(12000))"
   const result = await client.exec('node', ['-e', script], { stream: 'both' })
   expect(result.stdout).toBe(expected)
-  // STDERR tests are flaky on CI
-  if (!process.env.CI) {
-    expect(result.stderr).toBe(expected)
-  }
+  expect(result.stderr).toBe(expected)
 })
 sshit('decodes base64 output split across data chunks', async function (port, client) {
   await connectWithPassword(port, client)
@@ -596,10 +618,7 @@ sshit('passes output only to the callbacks with noBuffer', async function (port,
   expect(result.stdout).toBe('')
   expect(result.stderr).toBe('')
   expect(Buffer.concat(outputFromCallbacks.stdout).toString().trim()).toBe('STDOUT')
-  // STDERR tests are flaky on CI
-  if (!process.env.CI) {
-    expect(Buffer.concat(outputFromCallbacks.stderr).toString().trim()).toBe('STDERR')
-  }
+  expect(Buffer.concat(outputFromCallbacks.stderr).toString().trim()).toBe('STDERR')
   await expect(client.execCommand('ls', { noBuffer: 'yes' } as never)).rejects.toThrow('options.noBuffer must be a boolean')
 })
 

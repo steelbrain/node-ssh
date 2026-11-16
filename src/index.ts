@@ -10,6 +10,7 @@ import shellEscape from 'shell-escape'
 import SSH2, {
   AcceptConnection,
   Channel,
+  Client,
   ClientChannel,
   ConnectConfig,
   ExecOptions,
@@ -23,12 +24,12 @@ import SSH2, {
   TransferOptions,
   UNIXConnectionDetails,
 } from 'ssh2'
-import stream from 'stream'
+import { Readable } from 'stream'
 import { StringDecoder } from 'string_decoder'
 
 export type Config = ConnectConfig & {
   password?: string
-  privateKey?: string
+  privateKey?: string | Buffer
   privateKeyPath?: string
   tryKeyboard?: boolean
   onKeyboardInteractive?: (
@@ -42,7 +43,7 @@ export type Config = ConnectConfig & {
 
 export interface SSHExecCommandOptions {
   cwd?: string
-  stdin?: string | stream.Readable
+  stdin?: string | Readable
   execOptions?: ExecOptions
   encoding?: BufferEncoding
   noTrim?: boolean
@@ -118,7 +119,7 @@ export class SSHError extends Error {
 }
 
 // Same check as is-stream v2's isStream.readable(), so streams from readable-stream v2/v3 still pass.
-function isReadableStream(value: unknown): value is stream.Readable {
+function isReadableStream(value: unknown): value is Readable {
   const candidate = value as Record<string, unknown> | null
   return (
     candidate !== null &&
@@ -131,6 +132,17 @@ function isReadableStream(value: unknown): value is stream.Readable {
 }
 
 // How long dispose() waits for SFTP close replies before disconnecting anyway.
+// Leaves a leading ~ unquoted, so the remote shell expands it to the home directory (#443)
+function escapeCwd(cwd: string): string {
+  if (cwd === '~') {
+    return '~'
+  }
+  if (cwd.startsWith('~/')) {
+    return `~/${shellEscape([cwd.slice(2)])}`
+  }
+  return shellEscape([cwd])
+}
+
 const DISPOSE_SFTP_CLOSE_TIMEOUT = 2000
 
 // Track SFTP close requests that are still waiting for the server's reply, so dispose() can wait for
@@ -273,16 +285,18 @@ async function renameWithSftp(from: string, to: string, sftp: SFTPWrapper): Prom
 }
 
 export class NodeSSH {
-  connection: SSH2.Client | null = null
-  private sftpCloses: WeakMap<SSH2.Client, Set<Promise<void>>> = new WeakMap()
-  private connectionErrorHandlers: WeakMap<SSH2.Client, Set<(error: Error) => void>> = new WeakMap()
+  connection: Client | null = null
+  private sftpCloses: WeakMap<Client, Set<Promise<void>>> = new WeakMap()
+  private connectionErrorHandlers: WeakMap<Client, Set<(error: Error) => void>> = new WeakMap()
+  // Connections that emitted 'ready'. Before that, and after a failed connect(), isConnected() is false. (#459)
+  private readyConnections: WeakSet<Client> = new WeakSet()
 
   // Keep one 'error' listener for the connection's whole life: without one, an 'error' on an idle connection
   // (for example ECONNRESET or a keepalive timeout) is an uncaught exception that crashes the process.
   // The connection emits 'close' afterwards, which marks this NodeSSH as disconnected. (#132)
   // The listener passes the error on to requests still waiting on the connection. One shared listener
   // instead of one per request keeps Node's MaxListenersExceededWarning away when many run at once.
-  private listenForErrors(connection: SSH2.Client): Set<(error: Error) => void> {
+  private listenForErrors(connection: Client): Set<(error: Error) => void> {
     const handlers = new Set<(error: Error) => void>()
     this.connectionErrorHandlers.set(connection, handlers)
     connection.on('error', (error) => {
@@ -292,7 +306,7 @@ export class NodeSSH {
   }
 
   // Calls onError if the connection emits 'error' before the returned function is called
-  private onConnectionError(connection: SSH2.Client, onError: (error: Error) => void): () => void {
+  private onConnectionError(connection: Client, onError: (error: Error) => void): () => void {
     const handlers = this.connectionErrorHandlers.get(connection) ?? this.listenForErrors(connection)
     handlers.add(onError)
     return () => {
@@ -300,7 +314,7 @@ export class NodeSSH {
     }
   }
 
-  private getConnection(): SSH2.Client {
+  private getConnection(): Client {
     const { connection } = this
     if (connection == null) {
       throw new Error('Not connected to server')
@@ -326,7 +340,10 @@ export class NodeSSH {
 
     if (config.privateKey != null || config.privateKeyPath != null) {
       if (config.privateKey != null) {
-        invariant(typeof config.privateKey === 'string', 'config.privateKey must be a valid string')
+        invariant(
+          typeof config.privateKey === 'string' || Buffer.isBuffer(config.privateKey),
+          'config.privateKey must be a valid string or Buffer',
+        )
         invariant(
           config.privateKeyPath == null,
           'config.privateKeyPath must not be specified when config.privateKey is specified',
@@ -382,13 +399,14 @@ export class NodeSSH {
     this.connection = connection
     this.listenForErrors(connection)
 
-    await new Promise<void>((resolve, reject) => {
+    const connected = new Promise<void>((resolve, reject) => {
       connection.on('error', reject)
       if (config.onKeyboardInteractive) {
         connection.on('keyboard-interactive', config.onKeyboardInteractive)
       }
       connection.on('ready', () => {
         connection.removeListener('error', reject)
+        this.readyConnections.add(connection)
         resolve()
       })
       connection.on('end', () => {
@@ -407,12 +425,22 @@ export class NodeSSH {
       // about 40ms longer on Node.js 26 than on Node.js 24.
       connection.setNoDelay(true)
     })
+    try {
+      await connected
+    } catch (error) {
+      // Don't wait for 'close' to mark this as disconnected, and close the socket if it's still open
+      if (this.connection === connection) {
+        this.connection = null
+      }
+      connection.end()
+      throw error
+    }
 
     return this
   }
 
   public isConnected(): boolean {
-    return this.connection != null
+    return this.connection != null && this.readyConnections.has(this.connection)
   }
 
   async requestShell(options?: PseudoTtyOptions | ShellOptions | false): Promise<ClientChannel> {
@@ -514,7 +542,7 @@ export class NodeSSH {
     let command = givenCommand
 
     if (options.cwd) {
-      command = `cd ${shellEscape([options.cwd])} ; ${command}`
+      command = `cd ${escapeCwd(options.cwd)} ; ${command}`
     }
     const connection = this.getConnection()
 

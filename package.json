@@ -72,6 +72,14 @@
     "shell-escape": "^0.2.0",
     "ssh2": "^1.17.0"
   },
+  "peerDependencies": {
+    "@types/ssh2": "^1.11.2"
+  },
+  "peerDependenciesMeta": {
+    "@types/ssh2": {
+      "optional": true
+    }
+  },
   "engines": {
     "node": ">=22"
   }

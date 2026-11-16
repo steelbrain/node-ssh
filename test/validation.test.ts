@@ -257,7 +257,7 @@ test('throws if privateKey is invalid', async function () {
         privateKey: 1,
       } as never)
     },
-    'config.privateKey must be a valid string',
+    'config.privateKey must be a valid string or Buffer',
   )
   await throwsAsync(
     async function () {
@@ -267,7 +267,7 @@ test('throws if privateKey is invalid', async function () {
         privateKey: {},
       } as never)
     },
-    'config.privateKey must be a valid string',
+    'config.privateKey must be a valid string or Buffer',
   )
   await throwsAsync(
     async function () {
@@ -279,7 +279,7 @@ test('throws if privateKey is invalid', async function () {
         },
       } as never)
     },
-    'config.privateKey must be a valid string',
+    'config.privateKey must be a valid string or Buffer',
   )
 })
 test('throws if privateKey is a file and does not exist', async function () {
