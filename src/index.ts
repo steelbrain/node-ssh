@@ -132,6 +132,25 @@ function isReadableStream(value: unknown): value is Readable {
 }
 
 // How long dispose() waits for SFTP close replies before disconnecting anyway.
+// Adds the likely cause to ssh2's errors for an SFTP session that failed to start (#414, #440)
+function explainSftpStartError(error: Error): Error {
+  // ssh2 reads the first 4 bytes from the server as a packet length. When the server prints text instead of
+  // starting SFTP, they are characters: 1349281121 is "Plea" from "Please login as the user ...".
+  const packetLength = /^Packet length (\d+) exceeds max length/.exec(error.message)
+  if (packetLength != null) {
+    const start = Buffer.alloc(4)
+    start.writeUInt32BE(Number(packetLength[1]))
+    const text = start.toString('latin1')
+    if (/^[\x20-\x7e]{4}$/.test(text)) {
+      error.message += `. The server sent text starting with "${text}" instead of SFTP data, usually from a forced command in authorized_keys or from output in the remote shell's startup files (such as ~/.bashrc)`
+    }
+  } else if (/^Received exit code \d+ while establishing SFTP session$/.test(error.message)) {
+    error.message +=
+      '. The SFTP server program exited before SFTP started; check the "Subsystem sftp" line in the server\'s sshd_config'
+  }
+  return error
+}
+
 // Leaves a leading ~ unquoted, so the remote shell expands it to the home directory (#443)
 function escapeCwd(cwd: string): string {
   if (cwd === '~') {
@@ -486,7 +505,7 @@ export class NodeSSH {
       connection.sftp((err, res) => {
         stopWatching()
         if (err) {
-          reject(err)
+          reject(explainSftpStartError(err))
         } else {
           let pending = this.sftpCloses.get(connection)
           if (pending == null) {

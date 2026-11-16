@@ -4,7 +4,7 @@ import fs from 'fs'
 import net from 'net'
 import os from 'os'
 import path from 'path'
-import { Client, Connection, Server, SFTPWrapper } from 'ssh2'
+import { Client, Connection, Server, ServerChannel, SFTPWrapper } from 'ssh2'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 
 import { NodeSSH } from '../src'
@@ -624,6 +624,60 @@ sshit('passes output only to the callbacks with noBuffer', async function (port,
 
 // A server whose exec writes `mebibytes` MiB to stdout. The usual test server can't: it runs commands
 // with child_process.exec, which stops at 1 MiB.
+// A server whose SFTP subsystem runs `handler` on a plain channel instead of speaking SFTP
+async function withSubsystemServer(
+  handler: (channel: ServerChannel) => void,
+  callback: (client: NodeSSH) => Promise<void>,
+): Promise<void> {
+  ports += 1
+  const port = ports
+  const server = new Server({ hostKeys: [fs.readFileSync(PRIVATE_KEY_PATH)] }, (connection) => {
+    connection.on('authentication', (ctx) => ctx.accept())
+    connection.on('session', (accept) => {
+      accept().on('subsystem', (acceptSubsystem) => handler(acceptSubsystem()))
+    })
+  })
+  await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
+  const client = new NodeSSH()
+  try {
+    await connectWithPassword(port, client)
+    await callback(client)
+  } finally {
+    client.dispose()
+    await new Promise((resolve) => server.close(resolve))
+  }
+}
+test('explains text from the server where SFTP data should be', async function () {
+  // What EC2 images send for root logins, from a forced command in authorized_keys (#414)
+  await withSubsystemServer(
+    (channel) => {
+      channel.write('Please login as the user "ubuntu" rather than the user "root".\n')
+      channel.exit(142)
+      channel.end()
+    },
+    async (client) => {
+      const error = await client.requestSFTP().catch((err) => err)
+      expect(error.message).toBe(
+        'Packet length 1349281121 exceeds max length of 262144. The server sent text starting with "Plea" instead of SFTP data, usually from a forced command in authorized_keys or from output in the remote shell\'s startup files (such as ~/.bashrc)',
+      )
+      await expect(client.putFile(getFixturePath('test-program.js'), '/tmp/x')).rejects.toThrow('starting with "Plea"')
+    },
+  )
+})
+test('explains an SFTP subsystem that exits right away', async function () {
+  // sshd with a wrong "Subsystem sftp" path: the shell can't run it and exits with 127 (#440)
+  await withSubsystemServer(
+    (channel) => {
+      channel.exit(127)
+      channel.end()
+    },
+    async (client) => {
+      await expect(client.requestSFTP()).rejects.toThrow(
+          'Received exit code 127 while establishing SFTP session. The SFTP server program exited before SFTP started; check the "Subsystem sftp" line in the server\'s sshd_config',
+      )
+    },
+  )
+})
 async function withLargeOutputServer(mebibytes: number, callback: (client: NodeSSH) => Promise<void>): Promise<void> {
   ports += 1
   const port = ports
@@ -722,7 +776,7 @@ test('survives the connection being reset while idle', async function () {
   await withResettableConnection(async (client, reset) => {
     const { connection } = client
     invariant(connection)
-    const closed = new Promise((resolve) => connection.once('close', resolve))
+    const closed = new Promise<void>((resolve) => connection.once('close', () => resolve()))
     reset()
     await closed
     expect(client.isConnected()).toBe(false)
