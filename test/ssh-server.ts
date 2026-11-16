@@ -204,6 +204,7 @@ export default function createServer(): ssh2.Server {
       hostKeys: [FS.readFileSync(PRIVATE_KEY_PATH)],
     },
     function (client) {
+      client.setNoDelay(true)
       client.on('authentication', handleAuthentication)
       client.on('session', handleSession)
     },

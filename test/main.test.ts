@@ -2,8 +2,8 @@ import invariant from 'assert'
 import ChildProcess from 'child_process'
 import fs from 'fs'
 import path from 'path'
-import { Server } from 'ssh2'
-import { afterAll, beforeAll, expect, test } from 'vitest'
+import { Client, Server } from 'ssh2'
+import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 
 import { NodeSSH } from '../src'
 import { PRIVATE_KEY_PATH, exists, wait } from './helpers'
@@ -100,6 +100,17 @@ sshit(
   },
   true,
 )
+
+sshit('disables Nagle\'s algorithm on the connection', async function (port, client) {
+  const setNoDelay = vi.spyOn(Client.prototype, 'setNoDelay')
+  try {
+    await connectWithPassword(port, client)
+    expect(setNoDelay).toHaveBeenCalledWith(true)
+    expect(setNoDelay.mock.contexts).toContain(client.connection)
+  } finally {
+    setNoDelay.mockRestore()
+  }
+})
 
 sshit('creates directories with sftp properly', async function (port, client) {
   await connectWithPassword(port, client)
