@@ -68,6 +68,9 @@ export interface SSHExecOptions extends SSHExecCommandOptions {
 export interface SSHPutFileOptions {
   // Upload to a hidden temporary file in the same remote directory, then rename it to the remote path
   atomic?: boolean
+  // Skip the upload when the remote path is a regular file with the local file's size and modification time.
+  // Uploaded files get the local file's access and modification times.
+  skipUnchanged?: boolean
 }
 
 export interface SSHPutFilesOptions extends SSHPutFileOptions {
@@ -77,7 +80,8 @@ export interface SSHPutFilesOptions extends SSHPutFileOptions {
 }
 
 export interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
-  tick?: (localFile: string, remoteFile: string, error: Error | null) => void
+  // putDirectory passes skipped (true if skipUnchanged skipped the file) for each file it uploaded or skipped
+  tick?: (localFile: string, remoteFile: string, error: Error | null, skipped?: boolean) => void
   validate?: (path: string) => boolean
   recursive?: boolean
 }
@@ -253,21 +257,49 @@ function getTemporaryPath(remoteFile: string): string {
   return fsPath.posix.join(fsPath.posix.dirname(remoteFile), name)
 }
 
-function sftpRequest(sftp: SFTPWrapper, send: (callback: (err?: Error | null) => void) => void): Promise<void> {
+// ssh2 never answers a request sent after the SFTP channel closed (for example when the connection was lost)
+function isSftpClosed(sftp: SFTPWrapper): boolean {
+  return (sftp as SFTPWrapper & { readable?: boolean }).readable === false
+}
+
+function sftpRequest<T = void>(
+  sftp: SFTPWrapper,
+  send: (callback: (err?: Error | null, result?: T) => void) => void,
+): Promise<T> {
   return new Promise((resolve, reject) => {
-    // ssh2 never answers a request sent after the SFTP channel closed (for example when the connection was lost)
-    if ((sftp as SFTPWrapper & { readable?: boolean }).readable === false) {
+    if (isSftpClosed(sftp)) {
       reject(new SSHError('SFTP channel is closed'))
       return
     }
-    send((err) => {
+    send((err, result) => {
       if (err) {
         reject(err)
       } else {
-        resolve()
+        resolve(result as T)
       }
     })
   })
+}
+
+// SFTP sends times in whole seconds
+function toSftpTime(timeMs: number): number {
+  return Math.floor(timeMs / 1000)
+}
+
+// Whether remoteFile is a regular file with the size and modification time in localStats
+async function isUnchanged(localStats: fs.Stats, remoteFile: string, sftp: SFTPWrapper): Promise<boolean> {
+  let remoteStats: Stats
+  try {
+    remoteStats = await sftpRequest<Stats>(sftp, (callback) => sftp.stat(remoteFile, callback))
+  } catch (error) {
+    // Upload the file when its remote path can't be read, for example because it does not exist. Not when the
+    // channel closed: the upload's requests would never get a reply.
+    if (isSftpClosed(sftp)) {
+      throw error
+    }
+    return false
+  }
+  return remoteStats.isFile() && remoteStats.size === localStats.size && remoteStats.mtime === toSftpTime(localStats.mtimeMs)
 }
 
 // Rename `from` to `to`, replacing `to` if it exists
@@ -763,12 +795,27 @@ export class NodeSSH {
     transferOptions: TransferOptions | null = null,
     options: SSHPutFileOptions = {},
   ): Promise<void> {
+    await this.putOrSkipFile(localFile, remoteFile, givenSftp, transferOptions, options)
+  }
+
+  // putFile, resolving with true if skipUnchanged skipped the file
+  private async putOrSkipFile(
+    localFile: string,
+    remoteFile: string,
+    givenSftp: SFTPWrapper | null,
+    transferOptions: TransferOptions | null,
+    options: SSHPutFileOptions,
+  ): Promise<boolean> {
     invariant(typeof localFile === 'string', 'localFile must be a valid string')
     invariant(typeof remoteFile === 'string', 'remoteFile must be a valid string')
     invariant(givenSftp == null || typeof givenSftp === 'object', 'sftp must be a valid object')
     invariant(transferOptions == null || typeof transferOptions === 'object', 'transferOptions must be a valid object')
     invariant(options != null && typeof options === 'object', 'options must be a valid object')
     invariant(options.atomic == null || typeof options.atomic === 'boolean', 'options.atomic must be a boolean')
+    invariant(
+      options.skipUnchanged == null || typeof options.skipUnchanged === 'boolean',
+      'options.skipUnchanged must be a boolean',
+    )
     invariant(
       await new Promise((resolve) => {
         fs.access(localFile, fs.constants.R_OK, (err) => {
@@ -777,6 +824,8 @@ export class NodeSSH {
       }),
       `localFile does not exist at ${localFile}`,
     )
+    // With skipUnchanged, compare and copy the times of the local file as it is before the upload (#466)
+    const localStats = options.skipUnchanged ? await fs.promises.stat(localFile) : null
     const sftp = givenSftp || (await this.requestSFTP())
     // With atomic, upload to a temporary file and rename it to remoteFile once it is complete (#349)
     const temporaryFile = options.atomic ? getTemporaryPath(unixifyPath(remoteFile)) : null
@@ -799,7 +848,17 @@ export class NodeSSH {
     }
 
     try {
+      if (localStats != null && (await isUnchanged(localStats, unixifyPath(remoteFile), sftp))) {
+        return true
+      }
       await putFile(true)
+      if (localStats != null) {
+        // Before the rename, so the remote path never has the time of the upload
+        const uploadedFile = temporaryFile ?? unixifyPath(remoteFile)
+        const atime = toSftpTime(localStats.atimeMs)
+        const mtime = toSftpTime(localStats.mtimeMs)
+        await sftpRequest(sftp, (callback) => sftp.utimes(uploadedFile, atime, mtime, callback))
+      }
       if (temporaryFile != null) {
         await renameWithSftp(temporaryFile, unixifyPath(remoteFile), sftp)
       }
@@ -814,6 +873,7 @@ export class NodeSSH {
         sftp.end()
       }
     }
+    return false
   }
 
   async putFiles(
@@ -823,10 +883,12 @@ export class NodeSSH {
       sftp: givenSftp = null,
       transferOptions = {},
       atomic = false,
+      skipUnchanged = false,
     }: SSHPutFilesOptions = {},
   ): Promise<void> {
     invariant(Array.isArray(files), 'files must be an array')
     invariant(atomic == null || typeof atomic === 'boolean', 'options.atomic must be a boolean')
+    invariant(skipUnchanged == null || typeof skipUnchanged === 'boolean', 'options.skipUnchanged must be a boolean')
 
     for (let i = 0, { length } = files; i < length; i += 1) {
       const file = files[i]
@@ -844,7 +906,7 @@ export class NodeSSH {
         files.forEach((file) => {
           queue
             .add(async () => {
-              await this.putFile(file.local, file.remote, sftp, transferOptions, { atomic })
+              await this.putFile(file.local, file.remote, sftp, transferOptions, { atomic, skipUnchanged })
               transferred.push(file)
             })
             .catch(reject)
@@ -875,11 +937,13 @@ export class NodeSSH {
       tick = DEFAULT_TICK,
       validate = DEFAULT_VALIDATE,
       atomic = false,
+      skipUnchanged = false,
     }: SSHGetPutDirectoryOptions = {},
   ): Promise<boolean> {
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
     invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
     invariant(atomic == null || typeof atomic === 'boolean', 'options.atomic must be a boolean')
+    invariant(skipUnchanged == null || typeof skipUnchanged === 'boolean', 'options.skipUnchanged must be a boolean')
 
     const localDirectoryStat: fs.Stats = await new Promise((resolve) => {
       fs.stat(localDirectory, (err, stat) => {
@@ -930,8 +994,11 @@ export class NodeSSH {
               const localFile = fsPath.join(localDirectory, file)
               const remoteFile = fsPath.join(remoteDirectory, file)
               try {
-                await this.putFile(localFile, remoteFile, sftp, transferOptions, { atomic })
-                tick(localFile, remoteFile, null)
+                const skipped = await this.putOrSkipFile(localFile, remoteFile, sftp, transferOptions, {
+                  atomic,
+                  skipUnchanged,
+                })
+                tick(localFile, remoteFile, null, skipped)
               } catch (_) {
                 failed = true
                 tick(localFile, remoteFile, _)

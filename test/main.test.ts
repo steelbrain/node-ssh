@@ -1008,3 +1008,182 @@ sshit('validates the atomic option', async function (port, client) {
   expect(fs.existsSync(targetFile)).toBe(false)
 })
 
+// Local times with a fraction of a second, which SFTP can't send
+const LOCAL_ATIME = 1000000000.25
+const LOCAL_MTIME = 1000000100.75
+function writeFileWithTimes(file: string, contents: string, mtime = LOCAL_MTIME): string {
+  fs.writeFileSync(file, contents)
+  fs.utimesSync(file, LOCAL_ATIME, mtime)
+  return file
+}
+// The remote files that the client opened, which it does to upload them
+function getUploads(requests: SftpRequests): string[] {
+  return requests.filter((request) => request.name === 'OPEN').map((request) => request.paths[0])
+}
+
+sshitRecording('skips an unchanged file with skipUnchanged', async function (client, requests) {
+  const directory = makeIgnoredDirectory('skip-unchanged')
+  const localFile = writeFileWithTimes(path.join(directory, 'local'), 'new')
+  // The same size and modification time in whole seconds as localFile, other contents
+  const remoteFile = writeFileWithTimes(path.join(directory, 'remote'), 'old', Math.floor(LOCAL_MTIME))
+  await client.putFile(localFile, remoteFile, null, null, { skipUnchanged: true })
+  expect(fs.readFileSync(remoteFile, 'utf8')).toBe('old')
+  expect(requests).toStrictEqual([{ name: 'STAT', paths: [remoteFile] }])
+})
+sshitRecording(
+  'uploads with skipUnchanged when the size or modification time differs or the remote is not a file',
+  async function (client, requests) {
+    const directory = makeIgnoredDirectory('skip-unchanged-differs')
+    const localFile = writeFileWithTimes(path.join(directory, 'local'), 'new')
+    const otherSize = writeFileWithTimes(path.join(directory, 'other-size'), 'older', Math.floor(LOCAL_MTIME))
+    const otherTime = writeFileWithTimes(path.join(directory, 'other-time'), 'old', Math.floor(LOCAL_MTIME) - 1)
+    for (const remoteFile of [otherSize, otherTime]) {
+      await client.putFile(localFile, remoteFile, null, null, { skipUnchanged: true })
+      expect(fs.readFileSync(remoteFile, 'utf8')).toBe('new')
+    }
+    expect(getUploads(requests)).toStrictEqual([otherSize, otherTime])
+
+    // A directory with the local file's size and modification time: the upload fails instead of being skipped
+    const remoteDirectory = path.join(directory, 'directory')
+    fs.mkdirSync(remoteDirectory)
+    const sameAsDirectory = path.join(directory, 'same-as-directory')
+    writeFileWithTimes(sameAsDirectory, 'x'.repeat(fs.statSync(remoteDirectory).size))
+    fs.utimesSync(remoteDirectory, LOCAL_ATIME, LOCAL_MTIME)
+    await expect(
+      client.putFile(sameAsDirectory, remoteDirectory, null, null, { skipUnchanged: true }),
+    ).rejects.toThrow('Failure')
+  },
+)
+sshitRecording('sets the remote times after an upload with skipUnchanged', async function (client, requests) {
+  const directory = makeIgnoredDirectory('skip-unchanged-times')
+  const localFile = writeFileWithTimes(path.join(directory, 'local'), 'new')
+  const remoteFile = path.join(directory, 'remote')
+  await client.putFile(localFile, remoteFile, null, null, { skipUnchanged: true })
+  const { atimeMs, mtimeMs } = fs.statSync(remoteFile)
+  expect({ atimeMs, mtimeMs }).toStrictEqual({
+    atimeMs: Math.floor(LOCAL_ATIME) * 1000,
+    mtimeMs: Math.floor(LOCAL_MTIME) * 1000,
+  })
+  expect(fs.readFileSync(remoteFile, 'utf8')).toBe('new')
+  expect(requests).toStrictEqual([
+    { name: 'STAT', paths: [remoteFile] },
+    { name: 'OPEN', paths: [remoteFile] },
+    { name: 'SETSTAT', paths: [remoteFile] },
+  ])
+})
+sshitRecording('skips unchanged files in putFiles with skipUnchanged', async function (client, requests) {
+  const directory = makeIgnoredDirectory('skip-unchanged-files')
+  const files = ['aa', 'bb', 'cc'].map((name) => ({
+    local: writeFileWithTimes(path.join(directory, `local-${name}`), name),
+    remote: path.join(directory, name),
+  }))
+  await client.putFiles(files, { skipUnchanged: true })
+  expect(getUploads(requests)).toStrictEqual(files.map((file) => file.remote))
+
+  requests.length = 0
+  await client.putFiles(files, { skipUnchanged: true })
+  expect(requests).toStrictEqual(files.map((file) => ({ name: 'STAT', paths: [file.remote] })))
+
+  requests.length = 0
+  writeFileWithTimes(files[1].local, 'changed', LOCAL_MTIME + 1)
+  await client.putFiles(files, { skipUnchanged: true })
+  expect(getUploads(requests)).toStrictEqual([files[1].remote])
+  expect(fs.readFileSync(files[1].remote, 'utf8')).toBe('changed')
+})
+sshitRecording('skips unchanged files in putDirectory with skipUnchanged', async function (client, requests) {
+  const localDirectory = makeIgnoredDirectory('skip-unchanged-directory-local')
+  fs.cpSync(getFixturePath('multiple'), localDirectory, { recursive: true })
+  // Old times, so that a second upload can only skip the files if the first one set their remote times
+  for (const entry of fs.readdirSync(localDirectory, { recursive: true })) {
+    fs.utimesSync(path.join(localDirectory, String(entry)), LOCAL_ATIME, LOCAL_MTIME)
+  }
+  const remoteDirectory = makeIgnoredDirectory('skip-unchanged-directory')
+  // Uploads localDirectory, and returns the uploaded files and what tick got as skipped for each file
+  const putDirectory = async () => {
+    requests.length = 0
+    const skipped: Record<string, boolean | undefined> = {}
+    const succeeded = await client.putDirectory(localDirectory, remoteDirectory, {
+      skipUnchanged: true,
+      tick(local, remote, error, wasSkipped) {
+        expect(error).toBe(null)
+        skipped[path.relative(remoteDirectory, remote)] = wasSkipped
+      },
+    })
+    expect(succeeded).toBe(true)
+    const uploads = getUploads(requests).map((remote) => path.relative(remoteDirectory, remote))
+    return { uploads, skipped }
+  }
+
+  const first = await putDirectory()
+  expect(first.uploads).toHaveLength(13)
+  expect(Object.keys(first.skipped).sort()).toStrictEqual([...first.uploads].sort())
+  expect(new Set(Object.values(first.skipped))).toStrictEqual(new Set([false]))
+
+  const second = await putDirectory()
+  expect(second.uploads).toStrictEqual([])
+  expect(Object.keys(second.skipped)).toHaveLength(13)
+  expect(new Set(Object.values(second.skipped))).toStrictEqual(new Set([true]))
+
+  writeFileWithTimes(path.join(localDirectory, 'ee/ff'), 'changed', LOCAL_MTIME + 1)
+  const third = await putDirectory()
+  expect(third.uploads).toStrictEqual(['ee/ff'])
+  expect(third.skipped).toStrictEqual({ ...second.skipped, 'ee/ff': false })
+  expect(fs.readFileSync(path.join(remoteDirectory, 'ee/ff'), 'utf8')).toBe('changed')
+})
+sshitRecording('sets the times before the rename with atomic and skipUnchanged', async function (client, requests) {
+  const directory = makeIgnoredDirectory('skip-unchanged-atomic')
+  const localFile = writeFileWithTimes(path.join(directory, 'local'), 'new')
+  const remoteFile = path.join(directory, 'remote')
+  await client.putFile(localFile, remoteFile, null, null, { atomic: true, skipUnchanged: true })
+  expect(fs.readFileSync(remoteFile, 'utf8')).toBe('new')
+  expect(fs.statSync(remoteFile).mtimeMs).toBe(Math.floor(LOCAL_MTIME) * 1000)
+  const temporaryFile = requests[1].paths[0]
+  expect(isTemporaryFile(temporaryFile, remoteFile)).toBe(true)
+  expect(requests).toStrictEqual([
+    { name: 'STAT', paths: [remoteFile] },
+    { name: 'OPEN', paths: [temporaryFile] },
+    { name: 'SETSTAT', paths: [temporaryFile] },
+    { name: 'RENAME', paths: [temporaryFile, remoteFile] },
+  ])
+
+  requests.length = 0
+  await client.putFile(localFile, remoteFile, null, null, { atomic: true, skipUnchanged: true })
+  expect(requests).toStrictEqual([{ name: 'STAT', paths: [remoteFile] }])
+  expect(fs.readdirSync(directory).sort()).toStrictEqual(['local', 'remote'])
+})
+test('rejects instead of hanging when the connection closes during the skipUnchanged check', async function () {
+  ports += 1
+  const port = ports
+  const connections: Connection[] = []
+  const server = createServer({
+    onSftpRequest(name) {
+      if (name === 'STAT') connections.forEach((connection) => connection.end())
+    },
+  })
+  server.on('connection', (connection) => connections.push(connection))
+  await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
+  const client = new NodeSSH()
+  try {
+    await connectWithPassword(port, client)
+    const targetFile = path.join(makeIgnoredDirectory('skip-unchanged-connection-closes'), 'target')
+    // The check fails, and the upload must not wait for replies that never come
+    await expect(client.putFile(__filename, targetFile, null, null, { skipUnchanged: true })).rejects.toThrow(
+      'No response from server',
+    )
+  } finally {
+    client.dispose()
+    await new Promise((resolve) => server.close(resolve))
+  }
+})
+sshit('validates the skipUnchanged option', async function (port, client) {
+  await connectWithPassword(port, client)
+  const targetFile = getFixturePath('ignored/skip-unchanged-validate')
+  const options = { skipUnchanged: 'yes' } as never
+  const message = 'options.skipUnchanged must be a boolean'
+  await expect(client.putFile(__filename, targetFile, null, null, options)).rejects.toThrow(message)
+  // No files, so only putFiles' own check can reject
+  await expect(client.putFiles([], options)).rejects.toThrow(message)
+  await expect(client.putDirectory(getFixturePath('multiple'), targetFile, options)).rejects.toThrow(message)
+  expect(fs.existsSync(targetFile)).toBe(false)
+})
+

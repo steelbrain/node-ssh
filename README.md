@@ -156,6 +156,46 @@ the rename fails, node-ssh deletes the temporary file before rejecting. If the
 connection drops, the temporary file can stay behind. `getDirectory` ignores
 `atomic`.
 
+#### Skipping unchanged files
+
+With `skipUnchanged: true`, `putFile`, `putFiles` and `putDirectory` look up
+each remote path first, and skip the upload when it is a regular file with the
+same size and modification time as the local file. After uploading a file, they
+set its remote access and modification times to those of the local file, so the
+next upload with `skipUnchanged` can skip it. The server's clock does not matter.
+
+```js
+await ssh.putDirectory('/home/steel/Lab/site', '/var/www/site', {
+  skipUnchanged: true,
+  tick: function(localPath, remotePath, error, skipped) {
+    if (error) {
+      console.log('failed', localPath)
+    } else if (skipped) {
+      console.log('unchanged', localPath)
+    } else {
+      console.log('uploaded', localPath)
+    }
+  }
+})
+```
+
+SFTP sends times in whole seconds, so node-ssh compares the local modification
+time rounded down to a second. A file uploaded without `skipUnchanged` has the
+time of that upload as its modification time, so the first upload with
+`skipUnchanged` uploads it again.
+
+The check does not read file contents: a file that changed but kept its size and
+modification time (for example one written by a tool that sets a fixed
+modification time) is skipped. A skipped file keeps its remote mode and owner,
+even with `transferOptions: { mode }`.
+
+`putDirectory` passes a fourth argument to `tick`, `skipped`: `true` for a
+skipped file and `false` for an uploaded one. `putFile` and `putFiles` resolve
+the same way for both. With `atomic`, the times are set on the temporary file
+before the rename. If the server can't set the times (for example on a file
+owned by another user), the upload rejects; without `atomic`, the remote file
+already has the new contents then. `getDirectory` ignores `skipUnchanged`.
+
 #### API
 
 ```ts
@@ -217,6 +257,7 @@ export interface SSHExecOptions extends SSHExecCommandOptions {
 }
 export interface SSHPutFileOptions {
   atomic?: boolean
+  skipUnchanged?: boolean
 }
 export interface SSHPutFilesOptions extends SSHPutFileOptions {
   sftp?: SFTPWrapper | null
@@ -224,7 +265,7 @@ export interface SSHPutFilesOptions extends SSHPutFileOptions {
   transferOptions?: TransferOptions
 }
 export interface SSHGetPutDirectoryOptions extends SSHPutFilesOptions {
-  tick?: (localFile: string, remoteFile: string, error: Error | null) => void
+  tick?: (localFile: string, remoteFile: string, error: Error | null, skipped?: boolean) => void
   validate?: (path: string) => boolean
   recursive?: boolean
 }
@@ -297,12 +338,21 @@ export class NodeSSH {
       local: string
       remote: string
     }[],
-    { concurrency, sftp: givenSftp, transferOptions, atomic }?: SSHPutFilesOptions,
+    { concurrency, sftp: givenSftp, transferOptions, atomic, skipUnchanged }?: SSHPutFilesOptions,
   ): Promise<void>
   putDirectory(
     localDirectory: string,
     remoteDirectory: string,
-    { concurrency, sftp: givenSftp, transferOptions, recursive, tick, validate, atomic }?: SSHGetPutDirectoryOptions,
+    {
+      concurrency,
+      sftp: givenSftp,
+      transferOptions,
+      recursive,
+      tick,
+      validate,
+      atomic,
+      skipUnchanged,
+    }?: SSHGetPutDirectoryOptions,
   ): Promise<boolean>
   getDirectory(
     localDirectory: string,

@@ -13,7 +13,7 @@ export interface ServerOptions {
   sftpCloseDelay?: number
   // Answer SFTP WRITE requests with a failure, like a server whose disk is full
   sftpFailWrites?: boolean
-  // Called with the request name and paths of each SFTP OPEN, RENAME, REMOVE and posix-rename request
+  // Called with the request name and paths of each SFTP OPEN, STAT, SETSTAT, RENAME, REMOVE and posix-rename request
   onSftpRequest?: (name: string, paths: string[]) => void
 }
 
@@ -129,9 +129,24 @@ function handleSFTP(accept, options: ServerOptions) {
     }
   })
   sftpStream.on('STAT', function (reqId, path) {
+    options.onSftpRequest?.('STAT', [path])
     try {
       const stats = FS.statSync(path)
       sftpStream.attrs(reqId, stats)
+    } catch (error) {
+      sftpStream.status(reqId, STATUS_CODE.FAILURE, error.message)
+    }
+  })
+  sftpStream.on('SETSTAT', function (reqId, path, attrs) {
+    options.onSftpRequest?.('SETSTAT', [path])
+    try {
+      if (attrs.mode != null) {
+        FS.chmodSync(path, attrs.mode)
+      }
+      if (attrs.atime != null && attrs.mtime != null) {
+        FS.utimesSync(path, attrs.atime, attrs.mtime)
+      }
+      sftpStream.status(reqId, STATUS_CODE.OK)
     } catch (error) {
       sftpStream.status(reqId, STATUS_CODE.FAILURE, error.message)
     }
