@@ -5,12 +5,15 @@ import fs from 'fs'
 import net from 'net'
 import os from 'os'
 import path from 'path'
-import { Client, Connection, Server, ServerChannel, SFTPWrapper } from 'ssh2'
+import { Client, Connection, Server, ServerChannel, SFTPWrapper, SocketBindInfo } from 'ssh2'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 
 import { NodeSSH, SSHError } from '../src'
 import { PRIVATE_KEY_ENCRYPTED_PPK_PATH, PRIVATE_KEY_PATH, exists, wait } from './helpers'
 import createServer, { ServerOptions } from './ssh-server'
+
+// Annotating the listener with these picks @types/ssh2's overload of the 'request' event for Unix socket forwarding
+type StreamLocalRequest = 'streamlocal-forward@openssh.com' | 'cancel-streamlocal-forward@openssh.com'
 
 // Each test listens on its own port, counting up from here. Set NODE_SSH_TEST_PORT to run two copies of the
 // suite at once.
@@ -424,7 +427,7 @@ sshit('forwards an inbound TCP/IP connection to client', async function (port, c
             expect(name).toBe('cancel-tcpip-forward')
             expect(info.bindAddr).toBe(IP)
             expect(info.bindPort).toBe(PORT)
-            accept()
+            accept?.()
             resolve(undefined)
           })
 
@@ -482,10 +485,10 @@ sshit('forwards an inbound UNIX socket connection to client', async function (po
           expect(details.socketPath).toBe(PATH)
 
           // Expect to get an unforward request on server.
-          connection.once('request', (accept, reject, name, info) => {
+          connection.once('request', (accept, reject, name: StreamLocalRequest, info: SocketBindInfo) => {
             expect(name).toBe('cancel-streamlocal-forward@openssh.com')
             expect(info.socketPath).toBe(PATH)
-            accept()
+            accept?.()
             resolve(undefined)
           })
 
@@ -496,7 +499,7 @@ sshit('forwards an inbound UNIX socket connection to client', async function (po
       })
 
       // Expect to get a request on server.
-      connection.once('request', (accept, reject, name, info) => {
+      connection.once('request', (accept, reject, name: StreamLocalRequest, info: SocketBindInfo) => {
         expect(name).toBe('streamlocal-forward@openssh.com')
         expect(info.socketPath).toBe(PATH)
         accept?.()
@@ -535,7 +538,7 @@ sshit('forwards an inbound TCP/IP connection to client with automatically assign
             expect(name).toBe('cancel-tcpip-forward')
             expect(info.bindAddr).toBe(IP)
             expect(info.bindPort).toBe(PORT)
-            accept()
+            accept?.()
             resolve(undefined)
           })
 

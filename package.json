@@ -28,7 +28,7 @@
   "type": "commonjs",
   "scripts": {
     "test": "vitest run",
-    "lint": "(tsc -p . --noEmit) && (oxlint) && (oxfmt --check src/*.ts)",
+    "lint": "(tsc -p . --noEmit) && (tsc -p test) && (oxlint) && (oxfmt --check src/*.ts)",
     "lint:types": "attw --pack .",
     "prepare": "yarn build",
     "build": "zshy"

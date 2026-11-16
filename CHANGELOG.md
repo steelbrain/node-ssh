@@ -28,6 +28,7 @@
 - Run tests with `vitest` instead of `ava`
 - CI runs on Node.js 22, 24 and 26 (the current LTS lines)
 - CI checks the packed package with `arethetypeswrong` (`yarn lint:types`)
+- `yarn lint` also type-checks the tests
 
 #### 13.2.1
 

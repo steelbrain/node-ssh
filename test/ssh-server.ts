@@ -317,7 +317,8 @@ export default function createServer(options: ServerOptions = {}): ssh2.Server {
       hostKeys: [FS.readFileSync(PRIVATE_KEY_PATH)],
     },
     function (client) {
-      client.setNoDelay(true)
+      // ssh2's server connections have setNoDelay(), but @types/ssh2 doesn't declare it
+      ;(client as ssh2.Connection & { setNoDelay(noDelay: boolean): void }).setNoDelay(true)
       client.on('authentication', handleAuthentication)
       client.on('session', (accept) => handleSession(accept, options))
     },
