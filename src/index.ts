@@ -1,3 +1,5 @@
+// The declarations use Node.js types (Buffer, streams); keep this reference in the emitted .d.ts files
+/// <reference types="node" preserve="true" />
 import invariant, { AssertionError } from 'assert'
 import { randomBytes } from 'crypto'
 import fs from 'fs'

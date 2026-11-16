@@ -13,8 +13,7 @@
 - Starting more than 10 `execCommand`, `requestShell` or `requestSFTP` calls at once on one connection (this includes `putFile` and `getFile`) no longer prints Node's `MaxListenersExceededWarning`
 - Set `TCP_NODELAY` on the connection's socket. Without it, every request round trip took about 40ms longer on Node.js 26
 - Upgrade `ssh2` to `v1.17.0`, `sb-promise-queue` to `v2.1.1` and `sb-scandir` to `v3.1.1`
-- Build with `zshy`. Output files are now `lib/index.js` (CommonJS), `lib/index.mjs` (ESM), `lib/index.d.ts` and `lib/index.d.mts`, and the `main`, `module`, `types` and `exports` fields point to them
-- Type declarations no longer contain `/// <reference types="node" />`
+- Build with `zshy`. Output files are now `lib/index.js` (CommonJS), `lib/index.mjs` (ESM), `lib/index.d.ts` and `lib/index.d.mts`, and the `main`, `module`, `types` and `exports` fields point to them. In `exports`, `import` gets the ESM declarations (`lib/index.d.mts`) and `require` the CommonJS ones (`lib/index.d.ts`), so TypeScript sees the same module format as Node.js
 - Upgrade all dev dependencies (including TypeScript `v6`)
 - Lint with `oxlint` and format with `oxfmt` instead of ESLint and Prettier
 - Run tests with `vitest` instead of `ava`
