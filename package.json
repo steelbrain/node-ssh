@@ -60,8 +60,6 @@
     "zshy": "^0.8.1"
   },
   "dependencies": {
-    "is-stream": "^4.0.1",
-    "make-dir": "^5.1.0",
     "sb-promise-queue": "^2.1.1",
     "sb-scandir": "^3.1.1",
     "shell-escape": "^0.2.0",
@@ -80,6 +78,6 @@
     ]
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22"
   }
 }

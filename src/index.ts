@@ -1,7 +1,5 @@
 import invariant, { AssertionError } from 'assert'
 import fs from 'fs'
-import { isReadableStream } from 'is-stream'
-import { makeDirectory } from 'make-dir'
 import fsPath from 'path'
 import { PromiseQueue } from 'sb-promise-queue'
 import scanDirectory from 'sb-scandir'
@@ -106,6 +104,19 @@ export class SSHError extends Error {
   ) {
     super(message)
   }
+}
+
+// Same check as is-stream v2's isStream.readable(), so streams from readable-stream v2/v3 still pass.
+function isReadableStream(value: unknown): value is stream.Readable {
+  const candidate = value as Record<string, unknown> | null
+  return (
+    candidate !== null &&
+    typeof candidate === 'object' &&
+    typeof candidate.pipe === 'function' &&
+    candidate.readable !== false &&
+    typeof candidate._read === 'function' &&
+    typeof candidate._readableState === 'object'
+  )
 }
 
 function unixifyPath(path: string) {
@@ -780,7 +791,7 @@ export class NodeSSH {
         directories.forEach((directory) => {
           queue
             .add(async () => {
-              await makeDirectory(fsPath.join(localDirectory, directory))
+              await fs.promises.mkdir(fsPath.join(localDirectory, directory), { recursive: true })
             })
             .catch(reject)
         })
