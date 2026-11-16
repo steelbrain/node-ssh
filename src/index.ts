@@ -333,6 +333,28 @@ function sftpRequest<T = void>(
   })
 }
 
+// SFTP servers answer an upload onto a directory with a bare "Failure" (SSH_FX_FAILURE, code 4), so say why (#312)
+async function explainPutFileError(
+  error: unknown,
+  localFile: string,
+  remoteFile: string,
+  sftp: SFTPWrapper,
+): Promise<unknown> {
+  if (!(error instanceof Error) || (error as Error & { code?: unknown }).code !== 4) {
+    return error
+  }
+  try {
+    const stats = await sftpRequest<Stats>(sftp, (callback) => sftp.stat(remoteFile, callback))
+    if (stats.isDirectory()) {
+      const example = fsPath.posix.join(remoteFile, fsPath.basename(localFile))
+      error.message += `: ${remoteFile} is a directory, pass the path of the file to write (such as ${example})`
+    }
+  } catch (_) {
+    // Keep the original error
+  }
+  return error
+}
+
 // SFTP sends times in whole seconds
 function toSftpTime(timeMs: number): number {
   return Math.floor(timeMs / 1000)
@@ -967,7 +989,7 @@ export class NodeSSH {
         // Remove the partial upload, then reject with the error that stopped it
         await sftpRequest(sftp, (callback) => sftp.unlink(temporaryFile, callback)).catch(DEFAULT_TICK)
       }
-      throw error
+      throw await explainPutFileError(error, localFile, unixifyPath(remoteFile), sftp)
     } finally {
       if (!givenSftp) {
         sftp.end()

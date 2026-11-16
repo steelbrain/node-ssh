@@ -13,6 +13,7 @@
 - `exec` and `execCommand` reject with the connection's error when the connection fails while the command runs, instead of resolving with `code: null`. #132
 - `exec` and `execCommand` reject when `onStdout`, `onStderr` or `onChannel` throws, and close only that command's channel. Before, ssh2 reported the exception as an error on the connection and closed the connection. #257
 - Starting more than 10 `execCommand`, `requestShell` or `requestSFTP` calls at once on one connection (this includes `putFile` and `getFile`) no longer prints Node's `MaxListenersExceededWarning`
+- `putFile` onto a directory now says so: the server's bare `Failure` error gets `: <path> is a directory, pass the path of the file to write (such as <path>/<file name>)`. #312
 - When an SFTP session fails to start, the error says why it usually happens: `Packet length 1349281121 exceeds max length` means the server sent text (here `"Plea"`, from "Please login as the user ...") instead of SFTP data, and `Received exit code 127 while establishing SFTP session` points to the server's `Subsystem sftp` setting. #414 #440
 - `isConnected()` is `false` until the connection is ready, and `false` right after `connect()` fails (it used to stay `true` until the socket closed). #459
 - `config.privateKey` accepts a `Buffer`, like ssh2 does and like the README example shows. #446

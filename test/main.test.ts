@@ -88,6 +88,21 @@ sshit('connects to a server with a private key', async function (port, client) {
 sshit('connects to a server with an inline private key', async function (port, client) {
   await expect(connectWithInlinePrivateKey(port, client)).resolves.not.toThrow()
 })
+sshit('passes authHandler to ssh2, so credentials can be asked for when needed', async function (port, client) {
+  const calls: unknown[] = []
+  await client.connect({
+    host: '127.0.0.1',
+    port,
+    username: 'steel',
+    authHandler(methodsLeft, partialSuccess, callback) {
+      calls.push(methodsLeft)
+      // Answer later, like after prompting the user (#385)
+      setTimeout(() => callback({ type: 'password', username: 'steel', password: 'password' }), 20)
+    },
+  })
+  expect(client.isConnected()).toBe(true)
+  expect(calls).toEqual([null])
+})
 sshit('connects to a server with a private key Buffer', async function (port, client) {
   await client.connect({ host: '127.0.0.1', port, username: 'steel', privateKey: fs.readFileSync(PRIVATE_KEY_PATH) })
   expect(client.isConnected()).toBe(true)
@@ -233,6 +248,19 @@ sshit('puts files properly', async function (port, client) {
   await client.putFile(sourceFile, targetFile)
   expect(await exists(targetFile)).toBe(true)
   expect(fs.readFileSync(targetFile, 'utf8').trim()).toBe(fs.readFileSync(sourceFile, 'utf8').trim())
+})
+sshit('explains a putFile onto a directory', async function (port, client) {
+  await connectWithPassword(port, client)
+  const directory = getFixturePath('ignored')
+  const message = (remote: string) =>
+    `Failure: ${remote} is a directory, pass the path of the file to write (such as ${directory}/test-program.js)`
+  await expect(client.putFile(getFixturePath('test-program.js'), directory)).rejects.toThrow(message(directory))
+  await expect(client.putFile(getFixturePath('test-program.js'), `${directory}/`)).rejects.toThrow(
+    message(`${directory}/`),
+  )
+  await expect(
+    client.putFile(getFixturePath('test-program.js'), directory, null, null, { atomic: true }),
+  ).rejects.toThrow(message(directory))
 })
 sshit('puts multiple files properly', async function (port, client) {
   await connectWithPassword(port, client)
@@ -914,9 +942,11 @@ sshitRecording(
     expect(fs.readFileSync(targetFile, 'utf8')).toBe('old')
     const temporaryFile = requests[0].paths[0]
     expect(isTemporaryFile(temporaryFile, targetFile)).toBe(true)
+    // After a bare "Failure", putFile checks whether the target is a directory (#312)
     expect(requests).toStrictEqual([
       { name: 'OPEN', paths: [temporaryFile] },
       { name: 'REMOVE', paths: [temporaryFile] },
+      { name: 'STAT', paths: [targetFile] },
     ])
     expect(fs.readdirSync(path.dirname(targetFile))).toStrictEqual(['target'])
   },
