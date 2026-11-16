@@ -120,6 +120,29 @@ function isReadableStream(value: unknown): value is stream.Readable {
   )
 }
 
+// How long dispose() waits for SFTP close replies before disconnecting anyway.
+const DISPOSE_SFTP_CLOSE_TIMEOUT = 2000
+
+// Track SFTP close requests that are still waiting for the server's reply, so dispose() can wait for
+// them. SFTP read and write streams close their remote file handle only after 'end' or 'finish'; code
+// that disposes right then would otherwise drop the reply, and the stream would emit
+// "No response from server" (#471).
+function trackSftpCloses(sftp: SFTPWrapper, pending: Set<Promise<void>>): void {
+  const close = sftp.close.bind(sftp)
+  sftp.close = (handle, callback) => {
+    let settle: () => void = DEFAULT_TICK
+    const reply = new Promise<void>((resolve) => {
+      settle = resolve
+    })
+    pending.add(reply)
+    close(handle, (err) => {
+      pending.delete(reply)
+      settle()
+      if (typeof callback === 'function') callback(err)
+    })
+  }
+}
+
 function unixifyPath(path: string) {
   if (path.includes('\\')) {
     return path.split('\\').join('/')
@@ -185,6 +208,7 @@ async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
 
 export class NodeSSH {
   connection: SSH2.Client | null = null
+  private sftpCloses: WeakMap<SSH2.Client, Set<Promise<void>>> = new WeakMap()
 
   private getConnection(): SSH2.Client {
     const { connection } = this
@@ -345,6 +369,12 @@ export class NodeSSH {
         if (err) {
           reject(err)
         } else {
+          let pending = this.sftpCloses.get(connection)
+          if (pending == null) {
+            pending = new Set()
+            this.sftpCloses.set(connection, pending)
+          }
+          trackSftpCloses(res, pending)
           resolve(res)
         }
       })
@@ -950,9 +980,22 @@ export class NodeSSH {
   }
 
   dispose(): void {
-    if (this.connection) {
-      this.connection.end()
-      this.connection = null
+    const { connection } = this
+    if (connection == null) {
+      return
     }
+    this.connection = null
+
+    const pending = this.sftpCloses.get(connection)
+    if (pending == null || pending.size === 0) {
+      connection.end()
+      return
+    }
+    // Disconnect once the server has answered the SFTP close requests already sent, or after a timeout.
+    const timer = setTimeout(() => connection.end(), DISPOSE_SFTP_CLOSE_TIMEOUT)
+    Promise.all(pending).then(() => {
+      clearTimeout(timer)
+      connection.end()
+    })
   }
 }

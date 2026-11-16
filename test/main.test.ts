@@ -523,3 +523,40 @@ sshit('decodes base64 output split across data chunks', async function (port, cl
   const result = await client.exec('node', ['-e', script], { stream: 'stdout', encoding: 'base64' })
   expect(result).toBe(expected)
 })
+test('dispose waits for SFTP close replies still in flight', async function () {
+  // The server answers SFTP CLOSE after 50ms. A read stream sends CLOSE only after 'end', so disposing
+  // on 'end' used to drop the reply and the stream emitted "No response from server" (#471).
+  ports += 1
+  const port = ports
+  const server = createServer({ sftpCloseDelay: 50 })
+  await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
+  const client = new NodeSSH()
+  try {
+    await connectWithPassword(port, client)
+    const sftp = await client.requestSFTP()
+    const filePath = getFixturePath('multiple/aa')
+    // explicit end: the test server's READ never reports EOF
+    const stream = sftp.createReadStream(filePath, { start: 0, end: fs.statSync(filePath).size - 1 })
+    const errors: Error[] = []
+    await new Promise((resolve, reject) => {
+      stream.resume()
+      stream.once('error', reject)
+      stream.once('end', resolve)
+    })
+    // The stream emits 'close' once the server answers CLOSE, or 'error' if the reply never comes
+    const closedOrFailed = new Promise((resolve) => {
+      stream.once('close', resolve)
+      stream.on('error', (error: Error) => {
+        errors.push(error)
+        resolve(undefined)
+      })
+    })
+    client.dispose()
+    expect(client.isConnected()).toBe(false)
+    await closedOrFailed
+    expect(errors.map((error) => error.message)).toStrictEqual([])
+  } finally {
+    await new Promise((resolve) => server.close(resolve))
+  }
+})
+

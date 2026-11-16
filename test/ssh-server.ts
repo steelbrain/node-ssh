@@ -8,7 +8,12 @@ import { PRIVATE_KEY_PATH } from './helpers'
 
 const { STATUS_CODE } = ((ssh2.utils as unknown) as { sftp: { STATUS_CODE: Record<string, string> } }).sftp
 
-function handleSFTP(accept) {
+export interface ServerOptions {
+  // Answer SFTP CLOSE requests after this many milliseconds, like a remote server would
+  sftpCloseDelay?: number
+}
+
+function handleSFTP(accept, options: ServerOptions) {
   const sftpStream = accept()
 
   let dirHandle = 105185
@@ -89,7 +94,11 @@ function handleSFTP(accept) {
       FS.close(handle, function () {
         /* No Op */
       })
-      sftpStream.status(reqId, STATUS_CODE.OK)
+      if (options.sftpCloseDelay) {
+        setTimeout(() => sftpStream.status(reqId, STATUS_CODE.OK), options.sftpCloseDelay)
+      } else {
+        sftpStream.status(reqId, STATUS_CODE.OK)
+      }
     } else {
       sftpStream.status(reqId, STATUS_CODE.FAILURE)
     }
@@ -151,7 +160,7 @@ function handleSFTP(accept) {
   })
 }
 
-function handleSession(acceptSession) {
+function handleSession(acceptSession, options: ServerOptions) {
   const session = acceptSession()
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let ptyInfo: Record<string, any> | null = null
@@ -183,7 +192,7 @@ function handleSession(acceptSession) {
     spawnedProcess.stdout?.pipe(response.stdout)
     spawnedProcess.stderr?.pipe(response.stderr)
   })
-  session.on('sftp', handleSFTP)
+  session.on('sftp', (accept) => handleSFTP(accept, options))
 }
 
 function handleAuthentication(ctx) {
@@ -198,7 +207,7 @@ function handleAuthentication(ctx) {
   }
 }
 
-export default function createServer(): ssh2.Server {
+export default function createServer(options: ServerOptions = {}): ssh2.Server {
   const server = new ssh2.Server(
     {
       hostKeys: [FS.readFileSync(PRIVATE_KEY_PATH)],
@@ -206,7 +215,7 @@ export default function createServer(): ssh2.Server {
     function (client) {
       client.setNoDelay(true)
       client.on('authentication', handleAuthentication)
-      client.on('session', handleSession)
+      client.on('session', (accept) => handleSession(accept, options))
     },
   )
   return server
