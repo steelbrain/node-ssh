@@ -21,7 +21,7 @@
   },
   "type": "commonjs",
   "scripts": {
-    "test": "ava",
+    "test": "vitest run",
     "lint": "(tsc -p . --noEmit) && (oxlint) && (oxfmt --check src/*.ts)",
     "prepare": "yarn build",
     "build": "zshy"
@@ -48,15 +48,14 @@
     "@types/node": "22",
     "@types/shell-escape": "^0.2.3",
     "@types/ssh2": "^1.15.6",
-    "ava": "^8.4.0",
-    "esbuild": "^0.28.2",
-    "esbuild-register": "^3.6.0",
     "node-pty": "^1.1.0",
     "oxfmt": "^0.78.0",
     "oxlint": "^1.93.0",
     "ssh2": "^1.17.0",
     "ssh2-streams": "^0.4.10",
     "typescript": "^6.0.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.0",
     "zshy": "^0.8.1"
   },
   "dependencies": {
@@ -64,18 +63,6 @@
     "sb-scandir": "^3.1.1",
     "shell-escape": "^0.2.0",
     "ssh2": "^1.17.0"
-  },
-  "ava": {
-    "files": [
-      "test/*-test.ts"
-    ],
-    "extensions": [
-      "ts"
-    ],
-    "require": [
-      "./test/register-ts.mjs",
-      "esbuild-register"
-    ]
   },
   "engines": {
     "node": ">=22"

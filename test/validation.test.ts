@@ -1,8 +1,8 @@
-import test, { ExecutionContext } from 'ava'
 import dns from 'dns'
 import fs from 'fs'
 import net, { Socket } from 'net'
 import path from 'path'
+import { expect, test } from 'vitest'
 
 import { Config, NodeSSH } from '../src'
 import { PRIVATE_KEY_PATH, PRIVATE_KEY_PPK_PATH } from './helpers'
@@ -17,18 +17,12 @@ async function normalizeConfig(config: Config) {
   return new NodeSSH().connect(config)
 }
 
-async function throwsAsync(t: ExecutionContext<unknown>, callback: () => Promise<void>, message: string): Promise<void> {
-  try {
-    await callback()
-    t.fail('Test did not throw')
-  } catch (err) {
-    t.is(err.message, message)
-  }
+async function throwsAsync(callback: () => Promise<void>, message: string): Promise<void> {
+  await expect(callback()).rejects.toHaveProperty('message', message)
 }
 
-test('throws if neither host or sock is provided', async function (t) {
+test('throws if neither host or sock is provided', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asdasd',
@@ -37,9 +31,8 @@ test('throws if neither host or sock is provided', async function (t) {
     'Either config.host or config.sock must be provided',
   )
 })
-test('throws if sock is not valid', async function (t) {
+test('throws if sock is not valid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -49,7 +42,6 @@ test('throws if sock is not valid', async function (t) {
     'config.sock must be a valid object',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -59,7 +51,6 @@ test('throws if sock is not valid', async function (t) {
     'config.sock must be a valid object',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -69,7 +60,6 @@ test('throws if sock is not valid', async function (t) {
     'config.sock must be a valid object',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -79,9 +69,8 @@ test('throws if sock is not valid', async function (t) {
     'Either config.host or config.sock must be provided',
   )
 })
-test('does not throw if sock is valid', async function (t) {
+test('does not throw if sock is valid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -91,9 +80,8 @@ test('does not throw if sock is valid', async function (t) {
     'Socket is closed',
   )
 })
-test('throws if host is not valid', async function (t) {
+test('throws if host is not valid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -103,7 +91,6 @@ test('throws if host is not valid', async function (t) {
     'config.host must be a valid string',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -113,7 +100,6 @@ test('throws if host is not valid', async function (t) {
     'config.host must be a valid string',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -123,7 +109,6 @@ test('throws if host is not valid', async function (t) {
     'Either config.host or config.sock must be provided',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -133,7 +118,6 @@ test('throws if host is not valid', async function (t) {
     'config.host must be a valid string',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -143,9 +127,8 @@ test('throws if host is not valid', async function (t) {
     'connect ECONNREFUSED 127.0.0.1:22',
   )
 })
-test('does not throw if host is valid', async function (t) {
+test('does not throw if host is valid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -155,9 +138,8 @@ test('does not throw if host is valid', async function (t) {
     'connect ECONNREFUSED 127.0.0.1:22',
   )
 })
-test('does not throw if username is not present', async function (t) {
+test('does not throw if username is not present', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -167,9 +149,8 @@ test('does not throw if username is not present', async function (t) {
     'connect ECONNREFUSED 127.0.0.1:22',
   )
 })
-test('throws if username is not valid', async function (t) {
+test('throws if username is not valid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         host: 'localhost',
@@ -179,7 +160,6 @@ test('throws if username is not valid', async function (t) {
     'config.username must be a valid string',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         host: 'localhost',
@@ -189,9 +169,8 @@ test('throws if username is not valid', async function (t) {
     'config.username must be a valid string',
   )
 })
-test('does not throw if username is valid', async function (t) {
+test('does not throw if username is valid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         host: 'localhost',
@@ -201,9 +180,8 @@ test('does not throw if username is valid', async function (t) {
     'connect ECONNREFUSED 127.0.0.1:22',
   )
 })
-test('does not throw if password is not present', async function (t) {
+test('does not throw if password is not present', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'stee',
@@ -213,9 +191,8 @@ test('does not throw if password is not present', async function (t) {
     'connect ECONNREFUSED 127.0.0.1:22',
   )
 })
-test('throws if password is invalid', async function (t) {
+test('throws if password is invalid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         host: 'localhost',
@@ -226,7 +203,6 @@ test('throws if password is invalid', async function (t) {
     'config.password must be a valid string',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         host: 'localhost',
@@ -237,7 +213,6 @@ test('throws if password is invalid', async function (t) {
     'config.password must be a valid string',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         host: 'localhost',
@@ -250,9 +225,8 @@ test('throws if password is invalid', async function (t) {
     'config.password must be a valid string',
   )
 })
-test('does not throw if password is valid', async function (t) {
+test('does not throw if password is valid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         host: 'localhost',
@@ -263,9 +237,8 @@ test('does not throw if password is valid', async function (t) {
     'connect ECONNREFUSED 127.0.0.1:22',
   )
 })
-test('does not throw if privateKey is not present', async function (t) {
+test('does not throw if privateKey is not present', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         host: 'localhost',
@@ -275,9 +248,8 @@ test('does not throw if privateKey is not present', async function (t) {
     'connect ECONNREFUSED 127.0.0.1:22',
   )
 })
-test('throws if privateKey is invalid', async function (t) {
+test('throws if privateKey is invalid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -288,7 +260,6 @@ test('throws if privateKey is invalid', async function (t) {
     'config.privateKey must be a valid string',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -299,7 +270,6 @@ test('throws if privateKey is invalid', async function (t) {
     'config.privateKey must be a valid string',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -312,10 +282,9 @@ test('throws if privateKey is invalid', async function (t) {
     'config.privateKey must be a valid string',
   )
 })
-test('throws if privateKey is a file and does not exist', async function (t) {
+test('throws if privateKey is a file and does not exist', async function () {
   const keyPath = path.join(__dirname, 'fixtures', 'non-existent.pub')
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -326,9 +295,8 @@ test('throws if privateKey is a file and does not exist', async function (t) {
     `config.privateKeyPath does not exist at given fs path`,
   )
 })
-test('throws if privateKey is specified and so is privateKeyPath', async function (t) {
+test('throws if privateKey is specified and so is privateKeyPath', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -340,9 +308,8 @@ test('throws if privateKey is specified and so is privateKeyPath', async functio
     `config.privateKeyPath must not be specified when config.privateKey is specified`,
   )
 })
-test('does not throw if privateKey is valid', async function (t) {
+test('does not throw if privateKey is valid', async function () {
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -353,7 +320,6 @@ test('does not throw if privateKey is valid', async function (t) {
     'connect ECONNREFUSED 127.0.0.1:22',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',
@@ -364,7 +330,6 @@ test('does not throw if privateKey is valid', async function (t) {
     'connect ECONNREFUSED 127.0.0.1:22',
   )
   await throwsAsync(
-    t,
     async function () {
       await normalizeConfig({
         username: 'asd',

@@ -1,9 +1,9 @@
 import invariant from 'assert'
-import test, { ExecutionContext } from 'ava'
 import ChildProcess from 'child_process'
 import fs from 'fs'
 import path from 'path'
 import { Server } from 'ssh2'
+import { afterAll, beforeAll, expect, test } from 'vitest'
 
 import { NodeSSH } from '../src'
 import { PRIVATE_KEY_PATH, exists, wait } from './helpers'
@@ -16,11 +16,11 @@ function getFixturePath(fixturePath: string): string {
 }
 function sshit(
   title: string,
-  callback: (t: ExecutionContext<unknown>, port: number, client: NodeSSH, server: Server) => Promise<void>,
+  callback: (port: number, client: NodeSSH, server: Server) => Promise<void>,
   skip = false,
 ): void {
   const testFunc = skip ? test.skip : test
-  testFunc(title, async function (t) {
+  testFunc(title, async function () {
     ports += 1
 
     const server = createServer()
@@ -30,7 +30,7 @@ function sshit(
       server.listen(port, '127.0.0.1', resolve)
     })
     try {
-      await callback(t, port, client, server)
+      await callback(port, client, server)
     } finally {
       client.dispose()
       await new Promise(function (resolve) {
@@ -65,33 +65,27 @@ async function connectWithInlinePrivateKey(port, client) {
   })
 }
 
-test.after(function () {
-  ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
-  ChildProcess.exec(`rm -rf ${getFixturePath('ignored-2/*')}`)
+afterAll(function () {
+  ChildProcess.execSync(`rm -rf ${getFixturePath('ignored/*')}`)
+  ChildProcess.execSync(`rm -rf ${getFixturePath('ignored-2/*')}`)
 })
-test.before(function () {
-  ChildProcess.exec(`rm -rf ${getFixturePath('ignored/*')}`)
-  ChildProcess.exec(`rm -rf ${getFixturePath('ignored-2/*')}`)
+beforeAll(function () {
+  ChildProcess.execSync(`rm -rf ${getFixturePath('ignored/*')}`)
+  ChildProcess.execSync(`rm -rf ${getFixturePath('ignored-2/*')}`)
 })
 
-sshit('connects to a server with password', async function (t, port, client) {
-  await t.notThrowsAsync(async function () {
-    await connectWithPassword(port, client)
-  })
+sshit('connects to a server with password', async function (port, client) {
+  await expect(connectWithPassword(port, client)).resolves.not.toThrow()
 })
-sshit('connects to a server with a private key', async function (t, port, client) {
-  await t.notThrowsAsync(async function () {
-    await connectWithPrivateKey(port, client)
-  })
+sshit('connects to a server with a private key', async function (port, client) {
+  await expect(connectWithPrivateKey(port, client)).resolves.not.toThrow()
 })
-sshit('connects to a server with an inline private key', async function (t, port, client) {
-  await t.notThrowsAsync(async function () {
-    await connectWithInlinePrivateKey(port, client)
-  })
+sshit('connects to a server with an inline private key', async function (port, client) {
+  await expect(connectWithInlinePrivateKey(port, client)).resolves.not.toThrow()
 })
 sshit(
   'requests a shell that works',
-  async function (t, port, client) {
+  async function (port, client) {
     await connectWithPassword(port, client)
     const data: Buffer[] = []
     const shell = await client.requestShell()
@@ -102,90 +96,80 @@ sshit(
     await wait(50)
     shell.end()
     const joinedData = data.join('')
-    t.regex(joinedData, /ls \//)
+    expect(joinedData).toMatch(/ls \//)
   },
   true,
 )
 
-sshit('creates directories with sftp properly', async function (t, port, client) {
+sshit('creates directories with sftp properly', async function (port, client) {
   await connectWithPassword(port, client)
-  t.is(await exists(getFixturePath('ignored/a/b')), false)
+  expect(await exists(getFixturePath('ignored/a/b'))).toBe(false)
   await client.mkdir(getFixturePath('ignored/a/b'), 'sftp')
-  t.is(await exists(getFixturePath('ignored/a/b')), true)
+  expect(await exists(getFixturePath('ignored/a/b'))).toBe(true)
 })
-sshit('creates directories with exec properly', async function (t, port, client) {
+sshit('creates directories with exec properly', async function (port, client) {
   await connectWithPassword(port, client)
-  t.is(await exists(getFixturePath('ignored/c/d')), false)
+  expect(await exists(getFixturePath('ignored/c/d'))).toBe(false)
   await client.mkdir(getFixturePath('ignored/c/d'), 'exec')
-  t.is(await exists(getFixturePath('ignored/c/d')), true)
+  expect(await exists(getFixturePath('ignored/c/d'))).toBe(true)
 })
-sshit('throws error when it cant create directories', async function (t, port, client) {
+sshit('throws error when it cant create directories', async function (port, client) {
   await connectWithPassword(port, client)
-  try {
-    await client.mkdir('/etc/passwd/asdasdasd')
-    t.is(false, true)
-  } catch (_) {
-    t.is(_.message.indexOf('ENOTDIR: not a directory') !== -1, true)
-  }
+  await expect(client.mkdir('/etc/passwd/asdasdasd')).rejects.toThrow('ENOTDIR: not a directory')
 })
-sshit('exec with correct escaped parameters', async function (t, port, client) {
+sshit('exec with correct escaped parameters', async function (port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('echo', ['$some', 'S\\Thing', '"Yo"'])
-  t.is(result, '$some S\\Thing "Yo"')
+  expect(result).toBe('$some S\\Thing "Yo"')
 })
-sshit('exec with correct cwd', async function (t, port, client) {
+sshit('exec with correct cwd', async function (port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('pwd', [], { cwd: '/etc' })
-  t.is(result, '/etc')
+  expect(result).toBe('/etc')
 })
-sshit('throws if stream is stdout and stuff is written to stderr', async function (t, port, client) {
+sshit('throws if stream is stdout and stuff is written to stderr', async function (port, client) {
   await connectWithPassword(port, client)
-  try {
-    await client.exec('node', ['-e', 'console.error("Test")'])
-    t.is(false, true)
-  } catch (_) {
-    t.is(_.message, 'Test')
-  }
+  await expect(client.exec('node', ['-e', 'console.error("Test")'])).rejects.toHaveProperty('message', 'Test')
 })
-sshit('does not throw if stream is stderr and is written to', async function (t, port, client) {
+sshit('does not throw if stream is stderr and is written to', async function (port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('node', ['-e', 'console.error("Test")'], { stream: 'stderr' })
-  t.is(result, 'Test')
+  expect(result).toBe('Test')
 })
-sshit('returns both streams if asked to', async function (t, port, client) {
+sshit('returns both streams if asked to', async function (port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('node', ['-e', 'console.log("STDOUT"); console.error("STDERR")'], { stream: 'both' })
   invariant(typeof result === 'object' && result)
-  t.is(result.stdout, 'STDOUT')
+  expect(result.stdout).toBe('STDOUT')
   // STDERR tests are flaky on CI
   if (!process.env.CI) {
-    t.is(result.stderr, 'STDERR')
+    expect(result.stderr).toBe('STDERR')
   }
 })
-sshit('writes to stdin properly', async function (t, port, client) {
+sshit('writes to stdin properly', async function (port, client) {
   await connectWithPassword(port, client)
   const result = await client.exec('node', ['-e', 'process.stdin.pipe(process.stdout)'], { stdin: 'Twinkle!\nStars!' })
-  t.is(result, 'Twinkle!\nStars!')
+  expect(result).toBe('Twinkle!\nStars!')
 })
-sshit('gets files properly', async function (t, port, client) {
+sshit('gets files properly', async function (port, client) {
   await connectWithPassword(port, client)
   const sourceFile = __filename
   const targetFile = getFixturePath('ignored/test-get')
-  t.is(await exists(targetFile), false)
+  expect(await exists(targetFile)).toBe(false)
   await client.getFile(targetFile, sourceFile)
-  t.is(await exists(targetFile), true)
-  t.is(fs.readFileSync(targetFile, 'utf8').trim(), fs.readFileSync(sourceFile, 'utf8').trim())
+  expect(await exists(targetFile)).toBe(true)
+  expect(fs.readFileSync(targetFile, 'utf8').trim()).toBe(fs.readFileSync(sourceFile, 'utf8').trim())
 })
-sshit('puts files properly', async function (t, port, client) {
+sshit('puts files properly', async function (port, client) {
   await connectWithPassword(port, client)
   const sourceFile = __filename
   const targetFile = getFixturePath('ignored/test-put')
-  t.is(await exists(targetFile), false)
+  expect(await exists(targetFile)).toBe(false)
   await client.putFile(sourceFile, targetFile)
-  t.is(await exists(targetFile), true)
-  t.is(fs.readFileSync(targetFile, 'utf8').trim(), fs.readFileSync(sourceFile, 'utf8').trim())
+  expect(await exists(targetFile)).toBe(true)
+  expect(fs.readFileSync(targetFile, 'utf8').trim()).toBe(fs.readFileSync(sourceFile, 'utf8').trim())
 })
-sshit('puts multiple files properly', async function (t, port, client) {
+sshit('puts multiple files properly', async function (port, client) {
   await connectWithPassword(port, client)
 
   const files = [
@@ -200,12 +184,12 @@ sshit('puts multiple files properly', async function (t, port, client) {
     { local: getFixturePath('multiple/jj'), remote: getFixturePath('ignored/jj') },
   ]
   const existsBefore = await Promise.all(files.map((file) => exists(file.remote)))
-  t.is(existsBefore.every(Boolean), false)
+  expect(existsBefore.every(Boolean)).toBe(false)
   await client.putFiles(files)
   const existsAfter = await Promise.all(files.map((file) => exists(file.remote)))
-  t.is(existsAfter.every(Boolean), true)
+  expect(existsAfter.every(Boolean)).toBe(true)
 })
-sshit('puts entire directories at once', async function (t, port, client) {
+sshit('puts entire directories at once', async function (port, client) {
   await connectWithPassword(port, client)
   const remoteFiles = [
     getFixturePath('ignored/aa'),
@@ -224,21 +208,21 @@ sshit('puts entire directories at once', async function (t, port, client) {
   ]
   const filesReceived: string[] = []
   const existsBefore = await Promise.all(remoteFiles.map((file) => exists(file)))
-  t.is(existsBefore.every(Boolean), false)
+  expect(existsBefore.every(Boolean)).toBe(false)
   await client.putDirectory(getFixturePath('multiple'), getFixturePath('ignored'), {
     tick(local, remote, error) {
-      t.is(error, null)
-      t.is(remoteFiles.indexOf(remote) !== -1, true)
+      expect(error).toBe(null)
+      expect(remoteFiles.indexOf(remote) !== -1).toBe(true)
       filesReceived.push(remote)
     },
   })
   remoteFiles.sort()
   filesReceived.sort()
-  t.deepEqual(remoteFiles, filesReceived)
+  expect(remoteFiles).toStrictEqual(filesReceived)
   const existsAfter = await Promise.all(remoteFiles.map((file) => exists(file)))
-  t.is(existsAfter.every(Boolean), true)
+  expect(existsAfter.every(Boolean)).toBe(true)
 })
-sshit('gets entire directories at once', async function (t, port, client) {
+sshit('gets entire directories at once', async function (port, client) {
   await connectWithPassword(port, client)
   const localFiles = [
     getFixturePath('ignored-2/aa'),
@@ -257,21 +241,21 @@ sshit('gets entire directories at once', async function (t, port, client) {
   ]
   const filesReceived: string[] = []
   const existsBefore = await Promise.all(localFiles.map((file) => exists(file)))
-  t.is(existsBefore.every(Boolean), false)
+  expect(existsBefore.every(Boolean)).toBe(false)
   await client.getDirectory(getFixturePath('ignored-2'), getFixturePath('multiple'), {
     tick(local, remote, error) {
-      t.is(error, null)
-      t.is(localFiles.indexOf(local) !== -1, true)
+      expect(error).toBe(null)
+      expect(localFiles.indexOf(local) !== -1).toBe(true)
       filesReceived.push(local)
     },
   })
   localFiles.sort()
   filesReceived.sort()
-  t.deepEqual(localFiles, filesReceived)
+  expect(localFiles).toStrictEqual(filesReceived)
   const existsAfter = await Promise.all(localFiles.map((file) => exists(file)))
-  t.is(existsAfter.every(Boolean), true)
+  expect(existsAfter.every(Boolean)).toBe(true)
 })
-sshit('allows stream callbacks on exec', async function (t, port, client) {
+sshit('allows stream callbacks on exec', async function (port, client) {
   await connectWithPassword(port, client)
   const outputFromCallbacks = { stdout: [] as Buffer[], stderr: [] as Buffer[] }
   await client.exec('node', [getFixturePath('test-program')], {
@@ -283,13 +267,13 @@ sshit('allows stream callbacks on exec', async function (t, port, client) {
       outputFromCallbacks.stdout.push(chunk)
     },
   })
-  t.is(outputFromCallbacks.stdout.join('').trim(), 'STDOUT')
+  expect(outputFromCallbacks.stdout.join('').trim()).toBe('STDOUT')
   // STDERR tests are flaky on CI
   if (!process.env.CI) {
-    t.is(outputFromCallbacks.stderr.join('').trim(), 'STDERR')
+    expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
   }
 })
-sshit('allows stream callbacks on execCommand', async function (t, port, client) {
+sshit('allows stream callbacks on execCommand', async function (port, client) {
   await connectWithPassword(port, client)
   const outputFromCallbacks = { stdout: [] as Buffer[], stderr: [] as Buffer[] }
   await client.execCommand(`node ${getFixturePath('test-program')}`, {
@@ -300,13 +284,13 @@ sshit('allows stream callbacks on execCommand', async function (t, port, client)
       outputFromCallbacks.stdout.push(chunk)
     },
   })
-  t.is(outputFromCallbacks.stdout.join('').trim(), 'STDOUT')
+  expect(outputFromCallbacks.stdout.join('').trim()).toBe('STDOUT')
   // STDERR tests are flaky on CI
   if (!process.env.CI) {
-    t.is(outputFromCallbacks.stderr.join('').trim(), 'STDERR')
+    expect(outputFromCallbacks.stderr.join('').trim()).toBe('STDERR')
   }
 })
-sshit('forwards an outbound TCP/IP connection from client', async function (t, port, client, server) {
+sshit('forwards an outbound TCP/IP connection from client', async function (port, client, server) {
   const SRC_IP = '127.0.0.1'
   const SRC_PORT = 1212
   const DEST_IP = '127.0.0.2'
@@ -316,23 +300,23 @@ sshit('forwards an outbound TCP/IP connection from client', async function (t, p
     server.on('connection', async (connection) => {
       connection.once('ready', async () => {
         const channel = await client.forwardOut(SRC_IP, SRC_PORT, DEST_IP, DEST_PORT)
-        t.true(channel.readable)
+        expect(channel.readable).toBe(true)
         resolve(undefined)
       })
 
       // Approve first TCP/IP request.
       connection.once('tcpip', (accept, reject, info) => {
-        t.is(info.destIP, DEST_IP)
-        t.is(info.destPort, DEST_PORT)
-        t.is(info.srcIP, SRC_IP)
-        t.is(info.srcPort, SRC_PORT)
+        expect(info.destIP).toBe(DEST_IP)
+        expect(info.destPort).toBe(DEST_PORT)
+        expect(info.srcIP).toBe(SRC_IP)
+        expect(info.srcPort).toBe(SRC_PORT)
         accept()
       })
     })
     connectWithPassword(port, client)
   })
 })
-sshit('forwards an inbound TCP/IP connection to client', async function (t, port, client, server) {
+sshit('forwards an inbound TCP/IP connection to client', async function (port, client, server) {
   const IP = '127.0.0.1'
   const PORT = 1212
   const REMOTE_IP = '127.0.0.2'
@@ -343,16 +327,16 @@ sshit('forwards an inbound TCP/IP connection to client', async function (t, port
       connection.once('ready', async () => {
         // Wait for a connection.
         const { port: forwardPort, dispose } = await client.forwardIn(IP, PORT, (details) => {
-          t.is(details.destIP, IP)
-          t.is(details.destPort, PORT)
-          t.is(details.srcIP, REMOTE_IP)
-          t.is(details.srcPort, REMOTE_PORT)
+          expect(details.destIP).toBe(IP)
+          expect(details.destPort).toBe(PORT)
+          expect(details.srcIP).toBe(REMOTE_IP)
+          expect(details.srcPort).toBe(REMOTE_PORT)
 
           // Expect to get an unforward request on server.
           connection.once('request', (accept, reject, name, info) => {
-            t.is(name, 'cancel-tcpip-forward')
-            t.is(info.bindAddr, IP)
-            t.is(info.bindPort, PORT)
+            expect(name).toBe('cancel-tcpip-forward')
+            expect(info.bindAddr).toBe(IP)
+            expect(info.bindPort).toBe(PORT)
             accept()
             resolve(undefined)
           })
@@ -360,15 +344,15 @@ sshit('forwards an inbound TCP/IP connection to client', async function (t, port
           setTimeout(() => dispose(), 100)
         })
 
-        t.truthy(dispose)
-        t.is(forwardPort, PORT)
+        expect(dispose).toBeTruthy()
+        expect(forwardPort).toBe(PORT)
       })
 
       // Expect to get a request on server.
       connection.once('request', (accept, reject, name, info) => {
-        t.is(name, 'tcpip-forward')
-        t.is(info.bindAddr, IP)
-        t.is(info.bindPort, PORT)
+        expect(name).toBe('tcpip-forward')
+        expect(info.bindAddr).toBe(IP)
+        expect(info.bindPort).toBe(PORT)
         accept?.(PORT)
 
         // Simulate a connection
@@ -380,27 +364,27 @@ sshit('forwards an inbound TCP/IP connection to client', async function (t, port
     connectWithPassword(port, client)
   })
 })
-sshit('forwards an outbound UNIX socket connection from client', async function (t, port, client, server) {
+sshit('forwards an outbound UNIX socket connection from client', async function (port, client, server) {
   const PATH = '/run/test.sock'
 
   await new Promise((resolve) => {
     server.on('connection', async (connection) => {
       connection.once('ready', async () => {
         const channel = await client.forwardOutStreamLocal(PATH)
-        t.true(channel.readable)
+        expect(channel.readable).toBe(true)
         resolve(undefined)
       })
 
       // Approve first UNIX socket request.
       connection.once('openssh.streamlocal', (accept, reject, info) => {
-        t.is(info.socketPath, PATH)
+        expect(info.socketPath).toBe(PATH)
         accept()
       })
     })
     connectWithPassword(port, client)
   })
 })
-sshit('forwards an inbound UNIX socket connection to client', async function (t, port, client, server) {
+sshit('forwards an inbound UNIX socket connection to client', async function (port, client, server) {
   const PATH = '/run/test.sock'
 
   await new Promise((resolve) => {
@@ -408,12 +392,12 @@ sshit('forwards an inbound UNIX socket connection to client', async function (t,
       connection.once('ready', async () => {
         // Wait for a connection.
         const { dispose } = await client.forwardInStreamLocal(PATH, (details) => {
-          t.is(details.socketPath, PATH)
+          expect(details.socketPath).toBe(PATH)
 
           // Expect to get an unforward request on server.
           connection.once('request', (accept, reject, name, info) => {
-            t.is(name, 'cancel-streamlocal-forward@openssh.com')
-            t.is(info.socketPath, PATH)
+            expect(name).toBe('cancel-streamlocal-forward@openssh.com')
+            expect(info.socketPath).toBe(PATH)
             accept()
             resolve(undefined)
           })
@@ -421,13 +405,13 @@ sshit('forwards an inbound UNIX socket connection to client', async function (t,
           setTimeout(() => dispose(), 100)
         })
 
-        t.truthy(dispose)
+        expect(dispose).toBeTruthy()
       })
 
       // Expect to get a request on server.
       connection.once('request', (accept, reject, name, info) => {
-        t.is(name, 'streamlocal-forward@openssh.com')
-        t.is(info.socketPath, PATH)
+        expect(name).toBe('streamlocal-forward@openssh.com')
+        expect(info.socketPath).toBe(PATH)
         accept?.()
 
         // Simulate a connection
@@ -440,7 +424,6 @@ sshit('forwards an inbound UNIX socket connection to client', async function (t,
   })
 })
 sshit('forwards an inbound TCP/IP connection to client with automatically assigned port', async function (
-  t,
   port,
   client,
   server,
@@ -455,16 +438,16 @@ sshit('forwards an inbound TCP/IP connection to client with automatically assign
       connection.once('ready', async () => {
         // Wait for a connection.
         const { port: forwardPort, dispose } = await client.forwardIn(IP, 0, (details) => {
-          t.is(details.destIP, IP)
-          t.is(details.destPort, PORT)
-          t.is(details.srcIP, REMOTE_IP)
-          t.is(details.srcPort, REMOTE_PORT)
+          expect(details.destIP).toBe(IP)
+          expect(details.destPort).toBe(PORT)
+          expect(details.srcIP).toBe(REMOTE_IP)
+          expect(details.srcPort).toBe(REMOTE_PORT)
 
           // Expect to get an unforward request on server.
           connection.once('request', (accept, reject, name, info) => {
-            t.is(name, 'cancel-tcpip-forward')
-            t.is(info.bindAddr, IP)
-            t.is(info.bindPort, PORT)
+            expect(name).toBe('cancel-tcpip-forward')
+            expect(info.bindAddr).toBe(IP)
+            expect(info.bindPort).toBe(PORT)
             accept()
             resolve(undefined)
           })
@@ -472,17 +455,17 @@ sshit('forwards an inbound TCP/IP connection to client with automatically assign
           setTimeout(() => dispose(), 100)
         })
 
-        t.truthy(dispose)
-        t.is(forwardPort, PORT)
+        expect(dispose).toBeTruthy()
+        expect(forwardPort).toBe(PORT)
       })
 
       // Expect to get a request on server.
       connection.once('request', (accept, reject, name, info) => {
-        t.is(name, 'tcpip-forward')
-        t.is(info.bindAddr, IP)
+        expect(name).toBe('tcpip-forward')
+        expect(info.bindAddr).toBe(IP)
 
         // Port equal to 0 -> server chooses the port dynamically.
-        t.is(info.bindPort, 0)
+        expect(info.bindPort).toBe(0)
         accept?.(PORT)
 
         // Simulate a connection
@@ -494,18 +477,18 @@ sshit('forwards an inbound TCP/IP connection to client with automatically assign
     connectWithPassword(port, client)
   })
 })
-sshit('has a working noTrim option', async function (t, port, client) {
+sshit('has a working noTrim option', async function (port, client) {
   await connectWithPassword(port, client)
   const resultWithTrim = await client.exec('echo', ["\nhello\n\n\n\n"], {stream: 'stdout'})
-  t.is(resultWithTrim, 'hello')
+  expect(resultWithTrim).toBe('hello')
 
   const resultWithoutTrim = await client.exec('echo', ['\n\n\nhi\n\n\n'], {stream: 'stdout', noTrim: true})
-  t.is(resultWithoutTrim, '\n\n\nhi\n\n\n\n')
+  expect(resultWithoutTrim).toBe('\n\n\nhi\n\n\n\n')
 
   const commandResult = await client.execCommand(
     'node -e "process.stdout.write(\'\\nstdout\\n\\n\'); process.stderr.write(\'\\nstderr\\n\\n\')"',
     { noTrim: true },
   )
-  t.is(commandResult.stdout, '\nstdout\n\n')
-  t.is(commandResult.stderr, '\nstderr\n\n')
+  expect(commandResult.stdout).toBe('\nstdout\n\n')
+  expect(commandResult.stderr).toBe('\nstderr\n\n')
 })
