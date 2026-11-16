@@ -27,6 +27,10 @@ import SSH2, {
 import { Readable } from 'stream'
 import { StringDecoder } from 'string_decoder'
 
+// The CommonJS build sets exports.__esModule. Declaring it tells TypeScript, so it rejects
+// `import NodeSSH from 'node-ssh'` instead of compiling it to an import that is undefined at runtime.
+export declare const __esModule: true
+
 export type Config = ConnectConfig & {
   password?: string
   privateKey?: string | Buffer
