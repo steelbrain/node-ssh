@@ -1268,16 +1268,16 @@ function exited(child: ChildProcess.ChildProcess): Promise<string | number | nul
   }
   return new Promise((resolve) => child.once('exit', (code, signal) => resolve(signal ?? code)))
 }
-// Whether a process in the command's process group still exists (the test server starts each command in its own)
+// Whether a process in the command's process group is still running (the test server starts each command in its
+// own). Zombies don't count: a killed command's child can stay a zombie in the group, when the orphaned child goes to
+// a PID 1 that doesn't reap it (like the `tail -f /dev/null` of GitHub Actions' job containers).
 function processGroupExists(child: ChildProcess.ChildProcess): boolean {
   invariant(child.pid != null)
-  try {
-    process.kill(-child.pid, 0)
-    return true
-  } catch (error) {
-    if (error.code === 'ESRCH') return false
-    throw error
-  }
+  const processes = ChildProcess.execFileSync('ps', ['-A', '-o', 'pgid=', '-o', 'stat='], { encoding: 'utf8' })
+  return processes.split('\n').some((line) => {
+    const [pgid, stat] = line.trim().split(/\s+/)
+    return Number(pgid) === child.pid && !stat.startsWith('Z')
+  })
 }
 function countTimers(): number {
   return process.getActiveResourcesInfo().filter((type) => type === 'Timeout').length
