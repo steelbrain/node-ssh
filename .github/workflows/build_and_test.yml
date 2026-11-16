@@ -9,8 +9,14 @@ jobs:
   build_and_test:
     runs-on: ubuntu-latest
 
+    strategy:
+      fail-fast: false
+      matrix:
+        # Node.js LTS lines
+        node: [ 22, 24, 26 ]
+
     container:
-      image: node:22
+      image: node:${{ matrix.node }}
 
     steps:
       - name: Checkout code
@@ -20,9 +26,14 @@ jobs:
         uses: actions/cache@v6
         with:
           path: '**/node_modules'
-          key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}
+          # node_modules holds node-pty built for one Node.js version, so key the cache by version
+          key: ${{ runner.os }}-node${{ matrix.node }}-yarn-${{ hashFiles('**/yarn.lock') }}
           restore-keys: |
-            ${{ runner.os }}-yarn-
+            ${{ runner.os }}-node${{ matrix.node }}-yarn-
+
+      # node:26 and later images no longer include Yarn
+      - name: Install Yarn
+        run: command -v yarn || npm install -g yarn@1.22.22
 
       - name: Packager Version
         run: yarn --version
