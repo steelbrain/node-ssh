@@ -49,6 +49,14 @@ export interface SSHExecCommandOptions {
   noTrim?: boolean
   // Only pass output to onStdout/onStderr; the returned stdout and stderr are empty strings
   noBuffer?: boolean
+  // Milliseconds, counted from the call. When they pass, ask the server to send killSignal to the command, close
+  // its channel and reject with an SSHError whose code is ETIMEDOUT.
+  timeout?: number
+  // When it aborts, ask the server to send killSignal to the command, close its channel and reject with signal.reason
+  signal?: AbortSignal
+  // The signal that timeout and signal send: ABRT, ALRM, FPE, HUP, ILL, INT, KILL, PIPE, QUIT, SEGV, TERM (the
+  // default), USR1 or USR2, with or without the SIG prefix
+  killSignal?: string
   onChannel?: (clientChannel: ClientChannel) => void
   onStdout?: (chunk: Buffer) => void
   onStderr?: (chunk: Buffer) => void
@@ -133,6 +141,50 @@ function isReadableStream(value: unknown): value is Readable {
     typeof candidate._read === 'function' &&
     typeof candidate._readableState === 'object'
   )
+}
+
+function isAbortSignal(value: unknown): value is AbortSignal {
+  const candidate = value as Record<string, unknown> | null
+  return (
+    candidate !== null &&
+    typeof candidate === 'object' &&
+    typeof candidate.aborted === 'boolean' &&
+    typeof candidate.addEventListener === 'function' &&
+    typeof candidate.removeEventListener === 'function'
+  )
+}
+
+// The signal names that the SSH "signal" channel request can carry (RFC 4254, section 6.10)
+const SSH_SIGNALS = ['ABRT', 'ALRM', 'FPE', 'HUP', 'ILL', 'INT', 'KILL', 'PIPE', 'QUIT', 'SEGV', 'TERM', 'USR1', 'USR2']
+// setTimeout fires right away when given a longer delay
+const MAX_TIMEOUT = 2 ** 31 - 1
+
+// 'TERM', 'SIGTERM' or 'sigterm' -> 'TERM'; null for names that SSH can't send
+function getSshSignalName(name: unknown): string | null {
+  if (typeof name !== 'string') return null
+  const upperCase = name.toUpperCase()
+  const signalName = upperCase.startsWith('SIG') ? upperCase.slice(3) : upperCase
+  return SSH_SIGNALS.includes(signalName) ? signalName : null
+}
+
+// Ask the server to send a signal to the command running on the channel, then close the channel. ssh2's
+// ClientChannel.signal() sends nothing once the channel's stdin has ended, and execCommand ends stdin right away
+// when there is nothing to write (#422). SSH allows channel requests after EOF, and OpenSSH acts on them, so send
+// the request through ssh2's protocol object, an internal API.
+function stopRemoteCommand(connection: SSH2.Client, channel: ClientChannel, signalName: string): void {
+  const { outgoing } = channel as unknown as { outgoing: { id: number; state: string } }
+  const protocol = (connection as unknown as { _protocol?: { signal(channelId: number, signalName: string): void } })
+    ._protocol
+  if (outgoing.state === 'open' || outgoing.state === 'eof') {
+    if (protocol != null) {
+      protocol.signal(outgoing.id, signalName)
+    } else {
+      channel.signal(signalName)
+    }
+  }
+  // Without a pseudo-TTY, OpenSSH leaves the command running when the channel closes. With one, it hangs up the
+  // terminal, which sends SIGHUP to the command.
+  channel.close()
 }
 
 // How long dispose() waits for SFTP close replies before disconnecting anyway.
@@ -589,6 +641,21 @@ export class NodeSSH {
     )
     invariant(options.noTrim == null || typeof options.noTrim === 'boolean', 'options.noTrim must be a boolean')
     invariant(options.noBuffer == null || typeof options.noBuffer === 'boolean', 'options.noBuffer must be a boolean')
+    const { timeout, signal: abortSignal } = options
+    invariant(
+      timeout == null || (typeof timeout === 'number' && timeout > 0 && timeout <= MAX_TIMEOUT),
+      `options.timeout must be a number greater than 0 and at most ${MAX_TIMEOUT}`,
+    )
+    invariant(abortSignal == null || isAbortSignal(abortSignal), 'options.signal must be a valid AbortSignal')
+    const killSignal = options.killSignal == null ? 'TERM' : getSshSignalName(options.killSignal)
+    invariant(
+      killSignal != null,
+      `options.killSignal must be one of ${SSH_SIGNALS.join(', ')}, with or without the SIG prefix`,
+    )
+    // Like Node.js APIs, reject with the reason of a signal that is already aborted, and don't start the command
+    if (abortSignal?.aborted) {
+      throw abortSignal.reason
+    }
 
     let command = givenCommand
 
@@ -604,26 +671,59 @@ export class NodeSSH {
     const stderrDecoder = new StringDecoder(options.encoding)
 
     return new Promise((resolve, reject) => {
+      // Set once the server has started the command
+      let execChannel: ClientChannel | null = null
+      // Set once the promise is rejected; the channel's events are ignored from then on
+      let failed = false
+      // Stop watching the connection, the timeout and the abort signal
+      const stopListening = (): void => {
+        stopWatching()
+        clearTimeout(timer)
+        abortSignal?.removeEventListener('abort', onAbort)
+      }
+      const fail = (error: unknown): void => {
+        if (failed) return
+        failed = true
+        stopListening()
+        reject(error)
+      }
+      // Timed out or aborted. Reject right away: without a pseudo-TTY, OpenSSH doesn't answer the channel close
+      // while the command runs, so a command that ignores the signal would keep the promise pending.
+      const cancel = (error: unknown): void => {
+        if (failed) return
+        fail(error)
+        // While the channel is still opening, the exec callback stops the command
+        if (execChannel != null) stopRemoteCommand(connection, execChannel, killSignal)
+      }
       // Watch until the channel closes. If the connection fails while the command runs, the channel closes
       // without an exit status, and resolving would make it look like the command finished. (#132)
-      const stopWatching = this.onConnectionError(connection, reject)
+      const stopWatching = this.onConnectionError(connection, fail)
+      const onAbort = (): void => cancel(abortSignal?.reason)
+      abortSignal?.addEventListener('abort', onAbort, { once: true })
+      const timer =
+        timeout != null
+          ? setTimeout(() => cancel(new SSHError(`Command timed out after ${timeout}ms`, 'ETIMEDOUT')), timeout)
+          : undefined
+
       connection.exec(command, options.execOptions != null ? options.execOptions : {}, (err, channel) => {
         if (err) {
-          stopWatching()
-          reject(err)
+          fail(err)
+          return
+        }
+        execChannel = channel
+        if (failed) {
+          // Rejected while the channel was opening, but the server has started the command
+          stopRemoteCommand(connection, channel, killSignal)
           return
         }
         // ssh2 calls these callbacks while it parses data from the server. An exception thrown there
         // would become an 'error' on the connection and close it, so reject and close only the channel.
-        let failed = false
         const callUserCallback = (callback: () => void): void => {
           if (failed) return
           try {
             callback()
           } catch (error) {
-            failed = true
-            stopWatching()
-            reject(error)
+            fail(error)
             channel.close()
           }
         }
@@ -660,8 +760,8 @@ export class NodeSSH {
           signal = signal_ ?? null
         })
         channel.on('close', () => {
-          stopWatching()
           if (failed) return
+          stopListening()
           let stdout = ''
           let stderr = ''
           if (options.noBuffer !== true) {

@@ -1,5 +1,6 @@
 import invariant from 'assert'
 import ChildProcess from 'child_process'
+import { getEventListeners } from 'events'
 import fs from 'fs'
 import net from 'net'
 import os from 'os'
@@ -7,7 +8,7 @@ import path from 'path'
 import { Client, Connection, Server, ServerChannel, SFTPWrapper } from 'ssh2'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 
-import { NodeSSH } from '../src'
+import { NodeSSH, SSHError } from '../src'
 import { PRIVATE_KEY_ENCRYPTED_PPK_PATH, PRIVATE_KEY_PATH, exists, wait } from './helpers'
 import createServer, { ServerOptions } from './ssh-server'
 
@@ -561,7 +562,6 @@ sshit('decodes multi-byte characters split across data chunks', async function (
 })
 sshit('decodes base64 output split across data chunks', async function (port, client) {
   await connectWithPassword(port, client)
-  // Bytes below 0x80: the test server decodes command output as UTF-8, which would mangle higher bytes
   const expected = Buffer.from(Array.from({ length: 100000 }, (_, i) => (i * 7) % 128)).toString('base64')
   const script = 'process.stdout.write(Buffer.from(Array.from({ length: 100000 }, (_, i) => (i * 7) % 128)))'
   const result = await client.exec('node', ['-e', script], { stream: 'stdout', encoding: 'base64' })
@@ -622,8 +622,6 @@ sshit('passes output only to the callbacks with noBuffer', async function (port,
   await expect(client.execCommand('ls', { noBuffer: 'yes' } as never)).rejects.toThrow('options.noBuffer must be a boolean')
 })
 
-// A server whose exec writes `mebibytes` MiB to stdout. The usual test server can't: it runs commands
-// with child_process.exec, which stops at 1 MiB.
 // A server whose SFTP subsystem runs `handler` on a plain channel instead of speaking SFTP
 async function withSubsystemServer(
   handler: (channel: ServerChannel) => void,
@@ -678,6 +676,7 @@ test('explains an SFTP subsystem that exits right away', async function () {
     },
   )
 })
+// A server whose exec writes `mebibytes` MiB to stdout without running a command
 async function withLargeOutputServer(mebibytes: number, callback: (client: NodeSSH) => Promise<void>): Promise<void> {
   ports += 1
   const port = ports
@@ -1185,5 +1184,200 @@ sshit('validates the skipUnchanged option', async function (port, client) {
   await expect(client.putFiles([], options)).rejects.toThrow(message)
   await expect(client.putDirectory(getFixturePath('multiple'), targetFile, options)).rejects.toThrow(message)
   expect(fs.existsSync(targetFile)).toBe(false)
+})
+
+// Like sshit, but connected, and the server passes the child process of each command to the test
+function sshitWithCommands(
+  title: string,
+  callback: (client: NodeSSH, commands: ChildProcess.ChildProcess[]) => Promise<void>,
+): void {
+  test(title, async function () {
+    ports += 1
+    const port = ports
+    const commands: ChildProcess.ChildProcess[] = []
+    const server = createServer({ onExec: (child) => commands.push(child) })
+    await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
+    const client = new NodeSSH()
+    try {
+      await connectWithPassword(port, client)
+      await callback(client, commands)
+    } finally {
+      client.dispose()
+      await new Promise((resolve) => server.close(resolve))
+    }
+  })
+}
+// Resolves with the name of the signal that ended the process, or with its exit code
+function exited(child: ChildProcess.ChildProcess): Promise<string | number | null> {
+  if (child.exitCode != null || child.signalCode != null) {
+    return Promise.resolve(child.signalCode ?? child.exitCode)
+  }
+  return new Promise((resolve) => child.once('exit', (code, signal) => resolve(signal ?? code)))
+}
+// Whether a process in the command's process group still exists (the test server starts each command in its own)
+function processGroupExists(child: ChildProcess.ChildProcess): boolean {
+  invariant(child.pid != null)
+  try {
+    process.kill(-child.pid, 0)
+    return true
+  } catch (error) {
+    if (error.code === 'ESRCH') return false
+    throw error
+  }
+}
+function countTimers(): number {
+  return process.getActiveResourcesInfo().filter((type) => type === 'Timeout').length
+}
+// `opened` resolves once execCommand calls `onChannel`
+function waitForChannel(): { opened: Promise<void>; onChannel: () => void } {
+  let resolveOpened = DEFAULT_IGNORE
+  const opened = new Promise<void>((resolve) => {
+    resolveOpened = resolve
+  })
+  return { opened, onChannel: () => resolveOpened() }
+}
+
+sshitWithCommands('rejects with ETIMEDOUT when a command runs longer than the timeout', async function (client) {
+  const result = client.execCommand('sleep 10', { timeout: 100 })
+  await expect(result).rejects.toBeInstanceOf(SSHError)
+  await expect(result).rejects.toMatchObject({ message: 'Command timed out after 100ms', code: 'ETIMEDOUT' })
+  await expect(client.exec('sleep', ['10'], { timeout: 100 })).rejects.toMatchObject({
+    message: 'Command timed out after 100ms',
+    code: 'ETIMEDOUT',
+  })
+  expect(client.isConnected()).toBe(true)
+  expect((await client.execCommand('echo still connected', { timeout: 2000 })).stdout).toBe('still connected')
+})
+sshitWithCommands('sends killSignal to the remote command when it times out', async function (client, commands) {
+  // The signal goes to the command's process group, like with OpenSSH, so the shell's child process stops too
+  await expect(client.execCommand('sleep 10; echo done', { timeout: 100 })).rejects.toMatchObject({ code: 'ETIMEDOUT' })
+  expect(await exited(commands[0])).toBe('SIGTERM')
+  await vi.waitFor(() => expect(processGroupExists(commands[0])).toBe(false))
+
+  await expect(client.execCommand('sleep 10', { timeout: 100, killSignal: 'SIGKILL' })).rejects.toMatchObject({
+    code: 'ETIMEDOUT',
+  })
+  expect(await exited(commands[1])).toBe('SIGKILL')
+  await expect(client.exec('sleep', ['10'], { timeout: 100, killSignal: 'int' })).rejects.toMatchObject({
+    code: 'ETIMEDOUT',
+  })
+  expect(await exited(commands[2])).toBe('SIGINT')
+})
+sshitWithCommands('stops the remote command and rejects with the reason when the signal aborts', async function (
+  client,
+  commands,
+) {
+  const controller = new AbortController()
+  const first = waitForChannel()
+  const result = client.execCommand('sleep 10; echo done', { signal: controller.signal, onChannel: first.onChannel })
+  await first.opened
+  controller.abort()
+  await expect(result).rejects.toMatchObject({ name: 'AbortError' })
+  expect(await exited(commands[0])).toBe('SIGTERM')
+  await vi.waitFor(() => expect(processGroupExists(commands[0])).toBe(false))
+
+  const reason = new Error('stopped by the test')
+  const secondController = new AbortController()
+  const second = waitForChannel()
+  const secondResult = client.exec('sleep', ['10'], {
+    signal: secondController.signal,
+    killSignal: 'KILL',
+    onChannel: second.onChannel,
+  })
+  await second.opened
+  secondController.abort(reason)
+  await expect(secondResult).rejects.toBe(reason)
+  expect(await exited(commands[1])).toBe('SIGKILL')
+})
+sshitWithCommands('stops the remote command when the signal aborts while its channel opens', async function (
+  client,
+  commands,
+) {
+  const controller = new AbortController()
+  const result = client.execCommand('sleep 10', { signal: controller.signal })
+  controller.abort()
+  await expect(result).rejects.toMatchObject({ name: 'AbortError' })
+  // The command starts once the channel is open, and node-ssh stops it right away
+  await vi.waitFor(() => expect(commands).toHaveLength(1))
+  expect(await exited(commands[0])).toBe('SIGTERM')
+})
+sshitWithCommands('rejects without starting the command when the signal is already aborted', async function (
+  client,
+  commands,
+) {
+  const { connection } = client
+  invariant(connection)
+  const exec = vi.spyOn(connection, 'exec')
+  const reason = new Error('aborted before the call')
+  await expect(client.execCommand('echo 1', { signal: AbortSignal.abort(reason) })).rejects.toBe(reason)
+  await expect(client.exec('echo', ['1'], { signal: AbortSignal.abort() })).rejects.toMatchObject({ name: 'AbortError' })
+  expect(exec).not.toHaveBeenCalled()
+  await wait(100)
+  expect(commands).toHaveLength(0)
+})
+sshitWithCommands('stops the timeout and the abort listener when a command finishes', async function (client, commands) {
+  const unhandled: unknown[] = []
+  const onUnhandled = (reason: unknown) => unhandled.push(reason)
+  process.on('unhandledRejection', onUnhandled)
+  try {
+    const controller = new AbortController()
+    const options = { timeout: 200, signal: controller.signal }
+    const timers = countTimers()
+    expect(await client.execCommand('echo done', options)).toMatchObject({ stdout: 'done', code: 0 })
+    expect(countTimers()).toBe(timers)
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0)
+
+    const throwing = () => {
+      throw new Error('thrown in a callback')
+    }
+    await expect(client.execCommand('echo 1', { ...options, onStdout: throwing })).rejects.toThrow('thrown in a callback')
+    expect(countTimers()).toBe(timers)
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0)
+
+    // Neither the timeout passing nor an abort afterwards signals the finished commands
+    controller.abort()
+    await wait(300)
+    expect(commands.map((command) => command.signalCode)).toStrictEqual([null, null])
+    expect(unhandled).toStrictEqual([])
+  } finally {
+    process.off('unhandledRejection', onUnhandled)
+  }
+})
+test('stops the timeout and the abort listener when the connection fails during a command', async function () {
+  await withResettableConnection(async (client, reset) => {
+    const controller = new AbortController()
+    const timers = countTimers()
+    const { opened, onChannel } = waitForChannel()
+    const result = client.execCommand('sleep 2', { timeout: 60000, signal: controller.signal, onChannel })
+    await opened
+    reset()
+    await expect(result).rejects.toMatchObject({ code: 'ECONNRESET' })
+    expect(countTimers()).toBe(timers)
+    expect(getEventListeners(controller.signal, 'abort')).toHaveLength(0)
+  })
+})
+sshit('validates the timeout, signal and killSignal options', async function (port, client) {
+  await connectWithPassword(port, client)
+  for (const timeout of [0, -1, NaN, Infinity, 2 ** 31, '100']) {
+    await expect(client.execCommand('echo 1', { timeout } as never)).rejects.toThrow(
+      'options.timeout must be a number greater than 0 and at most 2147483647',
+    )
+  }
+  for (const signal of [{}, 'signal', true, { aborted: false }]) {
+    await expect(client.execCommand('echo 1', { signal } as never)).rejects.toThrow(
+      'options.signal must be a valid AbortSignal',
+    )
+  }
+  for (const killSignal of ['WINCH', 'SIGFOO', 'SIG', '', 9]) {
+    await expect(client.execCommand('echo 1', { killSignal } as never)).rejects.toThrow(
+      'options.killSignal must be one of ABRT, ALRM, FPE, HUP, ILL, INT, KILL, PIPE, QUIT, SEGV, TERM, USR1, USR2, with or without the SIG prefix',
+    )
+  }
+  await expect(client.exec('echo', ['1'], { timeout: 0 })).rejects.toThrow('options.timeout must be a number')
+
+  const signal = new AbortController().signal
+  for (const killSignal of ['KILL', 'SIGKILL', 'sigusr1']) {
+    expect((await client.execCommand('echo 1', { timeout: 2 ** 31 - 1, signal, killSignal })).stdout).toBe('1')
+  }
 })
 

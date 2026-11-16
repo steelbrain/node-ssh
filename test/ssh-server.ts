@@ -15,6 +15,8 @@ export interface ServerOptions {
   sftpFailWrites?: boolean
   // Called with the request name and paths of each SFTP OPEN, STAT, SETSTAT, RENAME, REMOVE and posix-rename request
   onSftpRequest?: (name: string, paths: string[]) => void
+  // Called with the child process of each exec request
+  onExec?: (child: ChildProcess.ChildProcess) => void
 }
 
 // Reads the SSH strings (uint32 length, then bytes) in an EXTENDED request's data
@@ -254,9 +256,28 @@ function handleSession(acceptSession, options: ServerOptions) {
     request.pipe(spawnedProcess)
     spawnedProcess.pipe(request)
   })
+  let command: ChildProcess.ChildProcess | null = null
+  // ssh2's server rejects every channel request that arrives after the client's EOF. OpenSSH still acts on
+  // signal requests then, and execCommand sends EOF right away when it has no stdin to write.
+  session.on('eof', function () {
+    session._ending = false
+  })
+  // Like sshd: send the signal to the command's process group
+  session.on('signal', function (accept, reject, info) {
+    try {
+      if (command?.pid == null) throw new Error('No command is running')
+      process.kill(-command.pid, `SIG${info.name}`)
+      accept?.()
+    } catch (_) {
+      reject?.()
+    }
+  })
   session.on('exec', function (accept, reject, info) {
     const response = accept()
-    const spawnedProcess = ChildProcess.exec(info.command)
+    // Like sshd, run the command with a shell in a new session, so it leads its own process group
+    const spawnedProcess = ChildProcess.spawn(info.command, { shell: true, detached: true })
+    command = spawnedProcess
+    options.onExec?.(spawnedProcess)
     response.pipe(spawnedProcess.stdin)
     spawnedProcess.stdout?.pipe(response.stdout, { end: false })
     spawnedProcess.stderr?.pipe(response.stderr, { end: false })

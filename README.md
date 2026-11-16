@@ -132,6 +132,58 @@ A pseudo-TTY gives the remote program one terminal for both of its output stream
 `pty: true` everything it writes arrives in `stdout` (and `onStdout`) and `stderr` stays empty.
 The terminal also echoes `stdin` into `stdout`, and line endings in the output are `\r\n`.
 
+#### Timeouts and stopping commands
+
+`exec` and `execCommand` take a `timeout` in milliseconds, counted from the call. When it passes,
+node-ssh asks the server to send `killSignal` (default `'TERM'`) to the command, closes the
+command's channel and rejects with an `SSHError` whose `code` is `'ETIMEDOUT'`:
+
+```js
+try {
+  const result = await ssh.execCommand('./build.sh', { cwd: '/var/www', timeout: 5000 })
+  console.log('STDOUT: ' + result.stdout)
+} catch (error) {
+  if (error.code !== 'ETIMEDOUT') throw error
+  console.log('build.sh did not finish within 5 seconds')
+}
+```
+
+To stop a command yourself, pass an `AbortSignal` as `signal`. Aborting it does the same as the
+timeout, and the promise rejects with `signal.reason`. If the signal is already aborted, the
+promise rejects right away and the command does not run.
+
+```js
+const controller = new AbortController()
+const tail = ssh.execCommand('tail -f /var/log/syslog', {
+  signal: controller.signal,
+  onStdout(chunk) {
+    process.stdout.write(chunk)
+  },
+})
+// later
+controller.abort()
+await tail.catch((error) => console.log(error.name)) // AbortError
+```
+
+`killSignal` is one of `ABRT`, `ALRM`, `FPE`, `HUP`, `ILL`, `INT`, `KILL`, `PIPE`, `QUIT`, `SEGV`,
+`TERM`, `USR1` and `USR2` (the signal names SSH defines), with or without the `SIG` prefix.
+
+The promise rejects as soon as the timeout passes or the signal aborts, without waiting for the
+command to exit. What happens to the command depends on the server:
+
+- OpenSSH (tested with 9.2) sends the signal to the command's process group, so programs that a
+  shell command started get it too. A command can ignore or catch the signal and keep running;
+  `KILL` can't be ignored.
+- Without a pseudo-TTY, closing the channel does not stop the command on OpenSSH. With
+  `execOptions: { pty: true }`, OpenSSH also hangs up the terminal when the channel closes, which
+  sends `SIGHUP` to the command.
+- OpenSSH refuses signal requests for forced commands (such as `command=` in `authorized_keys`),
+  and other servers may ignore them. Without a pseudo-TTY, the command then keeps running.
+
+ssh2's `channel.signal()` (on the channel that `onChannel` receives) sends nothing once the
+channel's stdin has ended, and `execCommand` ends it right away when `stdin` is a string or not
+given. The `timeout` and `signal` options send the signal request in that case too.
+
 #### Atomic uploads
 
 While a file uploads, its remote path holds an incomplete file, and a web server
@@ -242,6 +294,9 @@ export interface SSHExecCommandOptions {
   encoding?: BufferEncoding
   noTrim?: boolean
   noBuffer?: boolean
+  timeout?: number
+  signal?: AbortSignal
+  killSignal?: string
   onChannel?: (clientChannel: ClientChannel) => void
   onStdout?: (chunk: Buffer) => void
   onStderr?: (chunk: Buffer) => void
