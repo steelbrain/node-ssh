@@ -2,6 +2,7 @@
 
 - BREAKING: Minimum required version of Node.js is now v22
 - Remove the `is-stream` and `make-dir` dependencies in favor of Node.js built-ins
+- Set `TCP_NODELAY` on the connection's socket. Without it, every request round trip took about 40ms longer on Node.js 26
 - Upgrade `ssh2` to `v1.17.0`, `sb-promise-queue` to `v2.1.1` and `sb-scandir` to `v3.1.1`
 - Build with `zshy`. Output files are now `lib/index.js` (CommonJS), `lib/index.mjs` (ESM), `lib/index.d.ts` and `lib/index.d.mts`, and the `main`, `module`, `types` and `exports` fields point to them
 - Type declarations no longer contain `/// <reference types="node" />`
