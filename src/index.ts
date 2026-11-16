@@ -100,7 +100,10 @@ const DEFAULT_TICK = () => {
 }
 
 export class SSHError extends Error {
-  constructor(message: string, public code: string | null = null) {
+  constructor(
+    message: string,
+    public code: string | null = null,
+  ) {
     super(message)
   }
 }

@@ -1,10 +1,17 @@
 import test, { ExecutionContext } from 'ava'
+import dns from 'dns'
 import fs from 'fs'
-import { Socket } from 'net'
+import net, { Socket } from 'net'
 import path from 'path'
 
 import { Config, NodeSSH } from '../src'
 import { PRIVATE_KEY_PATH, PRIVATE_KEY_PPK_PATH } from './helpers'
+
+// Since Node.js 20, connecting to 'localhost' tries both ::1 and 127.0.0.1 and a refused
+// connection rejects with an AggregateError whose message is empty. Connect to 127.0.0.1
+// only, so the tests below see 'connect ECONNREFUSED 127.0.0.1:22'.
+dns.setDefaultResultOrder('ipv4first')
+net.setDefaultAutoSelectFamily(false)
 
 async function normalizeConfig(config: Config) {
   return new NodeSSH().connect(config)

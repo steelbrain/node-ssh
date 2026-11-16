@@ -115,9 +115,9 @@ sshit('creates directories with sftp properly', async function (t, port, client)
 })
 sshit('creates directories with exec properly', async function (t, port, client) {
   await connectWithPassword(port, client)
-  t.is(await exists(getFixturePath('ignored/a/b')), false)
-  await client.mkdir(getFixturePath('ignored/a/b'), 'exec')
-  t.is(await exists(getFixturePath('ignored/a/b')), true)
+  t.is(await exists(getFixturePath('ignored/c/d')), false)
+  await client.mkdir(getFixturePath('ignored/c/d'), 'exec')
+  t.is(await exists(getFixturePath('ignored/c/d')), true)
 })
 sshit('throws error when it cant create directories', async function (t, port, client) {
   await connectWithPassword(port, client)

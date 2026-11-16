@@ -10,14 +10,14 @@ jobs:
     runs-on: ubuntu-latest
 
     container:
-      image: node:18
+      image: node:22
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
 
       - name: Cache Yarn packages
-        uses: actions/cache@v3
+        uses: actions/cache@v6
         with:
           path: '**/node_modules'
           key: ${{ runner.os }}-yarn-${{ hashFiles('**/yarn.lock') }}

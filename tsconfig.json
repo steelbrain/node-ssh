@@ -1,15 +1,17 @@
 {
   "compilerOptions": {
-    "baseUrl": "./",
+    "rootDir": "./src",
     "jsx": "preserve",
+    "target": "es2018",
     "module": "CommonJS",
     "esModuleInterop": true,
+    "strict": false,
     "strictNullChecks": true,
     "resolveJsonModule": true,
-    "moduleResolution": "node",
-    "downlevelIteration": true,
+    "moduleResolution": "bundler",
     "allowSyntheticDefaultImports": true,
     "skipLibCheck": true,
+    "types": ["node"],
     "lib": ["es2015", "es2016", "es2017", "es2018", "esnext"]
   },
   "include": ["src"],
