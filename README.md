@@ -132,6 +132,30 @@ A pseudo-TTY gives the remote program one terminal for both of its output stream
 `pty: true` everything it writes arrives in `stdout` (and `onStdout`) and `stderr` stays empty.
 The terminal also echoes `stdin` into `stdout`, and line endings in the output are `\r\n`.
 
+#### Atomic uploads
+
+While a file uploads, its remote path holds an incomplete file, and a web server
+reading that path could serve part of it. With `atomic: true`, `putFile`,
+`putFiles` and `putDirectory` upload each file to a hidden temporary file in the
+same remote directory (`.fileName.<random hex>.tmp`) and rename it to the remote
+path once the upload is complete:
+
+```js
+await ssh.putFile('/home/steel/Lab/localPath/fileName', '/var/www/fileName', null, null, { atomic: true })
+await ssh.putDirectory('/home/steel/Lab/site', '/var/www/site', { atomic: true })
+```
+
+When the server supports the `posix-rename@openssh.com` SFTP extension (OpenSSH
+does), the rename replaces an existing file in one step. Otherwise node-ssh uses
+a plain SFTP rename, and if that fails, deletes the existing file and renames
+again; the remote path is missing for a moment, so this fallback is not atomic.
+
+The renamed file is a new file, so it does not keep the mode or owner of the file
+it replaces; pass `transferOptions: { mode }` to set its mode. If the upload or
+the rename fails, node-ssh deletes the temporary file before rejecting. If the
+connection drops, the temporary file can stay behind. `getDirectory` ignores
+`atomic`.
+
 #### API
 
 ```ts
@@ -189,7 +213,10 @@ export interface SSHExecCommandResponse {
 export interface SSHExecOptions extends SSHExecCommandOptions {
   stream?: 'stdout' | 'stderr' | 'both'
 }
-export interface SSHPutFilesOptions {
+export interface SSHPutFileOptions {
+  atomic?: boolean
+}
+export interface SSHPutFilesOptions extends SSHPutFileOptions {
   sftp?: SFTPWrapper | null
   concurrency?: number
   transferOptions?: TransferOptions
@@ -261,18 +288,19 @@ export class NodeSSH {
     remoteFile: string,
     givenSftp?: SFTPWrapper | null,
     transferOptions?: TransferOptions | null,
+    options?: SSHPutFileOptions,
   ): Promise<void>
   putFiles(
     files: {
       local: string
       remote: string
     }[],
-    { concurrency, sftp: givenSftp, transferOptions }?: SSHPutFilesOptions,
+    { concurrency, sftp: givenSftp, transferOptions, atomic }?: SSHPutFilesOptions,
   ): Promise<void>
   putDirectory(
     localDirectory: string,
     remoteDirectory: string,
-    { concurrency, sftp: givenSftp, transferOptions, recursive, tick, validate }?: SSHGetPutDirectoryOptions,
+    { concurrency, sftp: givenSftp, transferOptions, recursive, tick, validate, atomic }?: SSHGetPutDirectoryOptions,
   ): Promise<boolean>
   getDirectory(
     localDirectory: string,

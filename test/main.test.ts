@@ -3,12 +3,12 @@ import ChildProcess from 'child_process'
 import fs from 'fs'
 import net from 'net'
 import path from 'path'
-import { Client, Server } from 'ssh2'
+import { Client, Connection, Server, SFTPWrapper } from 'ssh2'
 import { afterAll, beforeAll, expect, test, vi } from 'vitest'
 
 import { NodeSSH } from '../src'
 import { PRIVATE_KEY_ENCRYPTED_PPK_PATH, PRIVATE_KEY_PATH, exists, wait } from './helpers'
-import createServer from './ssh-server'
+import createServer, { ServerOptions } from './ssh-server'
 
 let ports = 8876
 
@@ -742,5 +742,194 @@ sshit('rejects when an output callback throws, and keeps the connection', async 
   await expect(client.execCommand('echo 1', { onChannel: throwing })).rejects.toThrow('thrown in a callback')
   expect(client.isConnected()).toBe(true)
   expect((await client.execCommand('echo still connected')).stdout).toBe('still connected')
+})
+
+type SftpRequests = { name: string; paths: string[] }[]
+
+// Like sshit, but connected, and the server records the SFTP requests it gets
+function sshitRecording(
+  title: string,
+  callback: (client: NodeSSH, requests: SftpRequests) => Promise<void>,
+  serverOptions: ServerOptions = {},
+): void {
+  test(title, async function () {
+    ports += 1
+    const port = ports
+    const requests: SftpRequests = []
+    const server = createServer({ ...serverOptions, onSftpRequest: (name, paths) => requests.push({ name, paths }) })
+    await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
+    const client = new NodeSSH()
+    try {
+      await connectWithPassword(port, client)
+      await callback(client, requests)
+    } finally {
+      client.dispose()
+      await new Promise((resolve) => server.close(resolve))
+    }
+  })
+}
+function makeIgnoredDirectory(name: string): string {
+  const directory = getFixturePath(`ignored/${name}`)
+  fs.mkdirSync(directory, { recursive: true })
+  return directory
+}
+// The hidden temporary file that atomic uploads write before renaming it to targetFile
+function isTemporaryFile(remoteFile: string, targetFile: string): boolean {
+  const name = path.basename(targetFile)
+  return (
+    path.dirname(remoteFile) === path.dirname(targetFile) &&
+    path.basename(remoteFile).startsWith(`.${name}.`) &&
+    /^\.[0-9a-f]{12}\.tmp$/.test(path.basename(remoteFile).slice(name.length + 1))
+  )
+}
+// ssh2's server can't advertise SFTP extensions, so tell the client that the test server handles posix-rename
+function enablePosixRename(sftp: SFTPWrapper): void {
+  ;(sftp as unknown as { _extensions: Record<string, string> })._extensions['posix-rename@openssh.com'] = '1'
+}
+
+sshitRecording('puts a file atomically through a hidden temporary file', async function (client, requests) {
+  const targetFile = path.join(makeIgnoredDirectory('atomic-put'), 'target')
+  await client.putFile(__filename, targetFile, null, null, { atomic: true })
+  expect(fs.readFileSync(targetFile, 'utf8')).toBe(fs.readFileSync(__filename, 'utf8'))
+  const temporaryFile = requests[0].paths[0]
+  expect(isTemporaryFile(temporaryFile, targetFile)).toBe(true)
+  expect(requests).toStrictEqual([
+    { name: 'OPEN', paths: [temporaryFile] },
+    { name: 'RENAME', paths: [temporaryFile, targetFile] },
+  ])
+  expect(fs.readdirSync(path.dirname(targetFile))).toStrictEqual(['target'])
+})
+sshitRecording('replaces an existing file with atomic putFile using posix-rename', async function (client, requests) {
+  const targetFile = path.join(makeIgnoredDirectory('atomic-posix-rename'), 'target')
+  fs.writeFileSync(targetFile, 'old')
+  const sftp = await client.requestSFTP()
+  enablePosixRename(sftp)
+  await client.putFile(__filename, targetFile, sftp, null, { atomic: true })
+  sftp.end()
+  expect(fs.readFileSync(targetFile, 'utf8')).toBe(fs.readFileSync(__filename, 'utf8'))
+  const temporaryFile = requests[0].paths[0]
+  expect(isTemporaryFile(temporaryFile, targetFile)).toBe(true)
+  expect(requests).toStrictEqual([
+    { name: 'OPEN', paths: [temporaryFile] },
+    { name: 'posix-rename@openssh.com', paths: [temporaryFile, targetFile] },
+  ])
+  expect(fs.readdirSync(path.dirname(targetFile))).toStrictEqual(['target'])
+})
+sshitRecording('replaces an existing file with atomic putFile without posix-rename', async function (client, requests) {
+  const targetFile = path.join(makeIgnoredDirectory('atomic-rename'), 'target')
+  fs.writeFileSync(targetFile, 'old')
+  await client.putFile(__filename, targetFile, null, null, { atomic: true })
+  expect(fs.readFileSync(targetFile, 'utf8')).toBe(fs.readFileSync(__filename, 'utf8'))
+  const temporaryFile = requests[0].paths[0]
+  expect(isTemporaryFile(temporaryFile, targetFile)).toBe(true)
+  // The test server's RENAME, like OpenSSH's, fails when the target exists
+  expect(requests).toStrictEqual([
+    { name: 'OPEN', paths: [temporaryFile] },
+    { name: 'RENAME', paths: [temporaryFile, targetFile] },
+    { name: 'REMOVE', paths: [targetFile] },
+    { name: 'RENAME', paths: [temporaryFile, targetFile] },
+  ])
+  expect(fs.readdirSync(path.dirname(targetFile))).toStrictEqual(['target'])
+})
+sshitRecording(
+  'removes the temporary file and keeps the target when an atomic upload fails',
+  async function (client, requests) {
+    const targetFile = path.join(makeIgnoredDirectory('atomic-upload-fails'), 'target')
+    fs.writeFileSync(targetFile, 'old')
+    await expect(client.putFile(__filename, targetFile, null, null, { atomic: true })).rejects.toThrow('Failure')
+    expect(fs.readFileSync(targetFile, 'utf8')).toBe('old')
+    const temporaryFile = requests[0].paths[0]
+    expect(isTemporaryFile(temporaryFile, targetFile)).toBe(true)
+    expect(requests).toStrictEqual([
+      { name: 'OPEN', paths: [temporaryFile] },
+      { name: 'REMOVE', paths: [temporaryFile] },
+    ])
+    expect(fs.readdirSync(path.dirname(targetFile))).toStrictEqual(['target'])
+  },
+  { sftpFailWrites: true },
+)
+sshitRecording('removes the temporary file and keeps the target when an atomic rename fails', async function (client) {
+  // A file can't replace a directory
+  const targetFile = path.join(makeIgnoredDirectory('atomic-rename-fails'), 'target')
+  fs.mkdirSync(targetFile)
+  fs.writeFileSync(path.join(targetFile, 'keep'), 'kept')
+  await expect(client.putFile(__filename, targetFile, null, null, { atomic: true })).rejects.toThrow('Failure')
+  expect(fs.readFileSync(path.join(targetFile, 'keep'), 'utf8')).toBe('kept')
+  expect(fs.readdirSync(path.dirname(targetFile))).toStrictEqual(['target'])
+})
+sshitRecording('puts multiple files atomically', async function (client, requests) {
+  const directory = makeIgnoredDirectory('atomic-files')
+  const files = ['aa', 'bb', 'cc'].map((name) => ({
+    local: getFixturePath(`multiple/${name}`),
+    remote: path.join(directory, name),
+  }))
+  await client.putFiles(files, { atomic: true, concurrency: 3 })
+  const opened = requests.filter((request) => request.name === 'OPEN').map((request) => request.paths[0])
+  expect(opened).toHaveLength(files.length)
+  for (const file of files) {
+    expect(fs.readFileSync(file.remote, 'utf8')).toBe(fs.readFileSync(file.local, 'utf8'))
+    expect(opened.some((remoteFile) => isTemporaryFile(remoteFile, file.remote))).toBe(true)
+  }
+  expect(fs.readdirSync(directory).sort()).toStrictEqual(['aa', 'bb', 'cc'])
+})
+sshitRecording('puts entire directories atomically', async function (client, requests) {
+  const directory = makeIgnoredDirectory('atomic-directory')
+  const remoteFiles: string[] = []
+  const succeeded = await client.putDirectory(getFixturePath('multiple'), directory, {
+    atomic: true,
+    tick(local, remote, error) {
+      expect(error).toBe(null)
+      remoteFiles.push(remote)
+    },
+  })
+  expect(succeeded).toBe(true)
+  expect(remoteFiles).toHaveLength(13)
+  const opened = requests.filter((request) => request.name === 'OPEN').map((request) => request.paths[0])
+  expect(opened).toHaveLength(13)
+  for (const remote of remoteFiles) {
+    expect(fs.existsSync(remote)).toBe(true)
+    expect(opened.some((remoteFile) => isTemporaryFile(remoteFile, remote))).toBe(true)
+  }
+  const leftovers = fs.readdirSync(directory, { recursive: true }).filter((file) => String(file).endsWith('.tmp'))
+  expect(leftovers).toStrictEqual([])
+})
+test('rejects instead of hanging when the connection closes during an atomic upload', async function () {
+  ports += 1
+  const port = ports
+  const connections: Connection[] = []
+  const server = createServer({
+    onSftpRequest(name) {
+      if (name === 'OPEN') connections.forEach((connection) => connection.end())
+    },
+  })
+  server.on('connection', (connection) => connections.push(connection))
+  await new Promise<void>((resolve) => server.listen(port, '127.0.0.1', resolve))
+  const client = new NodeSSH()
+  try {
+    await connectWithPassword(port, client)
+    const targetFile = path.join(makeIgnoredDirectory('atomic-connection-closes'), 'target')
+    // The upload fails, and removing the temporary file must not wait for a reply that never comes
+    await expect(client.putFile(__filename, targetFile, null, null, { atomic: true })).rejects.toThrow(
+      'No response from server',
+    )
+  } finally {
+    client.dispose()
+    await new Promise((resolve) => server.close(resolve))
+  }
+})
+sshit('validates the atomic option', async function (port, client) {
+  await connectWithPassword(port, client)
+  const targetFile = getFixturePath('ignored/atomic-validate')
+  const options = { atomic: 'yes' } as never
+  await expect(client.putFile(__filename, targetFile, null, null, options)).rejects.toThrow(
+    'options.atomic must be a boolean',
+  )
+  await expect(client.putFiles([{ local: __filename, remote: targetFile }], options)).rejects.toThrow(
+    'options.atomic must be a boolean',
+  )
+  await expect(client.putDirectory(getFixturePath('multiple'), targetFile, options)).rejects.toThrow(
+    'options.atomic must be a boolean',
+  )
+  expect(fs.existsSync(targetFile)).toBe(false)
 })
 

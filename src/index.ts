@@ -1,4 +1,5 @@
 import invariant, { AssertionError } from 'assert'
+import { randomBytes } from 'crypto'
 import fs from 'fs'
 import fsPath from 'path'
 import { PromiseQueue } from 'sb-promise-queue'
@@ -61,7 +62,12 @@ export interface SSHExecOptions extends SSHExecCommandOptions {
   stream?: 'stdout' | 'stderr' | 'both'
 }
 
-export interface SSHPutFilesOptions {
+export interface SSHPutFileOptions {
+  // Upload to a hidden temporary file in the same remote directory, then rename it to the remote path
+  atomic?: boolean
+}
+
+export interface SSHPutFilesOptions extends SSHPutFileOptions {
   sftp?: SFTPWrapper | null
   concurrency?: number
   transferOptions?: TransferOptions
@@ -205,6 +211,62 @@ async function makeDirectoryWithSftp(path: string, sftp: SFTPWrapper) {
       }
       throw err
     }
+  }
+}
+
+// A hidden file in the same directory as remoteFile, so renaming it to remoteFile stays on one file system
+function getTemporaryPath(remoteFile: string): string {
+  const name = `.${fsPath.posix.basename(remoteFile)}.${randomBytes(6).toString('hex')}.tmp`
+  return fsPath.posix.join(fsPath.posix.dirname(remoteFile), name)
+}
+
+function sftpRequest(sftp: SFTPWrapper, send: (callback: (err?: Error | null) => void) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    // ssh2 never answers a request sent after the SFTP channel closed (for example when the connection was lost)
+    if ((sftp as SFTPWrapper & { readable?: boolean }).readable === false) {
+      reject(new SSHError('SFTP channel is closed'))
+      return
+    }
+    send((err) => {
+      if (err) {
+        reject(err)
+      } else {
+        resolve()
+      }
+    })
+  })
+}
+
+// Rename `from` to `to`, replacing `to` if it exists
+async function renameWithSftp(from: string, to: string, sftp: SFTPWrapper): Promise<void> {
+  // posix-rename@openssh.com replaces `to` atomically. ssh2 throws right away if the server does not support it.
+  const renamed = await new Promise<boolean>((resolve, reject) => {
+    try {
+      sftp.ext_openssh_rename(from, to, (err) => {
+        if (err) {
+          reject(err)
+        } else {
+          resolve(true)
+        }
+      })
+    } catch (_) {
+      resolve(false)
+    }
+  })
+  if (renamed) {
+    return
+  }
+  // A plain SFTP rename fails if `to` exists (OpenSSH's sftp-server never replaces a file), so remove `to` and
+  // rename again. `to` does not exist in between: this fallback is not atomic.
+  try {
+    await sftpRequest(sftp, (callback) => sftp.rename(from, to, callback))
+  } catch (error) {
+    try {
+      await sftpRequest(sftp, (callback) => sftp.unlink(to, callback))
+    } catch (_) {
+      throw error
+    }
+    await sftpRequest(sftp, (callback) => sftp.rename(from, to, callback))
   }
 }
 
@@ -650,11 +712,14 @@ export class NodeSSH {
     remoteFile: string,
     givenSftp: SFTPWrapper | null = null,
     transferOptions: TransferOptions | null = null,
+    options: SSHPutFileOptions = {},
   ): Promise<void> {
     invariant(typeof localFile === 'string', 'localFile must be a valid string')
     invariant(typeof remoteFile === 'string', 'remoteFile must be a valid string')
     invariant(givenSftp == null || typeof givenSftp === 'object', 'sftp must be a valid object')
     invariant(transferOptions == null || typeof transferOptions === 'object', 'transferOptions must be a valid object')
+    invariant(options != null && typeof options === 'object', 'options must be a valid object')
+    invariant(options.atomic == null || typeof options.atomic === 'boolean', 'options.atomic must be a boolean')
     invariant(
       await new Promise((resolve) => {
         fs.access(localFile, fs.constants.R_OK, (err) => {
@@ -664,10 +729,12 @@ export class NodeSSH {
       `localFile does not exist at ${localFile}`,
     )
     const sftp = givenSftp || (await this.requestSFTP())
+    // With atomic, upload to a temporary file and rename it to remoteFile once it is complete (#349)
+    const temporaryFile = options.atomic ? getTemporaryPath(unixifyPath(remoteFile)) : null
 
     const putFile = (retry: boolean) => {
       return new Promise<void>((resolve, reject) => {
-        sftp.fastPut(localFile, unixifyPath(remoteFile), transferOptions || {}, (err) => {
+        sftp.fastPut(localFile, temporaryFile ?? unixifyPath(remoteFile), transferOptions || {}, (err) => {
           if (err == null) {
             resolve()
             return
@@ -684,6 +751,15 @@ export class NodeSSH {
 
     try {
       await putFile(true)
+      if (temporaryFile != null) {
+        await renameWithSftp(temporaryFile, unixifyPath(remoteFile), sftp)
+      }
+    } catch (error) {
+      if (temporaryFile != null) {
+        // Remove the partial upload, then reject with the error that stopped it
+        await sftpRequest(sftp, (callback) => sftp.unlink(temporaryFile, callback)).catch(DEFAULT_TICK)
+      }
+      throw error
     } finally {
       if (!givenSftp) {
         sftp.end()
@@ -693,9 +769,15 @@ export class NodeSSH {
 
   async putFiles(
     files: { local: string; remote: string }[],
-    { concurrency = DEFAULT_CONCURRENCY, sftp: givenSftp = null, transferOptions = {} }: SSHPutFilesOptions = {},
+    {
+      concurrency = DEFAULT_CONCURRENCY,
+      sftp: givenSftp = null,
+      transferOptions = {},
+      atomic = false,
+    }: SSHPutFilesOptions = {},
   ): Promise<void> {
     invariant(Array.isArray(files), 'files must be an array')
+    invariant(atomic == null || typeof atomic === 'boolean', 'options.atomic must be a boolean')
 
     for (let i = 0, { length } = files; i < length; i += 1) {
       const file = files[i]
@@ -713,7 +795,7 @@ export class NodeSSH {
         files.forEach((file) => {
           queue
             .add(async () => {
-              await this.putFile(file.local, file.remote, sftp, transferOptions)
+              await this.putFile(file.local, file.remote, sftp, transferOptions, { atomic })
               transferred.push(file)
             })
             .catch(reject)
@@ -743,10 +825,12 @@ export class NodeSSH {
       recursive = true,
       tick = DEFAULT_TICK,
       validate = DEFAULT_VALIDATE,
+      atomic = false,
     }: SSHGetPutDirectoryOptions = {},
   ): Promise<boolean> {
     invariant(typeof localDirectory === 'string' && localDirectory, 'localDirectory must be a string')
     invariant(typeof remoteDirectory === 'string' && remoteDirectory, 'remoteDirectory must be a string')
+    invariant(atomic == null || typeof atomic === 'boolean', 'options.atomic must be a boolean')
 
     const localDirectoryStat: fs.Stats = await new Promise((resolve) => {
       fs.stat(localDirectory, (err, stat) => {
@@ -797,7 +881,7 @@ export class NodeSSH {
               const localFile = fsPath.join(localDirectory, file)
               const remoteFile = fsPath.join(remoteDirectory, file)
               try {
-                await this.putFile(localFile, remoteFile, sftp, transferOptions)
+                await this.putFile(localFile, remoteFile, sftp, transferOptions, { atomic })
                 tick(localFile, remoteFile, null)
               } catch (_) {
                 failed = true

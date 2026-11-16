@@ -11,6 +11,22 @@ const { STATUS_CODE } = ((ssh2.utils as unknown) as { sftp: { STATUS_CODE: Recor
 export interface ServerOptions {
   // Answer SFTP CLOSE requests after this many milliseconds, like a remote server would
   sftpCloseDelay?: number
+  // Answer SFTP WRITE requests with a failure, like a server whose disk is full
+  sftpFailWrites?: boolean
+  // Called with the request name and paths of each SFTP OPEN, RENAME, REMOVE and posix-rename request
+  onSftpRequest?: (name: string, paths: string[]) => void
+}
+
+// Reads the SSH strings (uint32 length, then bytes) in an EXTENDED request's data
+function readSshStrings(data: Buffer): string[] {
+  const strings: string[] = []
+  let offset = 0
+  while (offset + 4 <= data.length) {
+    const length = data.readUInt32BE(offset)
+    strings.push(data.toString('utf8', offset + 4, offset + 4 + length))
+    offset += 4 + length
+  }
+  return strings
 }
 
 function handleSFTP(accept, options: ServerOptions) {
@@ -20,6 +36,7 @@ function handleSFTP(accept, options: ServerOptions) {
   const handles: Set<number> = new Set()
   const dirHandles: Map<number, string[]> = new Map()
   sftpStream.on('OPEN', function (reqId, filename, flags) {
+    options.onSftpRequest?.('OPEN', [filename])
     let handleId
     try {
       handleId = FS.openSync(filename, SFTPStream.flagsToString(flags) as string)
@@ -52,7 +69,7 @@ function handleSFTP(accept, options: ServerOptions) {
   })
   sftpStream.on('WRITE', function (reqId, givenHandle, offset, data) {
     const handle = parseInt(givenHandle, 10)
-    if (!handles.has(handle)) {
+    if (!handles.has(handle) || options.sftpFailWrites) {
       sftpStream.status(reqId, STATUS_CODE.FAILURE)
       return
     }
@@ -115,6 +132,43 @@ function handleSFTP(accept, options: ServerOptions) {
     try {
       const stats = FS.statSync(path)
       sftpStream.attrs(reqId, stats)
+    } catch (error) {
+      sftpStream.status(reqId, STATUS_CODE.FAILURE, error.message)
+    }
+  })
+  sftpStream.on('REMOVE', function (reqId, path) {
+    options.onSftpRequest?.('REMOVE', [path])
+    try {
+      FS.unlinkSync(path)
+      sftpStream.status(reqId, STATUS_CODE.OK)
+    } catch (error) {
+      sftpStream.status(reqId, STATUS_CODE.FAILURE, error.message)
+    }
+  })
+  sftpStream.on('RENAME', function (reqId, oldPath, newPath) {
+    options.onSftpRequest?.('RENAME', [oldPath, newPath])
+    // Like OpenSSH's sftp-server, never replace an existing file
+    if (FS.existsSync(newPath)) {
+      sftpStream.status(reqId, STATUS_CODE.FAILURE)
+      return
+    }
+    try {
+      FS.renameSync(oldPath, newPath)
+      sftpStream.status(reqId, STATUS_CODE.OK)
+    } catch (error) {
+      sftpStream.status(reqId, STATUS_CODE.FAILURE, error.message)
+    }
+  })
+  sftpStream.on('EXTENDED', function (reqId, name, data) {
+    if (name !== 'posix-rename@openssh.com') {
+      sftpStream.status(reqId, STATUS_CODE.OP_UNSUPPORTED)
+      return
+    }
+    const [oldPath, newPath] = readSshStrings(data)
+    options.onSftpRequest?.(name, [oldPath, newPath])
+    try {
+      FS.renameSync(oldPath, newPath)
+      sftpStream.status(reqId, STATUS_CODE.OK)
     } catch (error) {
       sftpStream.status(reqId, STATUS_CODE.FAILURE, error.message)
     }
